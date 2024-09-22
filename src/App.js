@@ -1,13 +1,13 @@
 // App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Sidebar from './components/Sidebar'; // Importa Sidebar desde la carpeta components
-import Dashboard from './components/Dashboard'; // Asegúrate de que Dashboard esté aquí
-import Grupos from './components/Grupos'; // Importa Grupos desde la carpeta components
-import Calendario from './components/Calendario'; // Importa Calendario desde la carpeta components
-import RequestProjector from './components/RequestProjector'; // Importa RequestProjector
-import UploadDocuments from './components/UploadDocuments'; // Importa UploadDocuments
-import ViewDocuments from './components/ViewDocuments'; // Importa ViewDocuments
+import Sidebar from './components/Sidebar'; 
+import Dashboard from './components/Dashboard'; 
+import Grupos from './components/Grupos'; 
+import MiniCalendar from './components/MiniCalendar'; // Cambié el nombre aquí
+import RequestProjector from './components/RequestProjector'; 
+import UploadDocuments from './components/UploadDocuments'; 
+import ViewDocuments from './components/ViewDocuments'; 
 
 function App() {
   return (
@@ -18,10 +18,10 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/grupos" element={<Grupos />} />
-            <Route path="/calendario" element={<Calendario />} />
-            <Route path="/request-projector" element={<RequestProjector />} /> {/* Ruta para RequestProjector */}
+            <Route path="/calendario" element={<MiniCalendar />} />
+            <Route path="/request-projector" element={<RequestProjector />} />
             <Route path="/upload-documents" element={<UploadDocuments />} /> {/* Ruta para UploadDocuments */}
-            <Route path="/view-documents" element={<ViewDocuments />} /> {/* Ruta para ViewDocuments */}
+            <Route path="/view-documents" element={<ViewDocuments />} />
           </Routes>
         </div>
       </div>

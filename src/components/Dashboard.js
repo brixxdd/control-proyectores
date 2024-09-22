@@ -1,17 +1,15 @@
 // pages/Dashboard.js
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css'; // Importar estilos por defecto
+import Card from '../components/Card'; // Asegúrate de importar el componente Card
+import MiniCalendar from '../components/MiniCalendar'; // Importa el nuevo componente de calendario
 import './Dashboard.css'; // Asegúrate de que esta línea esté presente
-
 
 function Dashboard() {
   const [date, setDate] = useState(new Date());
 
   const handleDateChange = (newDate) => {
     setDate(newDate);
-    // Aquí puedes agregar lógica para manejar la fecha seleccionada, como mostrar los eventos
   };
 
   return (
@@ -22,33 +20,18 @@ function Dashboard() {
       {/* Resumen del día o de la semana */}
       <section className="summary">
         <h3>Resumen del Día/Semana</h3>
-        <div className="summary-item">
-          <h4>Proyectores Solicitados:</h4>
-          <p>5 proyectores solicitados para hoy.</p>
-        </div>
-        <div className="summary-item">
-          <h4>Horarios de Recolección y Entrega:</h4>
-          <p>Recolección: 10:00 AM - Entrega: 4:00 PM</p>
-        </div>
-        <div className="summary-item">
-          <h4>Número de Proyectores Disponibles:</h4>
-          <p>10 proyectores disponibles.</p>
-        </div>
-        <div className="summary-item">
-          <h4>Notificaciones Importantes:</h4>
-          <p>2 solicitudes pendientes, 1 retraso en la entrega.</p>
+        <div className="summary-cards">
+          <Card title="Proyectores Solicitados" value="5 proyectores solicitados para hoy." />
+          <Card title="Horarios de Recolección" value="Recolección: 10:00 AM - Entrega: 4:00 PM" />
+          <Card title="Proyectores Disponibles" value="10 proyectores disponibles." />
+          <Card title="Notificaciones" value="2 solicitudes pendientes, 1 retraso en la entrega." />
         </div>
       </section>
 
       {/* Calendario rápido */}
       <section className="quick-calendar">
         <h3>Calendario Rápido</h3>
-        <div className="calendar">
-          <Calendar
-            onChange={handleDateChange}
-            value={date}
-          />
-        </div>
+        <MiniCalendar date={date} onChange={handleDateChange} /> {/* Usa el nuevo componente */}
       </section>
 
       {/* Atajos o accesos rápidos */}
