@@ -5,23 +5,19 @@ const cors = require('cors');
 
 const app = express();
 const PORT = 3000;
-const CLIENT_ID = '217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com'; // Client ID de tu Google OAuth
+const CLIENT_ID = '217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com'; // Tu Google OAuth Client ID
+const client = new OAuth2Client(CLIENT_ID);
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: 'http://localhost:3001', // Permitir solo el origen del frontend
-  credentials: true, // Permitir el uso de credenciales
+  origin: 'http://localhost:3001', // Frontend origin
+  credentials: true, // Permitir uso de credenciales (cookies)
 }));
 
-
-
-// Instancia del cliente OAuth de Google
-const client = new OAuth2Client(CLIENT_ID);
-
-// Middleware para verificar token de Google
+// Middleware para verificar el token de Google
 const verifyToken = async (req, res, next) => {
-  const token = req.cookies.token; // Supongamos que el token viene en una cookie
+  const token = req.cookies.token; // Obtenemos el token de la cookie
 
   if (!token) {
     return res.status(401).json({ message: 'No autenticado' });
@@ -34,8 +30,10 @@ const verifyToken = async (req, res, next) => {
     });
 
     const payload = ticket.getPayload();
-    if (payload.email.endsWith('@unach.mx')) {
-      req.user = payload; // Guardar la información del usuario en la solicitud
+
+    // Verificar si el dominio del correo es '@unach.mx'
+    if (payload.email && payload.email.endsWith('@unach.mx')) {
+      req.user = payload; // Almacenar la información del usuario en la solicitud
       next();
     } else {
       return res.status(403).json({ message: 'Correo no autorizado' });
@@ -45,39 +43,61 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// Ruta pública
-app.get('/', (req, res) => {
-  res.send('¡Bienvenido al servidor Express!');
+app.get('/check-session', verifyToken, (req, res) => {
+  res.status(200).json({ message: 'Sesión activa', user: req.user });
 });
 
-// Ruta protegida que requiere autenticación
+
+// Ruta protegida
 app.get('/protected', verifyToken, (req, res) => {
   res.json({ message: 'Acceso concedido', user: req.user });
 });
 
 // Ruta para iniciar sesión (almacena el token en una cookie)
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { token } = req.body;
 
   if (!token) {
     return res.status(400).json({ message: 'Token no proporcionado' });
   }
 
-  // Almacena el token en una cookie
-res.cookie('token', token, {
-  httpOnly: true,
-  secure: false, // Cambia a true en producción
-  sameSite: 'None', // Necesario para enviar cookies con CORS
-});
+  try {
+    // Verificar el token recibido antes de almacenarlo
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: CLIENT_ID,
+    });
 
+    const payload = ticket.getPayload();
 
-  res.json({ message: 'Inicio de sesión exitoso' });
+    // Verificar si el dominio del correo es '@unach.mx'
+    if (!payload.email || !payload.email.endsWith('@unach.mx')) {
+      return res.status(403).json({ message: 'Correo no autorizado' });
+    }
+
+    // Almacenar el token en una cookie segura
+    res.cookie('token', token, {
+      httpOnly: true,        // Solo accesible por el servidor
+      secure: false,         // Cambiar a true en producción (HTTPS)
+      sameSite: 'None',      // Permite el uso de cookies en diferentes dominios
+    });
+
+    res.json({ message: 'Inicio de sesión exitoso', user: payload });
+  } catch (error) {
+    return res.status(400).json({ message: 'Error al verificar el token', error });
+  }
 });
 
 // Ruta para cerrar sesión
 app.post('/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token'); // Elimina la cookie de sesión
   res.json({ message: 'Sesión cerrada correctamente' });
+});
+
+// Manejo de errores generales
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Algo salió mal', error: err.message });
 });
 
 app.listen(PORT, () => {

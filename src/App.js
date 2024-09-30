@@ -13,15 +13,38 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false); 
   const navigate = useNavigate();
 
+  // Verificar si el usuario tiene una sesión activa
   useEffect(() => {
-    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
-    setIsAuthenticated(authStatus);
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/check-session', {
+          credentials: 'include', // Incluye cookies en la solicitud
+        });
+        if (response.ok) {
+          setIsAuthenticated(true); // Usuario autenticado
+        } else {
+          setIsAuthenticated(false); // No autenticado
+        }
+      } catch (error) {
+        console.error('Error al verificar la sesión:', error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('isAuthenticated');
-    navigate('/signin');
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:3000/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      setIsAuthenticated(false);
+      navigate('/signin');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
   };
 
   return (
