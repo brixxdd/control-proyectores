@@ -3,13 +3,25 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../components/Card'; // Asegúrate de importar el componente Card
 import MiniCalendar from '../components/MiniCalendar'; // Importa el nuevo componente de calendario
+import GradeGroupModal from '../components/GradeGroupModal'; // Importamos el modal
 import './Dashboard.css'; // Asegúrate de que esta línea esté presente
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlusCircle } from '@fortawesome/free-solid-svg-icons'; // Asegúrate de tener FontAwesome instalado
 
 function Dashboard() {
   const [date, setDate] = useState(new Date());
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleDateChange = (newDate) => {
     setDate(newDate);
+  };
+
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -53,6 +65,20 @@ function Dashboard() {
           </Link>
         </div>
       </section>
+
+      {/* Icono para abrir el modal */}
+      <section className="add-grade-group">
+        <h3>Agregar Grupo y Grado</h3>
+        <FontAwesomeIcon 
+          icon={faPlusCircle} 
+          size="2x" 
+          onClick={openModal} 
+          style={{ cursor: 'pointer' }} 
+        />
+      </section>
+
+      {/* Modal */}
+      <GradeGroupModal isOpen={isModalOpen} onClose={closeModal} />
     </div>
   );
 }
