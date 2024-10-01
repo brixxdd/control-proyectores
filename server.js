@@ -35,7 +35,7 @@ app.get('/usuarios', async (req, res) => {
   }
 });
 
-// Middleware para verificar el token JWT
+// Middleware para verificar el token JWT y el token de Google
 const verifyToken = async (req, res, next) => {
   const token = req.cookies.token;
 
@@ -44,24 +44,47 @@ const verifyToken = async (req, res, next) => {
   }
 
   try {
+    // Intentamos verificar el token como un token de Google
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
-
+    
     // Verificar si el dominio del correo es '@unach.mx'
-    if (payload.email && payload.email.endsWith('@unach.mx')) {
-      req.user = payload; // Almacenar la información del usuario en la solicitud
-      next();
-    } else {
+    if (!payload.email || !payload.email.endsWith('@unach.mx')) {
       return res.status(403).json({ message: 'Correo no autorizado' });
     }
+
+    // Busca al usuario en la base de datos
+    const usuarioExistente = await User.findOne({ email: payload.email });
+
+    if (!usuarioExistente) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Almacenar el usuario en la solicitud
+    req.user = usuarioExistente;
+    next();
   } catch (error) {
-    return res.status(401).json({ message: 'Token inválido o expirado', error });
+    // Si hay un error, intentamos verificarlo como un token JWT
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const usuarioExistente = await User.findById(decoded.id);
+      
+      if (!usuarioExistente) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      req.user = usuarioExistente; // Almacenar el usuario en la solicitud
+      next();
+    } catch (error) {
+      return res.status(401).json({ message: 'Token inválido o expirado', error });
+    }
   }
 };
+
 
 // Ruta para verificar la sesión
 app.get('/check-session', verifyToken, async (req, res) => {
@@ -84,11 +107,26 @@ app.get('/protected', verifyToken, (req, res) => {
 });
 
 // Ruta para iniciar sesión
+// Ruta para iniciar sesión
 app.post('/login', async (req, res) => {
   const { token } = req.body;
 
   if (!token) {
-    return res.status(400).json({ message: 'Token no proporcionado' });
+    // Si no hay token en el cuerpo, intentamos obtener el de la cookie
+    const existingToken = req.cookies.token;
+    if (existingToken) {
+      // Verificar el token existente
+      try {
+        const decoded = jwt.verify(existingToken, JWT_SECRET);
+        const usuarioExistente = await User.findById(decoded.id);
+        if (usuarioExistente) {
+          return res.status(200).json({ message: 'Sesión activa', user: usuarioExistente });
+        }
+      } catch (error) {
+        // Si el token es inválido o ha expirado, continuamos con la lógica normal
+      }
+    }
+    return res.status(400).json({ message: 'Token no proporcionado y no hay sesión activa' });
   }
 
   try {
@@ -106,6 +144,7 @@ app.post('/login', async (req, res) => {
     const usuarioExistente = await User.findOne({ email: payload.email });
 
     if (usuarioExistente) {
+      // Generar nuevo JWT solo si no hay uno existente
       const jwtToken = jwt.sign({ id: usuarioExistente._id }, JWT_SECRET, { expiresIn: '1h' });
       res.cookie('token', jwtToken, { httpOnly: true });
       return res.status(200).json({ message: 'Usuario ya existe', user: usuarioExistente });
@@ -116,7 +155,7 @@ app.post('/login', async (req, res) => {
       email: payload.email,
       grado: null,
       grupo: null,
-      turno: null // Asegúrate de agregar este campo
+      turno: null
     });
     
     await nuevoUsuario.save();
@@ -128,12 +167,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Ruta para cerrar sesión
-app.post('/logout', (req, res) => {
-  res.clearCookie('token');
-  res.json({ message: 'Sesión cerrada correctamente' });
-});
-
 // Ruta para actualizar grado y grupo del usuario
 app.put('/update-user', 
   verifyToken, 
@@ -141,7 +174,7 @@ app.put('/update-user',
   body('grupo').notEmpty().withMessage('El grupo es requerido'),
   async (req, res) => {
     const { grado, grupo, turno } = req.body;
-    const userId = req.user.id; // Asegúrate de que `req.user` contenga el id correcto
+    const userId = req.user._id; // Asegúrate de que `req.user` contenga el id correcto
 
     // Validación de errores
     const errors = validationResult(req);
@@ -156,13 +189,18 @@ app.put('/update-user',
         turno,
       }, { new: true }); // Esto devuelve el nuevo objeto
 
-      return res.json(updatedUser);
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+
+      return res.json({ message: 'Usuario actualizado correctamente', user: updatedUser });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: 'Error al actualizar el usuario' });
+      return res.status(500).json({ message: 'Error al actualizar el usuario', error });
     }
   }
 );
+
 
 // Manejo de errores generales
 app.use((err, req, res, next) => {
