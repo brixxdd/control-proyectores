@@ -8,7 +8,6 @@ const SignIn = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
-  
   // Efecto para redirigir si ya hay un token
   useEffect(() => {
     const token = document.cookie.split(';').find(c => c.trim().startsWith('token='));
@@ -23,10 +22,15 @@ const SignIn = ({ setIsAuthenticated }) => {
     if (response.credential) {
       const decoded = jwtDecode(response.credential);
       console.log('Información del usuario decodificada:', decoded);
-
+  
       if (decoded.email && decoded.email.endsWith('@unach.mx')) {
         console.log('Bienvenido, usuario de UNACH:', decoded.email);
-
+  
+        // Guardar el token en localStorage
+        localStorage.setItem('accessToken', response.credential);
+        console.log('Token guardado en localStorage:', response.credential);
+  
+        // Enviar el token al backend
         axios.post('http://localhost:3000/login', { 
           token: response.credential 
         }, { 
@@ -35,7 +39,7 @@ const SignIn = ({ setIsAuthenticated }) => {
         .then((res) => {
           console.log('Inicio de sesión exitoso:', res.data);
           setIsAuthenticated(true);
-          navigate('/');  // Redirigir al dashboard
+          navigate('/dashboard');  // Redirigir al dashboard
         })
         .catch((error) => {
           console.error('Error al enviar el token al backend:', error);
@@ -55,35 +59,42 @@ const SignIn = ({ setIsAuthenticated }) => {
 
   const handleLogout = () => {
     axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
-      .then((res) => {
-        console.log('Sesión cerrada correctamente:', res.data);
-        setIsAuthenticated(false); // Reiniciar el estado de autenticación
-        googleLogout(); // Cerrar sesión de Google OAuth en el cliente
-        navigate('/'); // Redirigir a la página de inicio o donde desees
-      })
-      .catch((error) => {
-        console.error('Error al cerrar sesión:', error);
-      });
+    .then((res) => {
+      console.log('Sesión cerrada correctamente:', res.data);
+      setIsAuthenticated(false); // Reiniciar el estado de autenticación
+      googleLogout(); // Cerrar sesión de Google OAuth en el cliente
+      navigate('/'); // Redirigir a la página de inicio o donde desees
+      localStorage.removeItem('accessToken'); // Elimina el token de localStorage al cerrar sesión
+    })
+    .catch((error) => {
+      console.error('Error al cerrar sesión:', error);
+    });
   };
-
+  
   return (
     <GoogleOAuthProvider clientId={"217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com"}>
-  <div style={{ textAlign: 'center', marginTop: '50px' }}>
-    <h2>Iniciar sesión con Google</h2>
-    {!isLoading && (
-      <div className="google-button-wrapper">
-        <GoogleLogin
-          onSuccess={handleSuccess}
-          onError={handleFailure}
-          auto_select={false}
-        />
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        <h2>Iniciar sesión con Google</h2>
+        {!isLoading && (
+          <div className="google-button-wrapper">
+            <GoogleLogin
+              onSuccess={handleSuccess}
+              onError={handleFailure}
+              auto_select={false}
+            />
+          </div>
+        )}
+        <button onClick={handleLogout}>Cerrar Sesión</button>
       </div>
-    )}
-    <button onClick={handleLogout}>Cerrar Sesión</button>
-  </div>
-</GoogleOAuthProvider>
-
+    </GoogleOAuthProvider>
   );
 };
 
 export default SignIn;
+
+
+
+const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
+const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
+const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+const SCOPES = "https://www.googleapis.com/auth/calendar.events";

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaHome, FaUserFriends, FaCalendarAlt, FaFileAlt, FaCog, FaTv, FaFileUpload, FaClipboardList } from 'react-icons/fa'; // Añadido ícono
+import { FaHome, FaUserFriends, FaCalendarAlt, FaFileAlt, FaCog, FaTv, FaFileUpload, FaClipboardList } from 'react-icons/fa';
 
-function Sidebar({ openGradeGroupModal }) { // Recibimos la función como prop
+function Sidebar({ openGradeGroupModal }) {
   return (
     <div className="flex flex-col h-screen p-4 bg-purple-700 text-white w-64">
       <div className="mb-8">

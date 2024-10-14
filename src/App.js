@@ -9,13 +9,17 @@ import UploadDocuments from './components/UploadDocuments';
 import ViewDocuments from './components/ViewDocuments'; 
 import SignIn from './components/SignIn'; 
 import GradeGroupModal from './components/GradeGroupModal'; 
+import { googleLogout } from '@react-oauth/google'; // Asegúrate de importar esto
+import axios from 'axios';
+import EventManager from './components/EventManager';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showGradeGroupModal, setShowGradeGroupModal] = useState(false); // Estado para el modal
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [showGradeGroupModal, setShowGradeGroupModal] = useState(false);
+  const [events, setEvents] = useState([]); // Estado para los eventos
+
   const navigate = useNavigate();
 
-  // Verificar si el usuario tiene una sesión activa
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -23,7 +27,8 @@ function App() {
           credentials: 'include',
         });
         if (response.ok) {
-          setIsAuthenticated(true);
+          const data = await response.json();
+          setIsAuthenticated(data.isAuthenticated);
         } else {
           setIsAuthenticated(false);
         }
@@ -32,21 +37,20 @@ function App() {
         setIsAuthenticated(false);
       }
     };
-
     checkAuth();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await fetch('http://localhost:3000/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      setIsAuthenticated(false);
-      navigate('/signin');
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    }
+  const handleLogout = () => {
+    axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
+  .then((res) => {
+    console.log('Sesión cerrada correctamente:', res.data);
+    setIsAuthenticated(false); // Reiniciar el estado de autenticación
+    googleLogout(); // Cerrar sesión de Google OAuth en el cliente
+    navigate('/'); // Redirigir a la página de inicio o donde desees
+  })
+  .catch((error) => {
+    console.error('Error al cerrar sesión:', error);
+  });
   };
 
   const handleGradeGroupSubmit = async (name, grade, shift) => {
@@ -59,7 +63,7 @@ function App() {
         },
         body: JSON.stringify({ name, grade, shift }),
       });
-      setShowGradeGroupModal(false); // Cierra el modal después de enviar el formulario
+      setShowGradeGroupModal(false);
     } catch (error) {
       console.error('Error al guardar la información:', error);
     }
@@ -68,20 +72,21 @@ function App() {
   return (
     <div className="flex">
       {isAuthenticated && (
-        <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} /> // Pasar la función al Sidebar
+        <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
       )}
       <div className="content flex-1 p-4">
         <div style={{ textAlign: 'right', marginBottom: '20px' }}>
           {isAuthenticated && (
             <button onClick={handleLogout} style={{ padding: '10px 20px', backgroundColor: '#f00', color: '#fff' }}>
-              Cerrar sesión
+              Cerrar 
             </button>
           )}
         </div>
 
         <Routes>
-          <Route path="/" element={isAuthenticated ? <Dashboard /> : <Navigate to="/signin" />} />
+          <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/signin"} />} />
           <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} />} />
+          <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/signin" />} />
           <Route path="/grupos" element={isAuthenticated ? <Grupos /> : <Navigate to="/signin" />} />
           <Route path="/calendario" element={isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />} />
           <Route path="/request-projector" element={isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />} />

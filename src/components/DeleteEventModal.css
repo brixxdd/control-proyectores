@@ -1,0 +1,37 @@
+.custom-modal .modal-content {
+    max-width: 500px; /* Ancho máximo */
+    min-height: 400px; /* Altura mínima para alargar el modal */
+    margin: auto; /* Centra el modal horizontalmente */
+    border-radius: 15px; /* Bordes redondeados */
+}
+
+.custom-modal .modal-dialog {
+    display: flex; /* Usar flexbox */
+    justify-content: center; /* Centra horizontalmente */
+    align-items: center; /* Centra verticalmente */
+    height: 100%; /* Asegúrate de que ocupe toda la altura */
+}
+
+.custom-modal .modal-header {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-bottom: none;
+}
+
+.custom-modal .modal-body {
+    background-color: #f8f9fa;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.custom-modal .modal-footer {
+    background-color: #f1f1f1;
+    justify-content: center;
+}
+
+.custom-modal .btn {
+    padding: 8px 16px;
+}

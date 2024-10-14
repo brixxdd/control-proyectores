@@ -1,0 +1,58 @@
+.request-projector-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Para centrar verticalmente */
+}
+
+.icon-container {
+  margin-bottom: 10px;
+}
+
+/* Aumentar aún más el tamaño del calendario */
+.react-calendar {
+  width: 700px; /* Ancho del calendario aumentado */
+  max-width: 100%; /* Asegurarse de que sea responsivo */
+  font-size: 1.3rem; /* Tamaño de fuente más grande */
+}
+
+.react-calendar__tile {
+  height: 70px; /* Aumenta el tamaño de los días */
+  width: 90px; /* Aumenta también el ancho de cada celda */
+}
+
+/* Modificar el botón de solicitud para hacerlo más grande */
+.request-button,
+.delete-event-button {
+  padding: 15px 30px;
+  font-size: 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 10px; /* Espacio entre los botones */
+}
+
+/* Cambiar el estilo de los días seleccionados */
+.selected-date {
+  background-color: #af4c51 !important; /* Cambia el color de fondo */
+  color: white !important; /* Cambia el color de texto */
+}
+
+.react-calendar__tile.selected-date {
+  background-color: #4caf50 !important;
+  color: white !important;
+}
+
+.event-day {
+  background-color: #af4c51 !important;
+  color: white !important;
+}
+
+/* Estilo al pasar el mouse por el botón de solicitud */
+.request-button:hover {
+  background-color: #45a049;
+}
+

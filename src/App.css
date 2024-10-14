@@ -24,6 +24,19 @@
   color: white;
 }
 
+/* App.css */
+.app-container {
+  display: flex;
+  height: 100vh; /* Asegura que el contenedor ocupe toda la altura de la ventana */
+}
+
+.content {
+  flex-grow: 1; /* Esto asegura que el contenido ocupe el espacio restante a la derecha del sidebar */
+  padding: 20px;
+  background-color: #f8f9fa; /* Ejemplo de color de fondo para el contenido */
+}
+
+
 .App-link {
   color: #61dafb;
 }
