@@ -6,9 +6,8 @@ import Calendar from 'react-calendar';
 import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
 import './RequestProjector.css';
+import TimeSelectionModal from './TimeSelectionModal'; 
 import DeleteEventModal from './DeleteEventModal';
-import TimeSelectionModal from './TimeSelectionModal';
-
 
 const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
 const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
@@ -16,12 +15,14 @@ const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
 const RequestProjector = () => {
-  const [showTimeModal, setShowTimeModal] = useState(false);
-
   const [token, setToken] = useState(null);
   const [selectedDates, setSelectedDates] = useState([]);
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showTimeModal, setShowTimeModal] = useState(false); 
+
+  const [timeSlots, setTimeSlots] = useState({}); 
+
 
   useEffect(() => {
     const loadGapi = async () => {
@@ -66,34 +67,42 @@ const RequestProjector = () => {
     if (savedToken) {
       const calendarApiUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
       try {
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString();
+        const endOfYear = new Date(new Date().getFullYear(), 11, 31).toISOString();
+        
         const response = await axios.get(calendarApiUrl, {
           headers: {
             Authorization: `Bearer ${savedToken}`,
           },
+          params: {
+            timeMin: startOfYear,
+            timeMax: endOfYear,
+            singleEvents: true,
+            orderBy: 'startTime',
+            q: 'Solicitud de proyector'
+          }
         });
+        
         const fetchedEvents = response.data.items.map(event => ({
-          ...event,
+          id: event.id,
+          summary: event.summary,
+          // Asegurarse de que start sea un objeto Date
+          start: new Date(event.start.dateTime || event.start.date),
+          end: new Date(event.end.dateTime || event.end.date),
           selected: false
         }));
+        
         setEvents(fetchedEvents);
       } catch (error) {
+        console.error('Error al obtener los eventos del calendario:', error);
         if (error.response && error.response.status === 401) {
-          console.error('Token inválido o expirado. Iniciando sesión nuevamente...');
           await handleSignIn();
-        } else {
-          console.error('Error al obtener los eventos del calendario:', error);
         }
       }
     }
-  };
+};
 
-  const handleRequestClick = () => {
-    if (selectedDates.length === 0) {
-      alert("Por favor selecciona al menos un día entre lunes y viernes.");
-      return;
-    }
-    setShowTimeModal(true);
-  };
+
   const handleSignIn = async () => {
     try {
       await gapi.auth2.getAuthInstance().signIn();
@@ -124,9 +133,9 @@ const RequestProjector = () => {
     }
   };
 
-
   const handleDateChange = (date) => {
-    const dateString = date.toISOString().split('T')[0];
+    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dateString = utcDate.toISOString().split('T')[0];
     
     setSelectedDates((prevDates) => {
       if (prevDates.includes(dateString)) {
@@ -136,25 +145,65 @@ const RequestProjector = () => {
       }
     });
   };
+  
 
-
-  const handleTimeConfirm = async (timeSlots) => {
+  const handleRequest = async () => {
     const savedToken = localStorage.getItem('accessToken');
     if (!savedToken) return;
-
-    for (const dateStr of Object.keys(timeSlots)) {
+  
+    if (selectedDates.length === 0) {
+      alert("Por favor selecciona al menos un día entre lunes y viernes.");
+      return;
+    }
+  
+    // Aquí puedes filtrar los días seleccionados
+    const validDates = selectedDates.map(dateStr => {
       const date = new Date(dateStr + 'T00:00:00');
       const day = date.getDay();
-
+  
       if (day === 0 || day === 6) {
         alert("Por favor selecciona solo días de lunes a viernes.");
+        return null; // Retorna null si el día no es válido
+      }
+  
+      return date; // Retorna la fecha si es válida
+    }).filter(date => date !== null); // Filtra los null
+  
+    // Si hay fechas válidas, abre el modal de selección de horarios
+    if (validDates.length > 0) {
+      setShowTimeModal(true); // Abre el modal
+      setSelectedDates(validDates.map(date => date.toISOString().split('T')[0])); // Establece las fechas válidas
+    }
+  };
+
+  const handleConfirmTimeSlots = (timeSlots) => {
+    const savedToken = localStorage.getItem('accessToken');
+    
+    if (!savedToken) {
+      console.error("El token no está disponible");
+      return;
+    }
+  
+    // Aquí crea eventos para cada fecha seleccionada con el horario elegido
+    for (const date of selectedDates) {
+      const startTime = timeSlots[date]?.start; // Obtener la hora de inicio
+      const endTime = timeSlots[date]?.end; // Obtener la hora de fin
+  
+      // Validar que ambos tiempos estén presentes
+      if (!startTime || !endTime) {
+        console.error(`Faltan horarios para la fecha: ${date}`);
+        continue; // O puedes lanzar un alert aquí
+      }
+  
+      const startDate = new Date(`${date}T${startTime}`);
+      const endDate = new Date(`${date}T${endTime}`);
+  
+      // Validar que las fechas sean válidas
+      if (isNaN(startDate) || isNaN(endDate)) {
+        console.error("Fechas inválidas:", startDate, endDate);
         continue;
       }
-
-      const { start, end } = timeSlots[dateStr];
-      const startDate = new Date(`${dateStr}T${start}:00`);
-      const endDate = new Date(`${dateStr}T${end}:00`);
-
+  
       const event = {
         summary: 'Solicitud de proyector',
         start: {
@@ -166,15 +215,20 @@ const RequestProjector = () => {
           timeZone: 'America/Mexico_City',
         },
       };
-
-      const eventId = await createEvent(event, savedToken);
-      if (eventId) {
-        console.log(`Evento creado con ID: ${eventId}`);
-      }
+  
+      createEvent(event, savedToken).then(eventId => {
+        if (eventId) {
+          console.log(`Evento creado con ID: ${eventId}`);
+        }
+      });
     }
-    fetchEvents();
-    setSelectedDates([]);
+    
+    fetchEvents(); // Actualiza la lista de eventos
+    setShowTimeModal(false); // Cierra el modal de selección de horarios
   };
+  
+  
+  
 
   const handleDeleteEvents = async (eventIds) => {
     const savedToken = localStorage.getItem('accessToken');
@@ -208,36 +262,40 @@ const RequestProjector = () => {
     );
   };
 
+  const tileClassName = ({ date, view }) => {
+    if (view !== 'month') return null;
+    
+    const hasEvent = events.some(event => 
+      event.start.toISOString().split('T')[0] === date.toISOString().split('T')[0]
+    );
+    
+    const isSelected = selectedDates.some(selectedDate => 
+      new Date(selectedDate).toISOString().split('T')[0] === date.toISOString().split('T')[0]
+    );
+  
+    let classes = [];
+    if (hasEvent) classes.push('event-day');
+    if (isSelected) classes.push('selected-date');
+    return classes.join(' ');
+  };
+  
+
   return (
     <div className="request-projector-container">
       <div className="icon-container" aria-label="Icono de proyector">
         <FontAwesomeIcon icon={faTv} size="6x" />
       </div>
       <Calendar
-  onChange={handleDateChange}
-  value={selectedDates.map(date => new Date(date))}
-  minDetail="month"
-  maxDetail="month"
-  tileDisabled={({ date }) => date.getDay() === 0 || date.getDay() === 6}
-  tileClassName={({ date }) => {
-    const dateString = date.toISOString().split('T')[0];
-    const hasEvent = events.some(event => {
-      const eventDate = new Date(event.start.dateTime || event.start.date);
-      return eventDate.toISOString().split('T')[0] === dateString;
-    });
-    return selectedDates.includes(dateString) ? 'selected-date' : hasEvent ? 'event-day' : null;
-  }}
-  selectRange={false}
-/>
-      <button className="request-button" onClick={handleRequestClick}>
+        onChange={handleDateChange}
+        value={selectedDates.map(date => new Date(date))}
+        minDetail="month"
+        maxDetail="month"
+        tileDisabled={({ date }) => date.getDay() === 0 || date.getDay() === 6}
+        tileClassName={tileClassName}
+      />
+      <button className="request-button" onClick={handleRequest}>
         Solicitar Proyector
       </button>
-      <TimeSelectionModal
-        show={showTimeModal}
-        handleClose={() => setShowTimeModal(false)}
-        selectedDates={selectedDates}
-        handleConfirm={handleTimeConfirm}
-      />
       <button className="delete-event-button" onClick={() => setShowModal(true)}>
         Eliminar Eventos
       </button>
@@ -248,7 +306,14 @@ const RequestProjector = () => {
         events={events}
         toggleEventSelection={toggleEventSelection}
       />
-      
+
+      {/* Modal de selección de horarios */}
+      <TimeSelectionModal
+        show={showTimeModal}
+        handleClose={() => setShowTimeModal(false)}
+        selectedDates={selectedDates}
+        handleConfirm={handleConfirmTimeSlots}
+      />
     </div>
   );
 };
