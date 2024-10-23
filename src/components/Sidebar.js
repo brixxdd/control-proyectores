@@ -2,44 +2,69 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaHome, FaUserFriends, FaCalendarAlt, FaFileAlt, FaCog, FaTv, FaFileUpload, FaClipboardList } from 'react-icons/fa';
 
-function Sidebar({ openGradeGroupModal }) {
+const Sidebar = ({ openGradeGroupModal }) => {
+  const linkClasses = "flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:translate-x-2";
+  const iconClasses = "text-xl";
+
   return (
-    <div className="flex flex-col h-screen p-4 bg-purple-700 text-white w-64">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Control de Proyectores</h1>
+    <div className="fixed top-0 left-0 flex flex-col min-h-screen h-full bg-gradient-to-b from-[#214DC5] to-blue-900 text-white w-64 shadow-xl">
+      {/* Header */}
+      <div className="p-6 border-b border-white/10">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+          Control de Proyectores
+        </h1>
       </div>
-      <nav className="flex flex-col gap-4">
-        <Link to="/" className="flex items-center text-lg">
-          <FaHome className="mr-3" /> Dashboard
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <Link to="/" className={linkClasses}>
+          <FaHome className={iconClasses} />
+          <span className="font-medium">Dashboard</span>
         </Link>
-        <Link to="/grupos" className="flex items-center text-lg">
-          <FaUserFriends className="mr-3" /> Grupos
+        
+        <Link to="/grupos" className={linkClasses}>
+          <FaUserFriends className={iconClasses} />
+          <span className="font-medium">Grupos</span>
         </Link>
-        <Link to="/calendario" className="flex items-center text-lg">
-          <FaCalendarAlt className="mr-3" /> Calendario
+        
+        <Link to="/calendario" className={linkClasses}>
+          <FaCalendarAlt className={iconClasses} />
+          <span className="font-medium">Calendario</span>
         </Link>
-        <Link to="/request-projector" className="flex items-center text-lg">
-          <FaTv className="mr-3" /> Solicitar Proyector
+        
+        <Link to="/request-projector" className={linkClasses}>
+          <FaTv className={iconClasses} />
+          <span className="font-medium">Solicitar Proyector</span>
         </Link>
-        <Link to="/upload-documents" className="flex items-center text-lg">
-          <FaFileUpload className="mr-3" /> Subir Documentos
+        
+        <Link to="/upload-documents" className={linkClasses}>
+          <FaFileUpload className={iconClasses} />
+          <span className="font-medium">Subir Documentos</span>
         </Link>
-        <Link to="/view-documents" className="flex items-center text-lg">
-          <FaFileAlt className="mr-3" /> Ver Documentos
+        
+        <Link to="/view-documents" className={linkClasses}>
+          <FaFileAlt className={iconClasses} />
+          <span className="font-medium">Ver Documentos</span>
         </Link>
 
-        {/* Nuevo enlace para abrir el modal */}
-        <button onClick={openGradeGroupModal} className="flex items-center text-lg">
-          <FaClipboardList className="mr-3" /> Grado y Grupo
+        <button 
+          onClick={openGradeGroupModal} 
+          className={`${linkClasses} w-full text-left`}
+        >
+          <FaClipboardList className={iconClasses} />
+          <span className="font-medium">Grado y Grupo</span>
         </button>
       </nav>
-      <div className="mt-auto">
-        <Link to="/ajustes" className="flex items-center text-lg">
-          <FaCog className="mr-3" /> Ajustes
+
+      {/* Footer */}
+      <div className="mt-auto p-4 border-t border-white/10">
+        <Link to="/ajustes" className={linkClasses}>
+          <FaCog className={iconClasses} />
+          <span className="font-medium">Ajustes</span>
         </Link>
       </div>
     </div>
   );
-}
+};
 
 export default Sidebar;

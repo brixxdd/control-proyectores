@@ -1,16 +1,21 @@
 // pages/Dashboard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import Card from '../components/Card'; // Asegúrate de importar el componente Card
-import MiniCalendar from '../components/MiniCalendar'; // Importa el nuevo componente de calendario
-import GradeGroupModal from '../components/GradeGroupModal'; // Importamos el modal
-import './Dashboard.css'; // Asegúrate de que esta línea esté presente
+import Card from '../components/Card'; 
+import MiniCalendar from '../components/MiniCalendar'; 
+import GradeGroupModal from '../components/GradeGroupModal'; 
+import './Dashboard.css'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlusCircle } from '@fortawesome/free-solid-svg-icons'; // Asegúrate de tener FontAwesome instalado
+import { faPlusCircle } from '@fortawesome/free-solid-svg-icons'; 
 
 function Dashboard() {
   const [date, setDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // useEffect para registrar el acceso al Dashboard
+  useEffect(() => {
+    console.log('Entró al Dashboard');
+  }, []); // Se ejecuta solo al montar el componente
 
   const handleDateChange = (newDate) => {
     setDate(newDate);
@@ -43,7 +48,7 @@ function Dashboard() {
       {/* Calendario rápido */}
       <section className="quick-calendar">
         <h3>Calendario Rápido</h3>
-        <MiniCalendar date={date} onChange={handleDateChange} /> {/* Usa el nuevo componente */}
+        <MiniCalendar date={date} onChange={handleDateChange} /> 
       </section>
 
       {/* Atajos o accesos rápidos */}

@@ -11,12 +11,11 @@ import SignIn from './components/SignIn';
 import GradeGroupModal from './components/GradeGroupModal'; 
 import { googleLogout } from '@react-oauth/google'; // Asegúrate de importar esto
 import axios from 'axios';
-import EventManager from './components/EventManager';
-
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [showGradeGroupModal, setShowGradeGroupModal] = useState(false);
   const [events, setEvents] = useState([]); // Estado para los eventos
+  const [isAdmin, setIsAdmin] = useState(false); // Nuevo estado para administrador
 
   const navigate = useNavigate();
 
@@ -29,6 +28,11 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(data.isAuthenticated);
+
+          // Comprobar si el usuario es administrador
+          if (data.email === 'proyectoresunach@gmail.com') {
+            setIsAdmin(true);
+          }
         } else {
           setIsAuthenticated(false);
         }
@@ -42,15 +46,15 @@ function App() {
 
   const handleLogout = () => {
     axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
-  .then((res) => {
-    console.log('Sesión cerrada correctamente:', res.data);
-    setIsAuthenticated(false); // Reiniciar el estado de autenticación
-    googleLogout(); // Cerrar sesión de Google OAuth en el cliente
-    navigate('/'); // Redirigir a la página de inicio o donde desees
-  })
-  .catch((error) => {
-    console.error('Error al cerrar sesión:', error);
-  });
+      .then((res) => {
+        console.log('Sesión cerrada correctamente:', res.data);
+        setIsAuthenticated(false); // Reiniciar el estado de autenticación
+        googleLogout(); // Cerrar sesión de Google OAuth en el cliente
+        navigate('/'); // Redirigir a la página de inicio o donde desees
+      })
+      .catch((error) => {
+        console.error('Error al cerrar sesión:', error);
+      });
   };
 
   const handleGradeGroupSubmit = async (name, grade, shift) => {
@@ -70,20 +74,24 @@ function App() {
   };
 
   return (
-    <div className="flex">
+    <div className="min-h-screen bg-gray-50">
       {isAuthenticated && (
         <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
       )}
-      <div className="content flex-1 p-4">
-        <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-          {isAuthenticated && (
-            <button onClick={handleLogout} style={{ padding: '10px 20px', backgroundColor: '#f00', color: '#fff' }}>
-              Cerrar 
-            </button>
-          )}
-        </div>
-
-        <Routes>
+      <main className={`${isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
+        <div className="p-4">
+          <div className="flex justify-end mb-4">
+            {isAuthenticated && (
+              <button 
+                onClick={handleLogout} 
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Cerrar Sesión
+              </button>
+            )}
+          </div>
+  
+          <Routes>
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/signin"} />} />
           <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/signin" />} />
@@ -92,16 +100,17 @@ function App() {
           <Route path="/request-projector" element={isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />} />
           <Route path="/upload-documents" element={isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />} />
           <Route path="/view-documents" element={isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />} />
-        </Routes>
-
-        {showGradeGroupModal && (
-          <GradeGroupModal 
-            isOpen={showGradeGroupModal}
-            onClose={() => setShowGradeGroupModal(false)}
-            onSubmit={handleGradeGroupSubmit}
-          />
-        )}
-      </div>
+        </Routes>   
+  
+          {showGradeGroupModal && (
+            <GradeGroupModal 
+              isOpen={showGradeGroupModal}
+              onClose={() => setShowGradeGroupModal(false)}
+              onSubmit={handleGradeGroupSubmit}
+            />
+          )}
+        </div>
+      </main>
     </div>
   );
 }
