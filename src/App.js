@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar'; 
+import AdminSidebar from './components/AdminSidebar';
 import Dashboard from './components/Dashboard'; 
 import Grupos from './components/Grupos'; 
 import MiniCalendar from './components/MiniCalendar'; 
@@ -9,13 +10,16 @@ import UploadDocuments from './components/UploadDocuments';
 import ViewDocuments from './components/ViewDocuments'; 
 import SignIn from './components/SignIn'; 
 import GradeGroupModal from './components/GradeGroupModal'; 
-import { googleLogout } from '@react-oauth/google'; // Asegúrate de importar esto
+import { googleLogout } from '@react-oauth/google';
 import axios from 'axios';
+import AdminDashboard from './components/AdminDashboard';
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [showGradeGroupModal, setShowGradeGroupModal] = useState(false);
-  const [events, setEvents] = useState([]); // Estado para los eventos
-  const [isAdmin, setIsAdmin] = useState(false); // Nuevo estado para administrador
+  const [events, setEvents] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentPath, setCurrentPath] = useState('/dashboard');
 
   const navigate = useNavigate();
 
@@ -28,17 +32,16 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(data.isAuthenticated);
-
-          // Comprobar si el usuario es administrador
-          if (data.email === 'proyectoresunach@gmail.com') {
-            setIsAdmin(true);
-          }
+          setIsAdmin(data.email === 'proyectoresunach@gmail.com');
+          console.log('Estado de autenticación:', data.isAuthenticated, 'Es admin:', data.email === 'proyectoresunach@gmail.com');
         } else {
           setIsAuthenticated(false);
+          setIsAdmin(false);
         }
       } catch (error) {
         console.error('Error al verificar la sesión:', error);
         setIsAuthenticated(false);
+        setIsAdmin(false);
       }
     };
     checkAuth();
@@ -48,9 +51,10 @@ function App() {
     axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
       .then((res) => {
         console.log('Sesión cerrada correctamente:', res.data);
-        setIsAuthenticated(false); // Reiniciar el estado de autenticación
-        googleLogout(); // Cerrar sesión de Google OAuth en el cliente
-        navigate('/'); // Redirigir a la página de inicio o donde desees
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        googleLogout();
+        navigate('/');
       })
       .catch((error) => {
         console.error('Error al cerrar sesión:', error);
@@ -73,12 +77,25 @@ function App() {
     }
   };
 
+  const handleNavigate = (path) => {
+    setCurrentPath(path);
+    navigate(path);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       {isAuthenticated && (
-        <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
+        isAdmin ? (
+          <AdminSidebar 
+            onNavigate={handleNavigate}
+            openGradeGroupModal={() => setShowGradeGroupModal(true)}
+            currentPath={currentPath}
+          />
+        ) : (
+          <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
+        )
       )}
-      <main className={`${isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
+      <main className={`flex-1 ${isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
         <div className="p-4">
           <div className="flex justify-end mb-4">
             {isAuthenticated && (
@@ -92,11 +109,12 @@ function App() {
           </div>
   
           <Routes>
-          <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/signin"} />} />
-          <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} />} />
-          <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/signin" />} />
-          <Route path="/grupos" element={isAuthenticated ? <Grupos /> : <Navigate to="/signin" />} />
-          <Route path="/calendario" element={isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />} />
+            <Route path="/" element={<Navigate to={isAuthenticated ? (isAdmin ? "/admin-dashboard" : "/dashboard") : "/signin"} />} />
+            <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} setIsAdmin={setIsAdmin} />} />
+            <Route path="/dashboard" element={isAuthenticated && !isAdmin ? <Dashboard /> : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />} />
+            <Route path="/admin-dashboard" element={isAuthenticated && isAdmin ? <AdminDashboard /> : <Navigate to="/signin" />} />
+            <Route path="/grupos" element={isAuthenticated ? <Grupos /> : <Navigate to="/signin" />} />
+            <Route path="/calendario" element={isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />} />
           <Route path="/request-projector" element={isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />} />
           <Route path="/upload-documents" element={isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />} />
           <Route path="/view-documents" element={isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />} />

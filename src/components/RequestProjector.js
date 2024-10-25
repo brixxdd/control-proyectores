@@ -22,99 +22,130 @@ const RequestProjector = () => {
   const [showTimeModal, setShowTimeModal] = useState(false); 
 
   const [timeSlots, setTimeSlots] = useState({}); 
+  const DISCOVERY_DOCS = [
+    "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
+];
 
-
-  useEffect(() => {
-    const loadGapi = async () => {
+useEffect(() => {
+  const loadGapi = async () => {
       try {
-        await new Promise((resolve) => {
-          const script = document.createElement('script');
-          script.src = 'https://apis.google.com/js/api.js';
-          script.onload = resolve;
-          document.body.appendChild(script);
-        });
-
-        await gapi.load('client:auth2', async () => {
-          await gapi.client.init({
-            apiKey: API_KEY,
-            clientId: CLIENT_ID,
-            discoveryDocs: DISCOVERY_DOCS,
-            scope: SCOPES,
+          await new Promise((resolve) => {
+              const script = document.createElement('script');
+              script.src = 'https://apis.google.com/js/api.js';
+              script.onload = resolve;
+              document.body.appendChild(script);
           });
 
-          const authInstance = gapi.auth2.getAuthInstance();
-          const isSignedIn = authInstance.isSignedIn.get();
-          if (isSignedIn) {
-            const user = authInstance.currentUser.get();
-            const accessToken = user.getAuthResponse().access_token;
-            setToken(accessToken);
-            localStorage.setItem('accessToken', accessToken);
-            fetchEvents();
-          } else {
-            await handleSignIn();
-          }
-        });
-      } catch (error) {
-        console.error('Error al cargar gapi o inicializar cliente:', error);
-      }
-    };
+          await gapi.load('client:auth2', async () => {
+              await gapi.client.init({
+                  apiKey: API_KEY,
+                  clientId: CLIENT_ID,
+                  discoveryDocs: DISCOVERY_DOCS,
+                  scope: SCOPES,
+              });
 
-    loadGapi();
-  }, []);
+              // Verifica el estado de la autenticación
+              const authInstance = gapi.auth2.getAuthInstance();
+              if (authInstance.isSignedIn.get()) {
+                  const user = authInstance.currentUser.get();
+                  const accessToken = user.getAuthResponse().access_token;
+                  setToken(accessToken);
+                  localStorage.setItem('accessToken', accessToken);
+                  await fetchEvents();
+              }
+
+              // Escucha cambios en el estado de autenticación
+              authInstance.isSignedIn.listen((isSignedIn) => {
+                  if (isSignedIn) {
+                      fetchEvents();
+                  } else {
+                      setEvents([]);
+                  }
+              });
+          });
+      } catch (error) {
+          console.error('Error al cargar gapi o inicializar cliente:', error);
+      }
+  };
+
+  loadGapi();
+}, []);
 
   const fetchEvents = async () => {
-    const savedToken = localStorage.getItem('accessToken');
-    if (savedToken) {
-      const calendarApiUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-      try {
+    try {
+        // Primero verifica si el usuario está autenticado
+        const authInstance = gapi.auth2.getAuthInstance();
+        if (!authInstance.isSignedIn.get()) {
+            await handleSignIn();
+            return;
+        }
+
+        // Obtén el token fresco directamente del usuario actual
+        const user = authInstance.currentUser.get();
+        const currentToken = user.getAuthResponse().access_token;
+
         const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString();
         const endOfYear = new Date(new Date().getFullYear(), 11, 31).toISOString();
-        
-        const response = await axios.get(calendarApiUrl, {
-          headers: {
-            Authorization: `Bearer ${savedToken}`,
-          },
-          params: {
-            timeMin: startOfYear,
-            timeMax: endOfYear,
-            singleEvents: true,
-            orderBy: 'startTime',
-            q: 'Solicitud de proyector'
-          }
+
+        // Usa gapi.client en lugar de axios para manejar automáticamente la autorización
+        const response = await gapi.client.calendar.events.list({
+            'calendarId': 'primary',
+            'timeMin': startOfYear,
+            'timeMax': endOfYear,
+            'singleEvents': true,
+            'orderBy': 'startTime',
+            'q': 'Solicitud de proyector'
         });
-        
-        const fetchedEvents = response.data.items.map(event => ({
-          id: event.id,
-          summary: event.summary,
-          // Asegurarse de que start sea un objeto Date
-          start: new Date(event.start.dateTime || event.start.date),
-          end: new Date(event.end.dateTime || event.end.date),
-          selected: false
+
+        const fetchedEvents = response.result.items.map(event => ({
+            id: event.id,
+            summary: event.summary,
+            start: new Date(event.start.dateTime || event.start.date),
+            end: new Date(event.end.dateTime || event.end.date),
+            selected: false
         }));
-        
+
         setEvents(fetchedEvents);
-      } catch (error) {
+    } catch (error) {
         console.error('Error al obtener los eventos del calendario:', error);
-        if (error.response && error.response.status === 401) {
-          await handleSignIn();
+        if (error.status === 401 || error.status === 403) {
+            // Si el error es de autorización, intenta renovar el token
+            try {
+                await handleSignIn();
+                // Vuelve a intentar fetchEvents después de renovar el token
+                fetchEvents();
+            } catch (signInError) {
+                console.error('Error al renovar la autenticación:', signInError);
+            }
         }
-      }
     }
 };
 
 
-  const handleSignIn = async () => {
-    try {
-      await gapi.auth2.getAuthInstance().signIn();
-      const user = gapi.auth2.getAuthInstance().currentUser.get();
+const handleSignIn = async () => {
+  try {
+      const authInstance = gapi.auth2.getAuthInstance();
+      await authInstance.signIn({
+          scope: SCOPES
+      });
+      
+      const user = authInstance.currentUser.get();
       const accessToken = user.getAuthResponse().access_token;
+      
+      // Inicializa el cliente de gapi con el nuevo token
+      await gapi.client.setToken({
+          access_token: accessToken
+      });
+
       setToken(accessToken);
       localStorage.setItem('accessToken', accessToken);
-      fetchEvents();
-    } catch (error) {
+      
+      return accessToken;
+  } catch (error) {
       console.error('Error al iniciar sesión:', error);
-    }
-  };
+      throw error;
+  }
+};
 
   const createEvent = async (event, token) => {
     try {

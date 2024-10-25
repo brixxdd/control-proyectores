@@ -7,11 +7,9 @@ import { BrowserRouter } from 'react-router-dom'; // Asegúrate de usar BrowserR
 
 const root = ReactDOM.createRoot(document.getElementById('root')); // Esto está correcto para React 18
 root.render(
-  <React.StrictMode>
     <BrowserRouter> {/* Envuelve la App dentro de BrowserRouter */}
       <App />
     </BrowserRouter>
-  </React.StrictMode>
 );
 
 reportWebVitals();

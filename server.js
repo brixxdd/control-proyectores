@@ -278,3 +278,14 @@ app.post('/login', async (req, res) => {
       .catch(err => {
         console.error('Error al conectar a MongoDB:', err);
       });
+
+app.post('/refresh-token', async (req, res) => {
+  const { refreshToken } = req.body;
+  try {
+    const { tokens } = await client.refreshToken(refreshToken);
+    res.json({ accessToken: tokens.access_token });
+  } catch (error) {
+    console.error('Error al renovar el token:', error);
+    res.status(500).json({ error: 'No se pudo renovar el token' });
+  }
+});

@@ -3,18 +3,19 @@ import { GoogleOAuthProvider, GoogleLogin, googleLogout } from '@react-oauth/goo
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { motion } from 'framer-motion'; // Asegúrate de instalar framer-motion
 
-const SignIn = ({ setIsAuthenticated }) => {
+
+const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Efecto para redirigir si ya hay un token
   useEffect(() => {
     const token = document.cookie.split(';').find(c => c.trim().startsWith('token='));
     if (token) {
-      navigate('/dashboard'); // Redirige si ya hay un token
+      // navigate('/dashboard');
     } else {
-      setIsLoading(false); // Cambia el estado a no cargando si no hay token
+      setIsLoading(false);
     }
   }, [navigate]);
 
@@ -23,14 +24,11 @@ const SignIn = ({ setIsAuthenticated }) => {
       const decoded = jwtDecode(response.credential);
       console.log('Información del usuario decodificada:', decoded);
   
-      if (decoded.email && decoded.email.endsWith('@unach.mx')) {
-        console.log('Bienvenido, usuario de UNACH:', decoded.email);
+      if (decoded.email && (decoded.email.endsWith('@unach.mx') || decoded.email === 'proyectoresunach@gmail.com')) {
+        console.log('Bienvenido, usuario autorizado:', decoded.email);
   
-        // Guardar el token en localStorage
         localStorage.setItem('accessToken', response.credential);
-        console.log('Token guardado en localStorage:', response.credential);
   
-        // Enviar el token al backend
         axios.post('http://localhost:3000/login', { 
           token: response.credential 
         }, { 
@@ -39,15 +37,27 @@ const SignIn = ({ setIsAuthenticated }) => {
         .then((res) => {
           console.log('Inicio de sesión exitoso:', res.data);
           setIsAuthenticated(true);
-          navigate('/dashboard');  // Redirigir al dashboard
+          
+          const isAdmin = decoded.email === 'proyectoresunach@gmail.com';
+          setIsAdmin(isAdmin);
+          
+          if (isAdmin) {
+            console.log('Redirigiendo a admin-dashboard');
+            navigate('/admin-dashboard');
+          } else {
+            console.log('Redirigiendo a dashboard');
+            navigate('/dashboard');
+          }
         })
         .catch((error) => {
           console.error('Error al enviar el token al backend:', error);
           setIsAuthenticated(false);
+          setIsAdmin(false);
         });
       } else {
         console.error('Correo no autorizado o campo email faltante');
         setIsAuthenticated(false);
+        setIsAdmin(false);
       }
     }
   };
@@ -61,10 +71,11 @@ const SignIn = ({ setIsAuthenticated }) => {
     axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
     .then((res) => {
       console.log('Sesión cerrada correctamente:', res.data);
-      setIsAuthenticated(false); // Reiniciar el estado de autenticación
-      googleLogout(); // Cerrar sesión de Google OAuth en el cliente
-      navigate('/'); // Redirigir a la página de inicio o donde desees
-      localStorage.removeItem('accessToken'); // Elimina el token de localStorage al cerrar sesión
+      setIsAuthenticated(false);
+      setIsAdmin(false);
+      googleLogout();
+      navigate('/');
+      localStorage.removeItem('accessToken');
     })
     .catch((error) => {
       console.error('Error al cerrar sesión:', error);
@@ -73,28 +84,48 @@ const SignIn = ({ setIsAuthenticated }) => {
   
   return (
     <GoogleOAuthProvider clientId={"217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com"}>
-      <div style={{ textAlign: 'center', marginTop: '50px' }}>
-        <h2>Iniciar sesión con Google</h2>
-        {!isLoading && (
-          <div className="google-button-wrapper">
-            <GoogleLogin
-              onSuccess={handleSuccess}
-              onError={handleFailure}
-              auto_select={false}
-            />
-          </div>
-        )}
-        <button onClick={handleLogout}>Cerrar Sesión</button>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <motion.div 
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="p-8 bg-white rounded-lg shadow-xl"
+        >
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Iniciar sesión con Google</h2>
+          {!isLoading && (
+            <div className="flex flex-col items-center space-y-4">
+              <div className="google-button-wrapper">
+                <GoogleLogin
+                  onSuccess={handleSuccess}
+                  onError={handleFailure}
+                  auto_select={false}
+                  render={renderProps => (
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={renderProps.onClick}
+                      disabled={renderProps.disabled}
+                      className="px-6 py-3 bg-blue-500 text-white font-semibold rounded-full shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300"
+                    >
+                      Iniciar sesión con Google
+                    </motion.button>
+                  )}
+                />
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleLogout}
+                className="px-6 py-2 bg-red-500 text-white font-semibold rounded-full shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition-colors duration-300"
+              >
+                Cerrar Sesión
+              </motion.button>
+            </div>
+          )}
+        </motion.div>
       </div>
     </GoogleOAuthProvider>
   );
 };
 
 export default SignIn;
-
-
-
-const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
-const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
-const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
-const SCOPES = "https://www.googleapis.com/auth/calendar.events";

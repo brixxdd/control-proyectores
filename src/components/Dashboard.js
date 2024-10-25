@@ -18,7 +18,7 @@ function Dashboard() {
   }, []); // Se ejecuta solo al montar el componente
 
   const handleDateChange = (newDate) => {
-    setDate(newDate);
+    setDate(newDate); 
   };
 
   const openModal = () => {
