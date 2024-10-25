@@ -1,90 +1,117 @@
-// pages/Dashboard.js
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import Card from '../components/Card'; 
-import MiniCalendar from '../components/MiniCalendar'; 
-import GradeGroupModal from '../components/GradeGroupModal'; 
-import './Dashboard.css'; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlusCircle } from '@fortawesome/free-solid-svg-icons'; 
+import { faTv, faUsers, faClipboardList, faBell } from '@fortawesome/free-solid-svg-icons';
 
 function Dashboard() {
-  const [date, setDate] = useState(new Date());
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // useEffect para registrar el acceso al Dashboard
-  useEffect(() => {
-    console.log('Entró al Dashboard');
-  }, []); // Se ejecuta solo al montar el componente
-
-  const handleDateChange = (newDate) => {
-    setDate(newDate); 
-  };
-
-  const openModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-  };
-
   return (
-    <div>
-      <h2>Dashboard</h2>
-      <p>Bienvenido al sistema de control de proyectores.</p>
-
-      {/* Resumen del día o de la semana */}
-      <section className="summary">
-        <h3>Resumen del Día/Semana</h3>
-        <div className="summary-cards">
-          <Card title="Proyectores Solicitados" value="5 proyectores solicitados para hoy." />
-          <Card title="Horarios de Recolección" value="Recolección: 10:00 AM - Entrega: 4:00 PM" />
-          <Card title="Proyectores Disponibles" value="10 proyectores disponibles." />
-          <Card title="Notificaciones" value="2 solicitudes pendientes, 1 retraso en la entrega." />
+    <div className="bg-gray-100 min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">Panel de Control</h1>
+        
+        {/* Resumen */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <DashboardCard 
+            icon={faTv} // Cambié `faProjector` por `faTv`
+            title="Proyectores Disponibles"
+            value="8"
+            description="Listos para usar"
+            color="bg-blue-500"
+          />
+          <DashboardCard 
+            icon={faUsers}
+            title="Solicitudes Pendientes"
+            value="3"
+            description="Por aprobar"
+            color="bg-yellow-500"
+          />
+          <DashboardCard 
+            icon={faClipboardList}
+            title="Préstamos Activos"
+            value="5"
+            description="En uso actualmente"
+            color="bg-green-500"
+          />
+          <DashboardCard 
+            icon={faBell}
+            title="Notificaciones"
+            value="2"
+            description="Nuevas alertas"
+            color="bg-red-500"
+          />
         </div>
-      </section>
-
-      {/* Calendario rápido */}
-      <section className="quick-calendar">
-        <h3>Calendario Rápido</h3>
-        <MiniCalendar date={date} onChange={handleDateChange} /> 
-      </section>
-
-      {/* Atajos o accesos rápidos */}
-      <section className="shortcuts">
-        <h3>Atajos Rápidos</h3>
-        <div className="shortcut-item">
-          <Link to="/request-projector">
-            <button>Solicitar Proyector</button>
-          </Link>
+        
+        {/* Acciones Rápidas */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Acciones Rápidas</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ActionButton to="/request-projector" label="Solicitar Proyector" />
+            <ActionButton to="/return-projector" label="Devolver Proyector" />
+            <ActionButton to="/view-schedule" label="Ver Horarios" />
+          </div>
         </div>
-        <div className="shortcut-item">
-          <Link to="/upload-documents">
-            <button>Subir Documentos</button>
-          </Link>
+        
+        {/* Préstamos Recientes */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Préstamos Recientes</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="p-3">ID</th>
+                  <th className="p-3">Usuario</th>
+                  <th className="p-3">Proyector</th>
+                  <th className="p-3">Fecha de Préstamo</th>
+                  <th className="p-3">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <TableRow id="001" user="Juan Pérez" projector="PR-001" date="2023-05-15" status="Activo" />
+                <TableRow id="002" user="María García" projector="PR-003" date="2023-05-14" status="Devuelto" />
+                <TableRow id="003" user="Carlos López" projector="PR-002" date="2023-05-13" status="Retrasado" />
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div className="shortcut-item">
-          <Link to="/view-documents">
-            <button>Ver Documentos</button>
-          </Link>
-        </div>
-      </section>
-
-      {/* Icono para abrir el modal */}
-      <section className="add-grade-group">
-        <h3>Agregar Grupo y Grado</h3>
-        <FontAwesomeIcon 
-          icon={faPlusCircle} 
-          size="2x" 
-          onClick={openModal} 
-          style={{ cursor: 'pointer' }} 
-        />
-      </section>
-
-      {/* Modal */}
-      <GradeGroupModal isOpen={isModalOpen} onClose={closeModal} />
+      </div>
     </div>
+  );
+}
+
+function DashboardCard({ icon, title, value, description, color }) {
+  return (
+    <div className={`${color} rounded-lg shadow-md p-6 text-white`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">{title}</h3>
+          <p className="text-3xl font-bold">{value}</p>
+          <p className="text-sm opacity-80">{description}</p>
+        </div>
+        <FontAwesomeIcon icon={icon} size="3x" className="opacity-50" />
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({ to, label }) {
+  return (
+    <Link to={to} className="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 transition duration-300 text-center">
+      {label}
+    </Link>
+  );
+}
+
+function TableRow({ id, user, projector, date, status }) {
+  const statusColor = status === 'Activo' ? 'text-green-600' : status === 'Retrasado' ? 'text-red-600' : 'text-gray-600';
+  
+  return (
+    <tr className="border-b">
+      <td className="p-3">{id}</td>
+      <td className="p-3">{user}</td>
+      <td className="p-3">{projector}</td>
+      <td className="p-3">{date}</td>
+      <td className={`p-3 font-semibold ${statusColor}`}>{status}</td>
+    </tr>
   );
 }
 

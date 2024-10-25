@@ -7,7 +7,7 @@ const Sidebar = ({ openGradeGroupModal }) => {
   const iconClasses = "text-xl";
 
   return (
-    <div className="fixed top-0 left-0 flex flex-col min-h-screen h-full bg-gradient-to-b from-[#214DC5] to-blue-900 text-white w-64 shadow-xl">
+    <div className="fixed top-0 left-0 flex flex-col h-screen bg-gradient-to-b from-[#214DC5] to-blue-900 text-white w-64 shadow-xl">
       {/* Header */}
       <div className="p-6 border-b border-white/10">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
@@ -20,16 +20,6 @@ const Sidebar = ({ openGradeGroupModal }) => {
         <Link to="/" className={linkClasses}>
           <FaHome className={iconClasses} />
           <span className="font-medium">Dashboard</span>
-        </Link>
-        
-        <Link to="/grupos" className={linkClasses}>
-          <FaUserFriends className={iconClasses} />
-          <span className="font-medium">Grupos</span>
-        </Link>
-        
-        <Link to="/calendario" className={linkClasses}>
-          <FaCalendarAlt className={iconClasses} />
-          <span className="font-medium">Calendario</span>
         </Link>
         
         <Link to="/request-projector" className={linkClasses}>
@@ -57,7 +47,7 @@ const Sidebar = ({ openGradeGroupModal }) => {
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10">
         <Link to="/ajustes" className={linkClasses}>
           <FaCog className={iconClasses} />
           <span className="font-medium">Ajustes</span>

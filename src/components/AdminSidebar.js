@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import {
   LayoutDashboard,
   Users,
   Calendar,
@@ -11,67 +11,47 @@ import {
 } from 'lucide-react';
 
 const AdminSidebar = ({ onNavigate, openGradeGroupModal, currentPath = '/dashboard' }) => {
-  const linkClasses = "flex items-center gap-3 p-3 text-gray-300 rounded-lg transition-all duration-200 hover:bg-white/10 cursor-pointer";
+  const linkClasses = "flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:translate-x-2 cursor-pointer";
   const activeLinkClasses = "bg-white/10";
 
   const NavItem = ({ path, icon: Icon, children }) => (
     <div 
-      onClick={() => onNavigate(path)}
+      onClick={() => onNavigate(path)} 
       className={`${linkClasses} ${currentPath === path ? activeLinkClasses : ''}`}
     >
-      <Icon className="w-5 h-5" />
-      <span>{children}</span>
+      <Icon className="text-xl text-gray-300" />
+      <span className="font-medium text-gray-300">{children}</span>
     </div>
   );
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 w-64 p-4">
+    <div className="fixed top-0 left-0 flex flex-col h-screen bg-gradient-to-b from-[#214DC5] to-blue-900 text-white w-64 shadow-xl">
       {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-white mb-2">Control de Proyectores</h2>
-        <div className="h-0.5 bg-gray-700 w-full"></div>
+      <div className="p-6 border-b border-white/10">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+          Control de Proyectores
+        </h1>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-2">
-        <NavItem path="/dashboard" icon={LayoutDashboard}>
-          Dashboard
-        </NavItem>
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <NavItem path="/admin-dashboard" icon={LayoutDashboard}>Dashboard</NavItem>
+        <NavItem path="/grupos" icon={Users}>Grupos</NavItem>
+        <NavItem path="/solicitudes" icon={MonitorPlay}>Solicitudes de Proyectores</NavItem>
+        <NavItem path="/view-documents" icon={Files}>Ver Documentos</NavItem>
 
-        <NavItem path="/grupos" icon={Users}>
-          Grupos
-        </NavItem>
-
-        <NavItem path="/calendario" icon={Calendar}>
-          Calendario
-        </NavItem>
-
-        <NavItem path="/solicitar" icon={MonitorPlay}>
-          Solicitar Proyector
-        </NavItem>
-
-        <NavItem path="/subir-documentos" icon={FileUp}>
-          Subir Documentos
-        </NavItem>
-
-        <NavItem path="/ver-documentos" icon={Files}>
-          Ver Documentos
-        </NavItem>
-
-        <div 
-          onClick={openGradeGroupModal}
-          className={linkClasses}
+        <button 
+          onClick={openGradeGroupModal} 
+          className={`${linkClasses} w-full text-left`}
         >
-          <GraduationCap className="w-5 h-5" />
-          <span>Grado y Grupo</span>
-        </div>
+          <GraduationCap className="text-xl text-gray-300" />
+          <span className="font-medium text-gray-300">Grado y Grupo</span>
+        </button>
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto pt-4 border-t border-gray-700">
-        <NavItem path="/ajustes" icon={Settings}>
-          Ajustes
-        </NavItem>
+      <div className="p-4 border-t border-white/10">
+        <NavItem path="/ajustes" icon={Settings}>Ajustes</NavItem>
       </div>
     </div>
   );
