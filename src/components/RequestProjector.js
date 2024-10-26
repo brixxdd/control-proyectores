@@ -149,18 +149,14 @@ const handleSignIn = async () => {
 
   const createEvent = async (event, token) => {
     try {
-      const calendarApiUrl = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-      const response = await axios.post(calendarApiUrl, event, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const response = await gapi.client.calendar.events.insert({
+        'calendarId': 'primary',
+        'resource': event
       });
-      console.log('Evento creado en Google Calendar:', response.data);
-      return response.data.id;
+      return response.result; // Esto debería incluir el ID del evento
     } catch (error) {
-      console.error('Error al crear evento en Google Calendar:', error);
-      return null;
+      console.error('Error al crear el evento:', error);
+      throw error;
     }
   };
 
@@ -207,34 +203,26 @@ const handleSignIn = async () => {
     }
   };
 
-  const handleConfirmTimeSlots = (timeSlots) => {
+  const handleConfirmTimeSlots = async (selectedTimeSlots) => {
+    setTimeSlots(selectedTimeSlots);
     const savedToken = localStorage.getItem('accessToken');
-    
     if (!savedToken) {
       console.error("El token no está disponible");
       return;
     }
-  
-    // Aquí crea eventos para cada fecha seleccionada con el horario elegido
+
     for (const date of selectedDates) {
-      const startTime = timeSlots[date]?.start; // Obtener la hora de inicio
-      const endTime = timeSlots[date]?.end; // Obtener la hora de fin
-  
-      // Validar que ambos tiempos estén presentes
+      const startTime = selectedTimeSlots[date]?.start;
+      const endTime = selectedTimeSlots[date]?.end;
+
       if (!startTime || !endTime) {
         console.error(`Faltan horarios para la fecha: ${date}`);
-        continue; // O puedes lanzar un alert aquí
-      }
-  
-      const startDate = new Date(`${date}T${startTime}`);
-      const endDate = new Date(`${date}T${endTime}`);
-  
-      // Validar que las fechas sean válidas
-      if (isNaN(startDate) || isNaN(endDate)) {
-        console.error("Fechas inválidas:", startDate, endDate);
         continue;
       }
-  
+
+      const startDate = new Date(`${date}T${startTime}`);
+      const endDate = new Date(`${date}T${endTime}`);
+
       const event = {
         summary: 'Solicitud de proyector',
         start: {
@@ -246,14 +234,33 @@ const handleSignIn = async () => {
           timeZone: 'America/Mexico_City',
         },
       };
-  
-      createEvent(event, savedToken).then(eventId => {
-        if (eventId) {
-          console.log(`Evento creado con ID: ${eventId}`);
+
+      try {
+        // Crear el evento en Google Calendar
+        const createdEvent = await createEvent(event, savedToken);
+        if (createdEvent && createdEvent.id) {
+          console.log(`Evento creado con ID: ${createdEvent.id}`);
+
+          // Crear solicitud en el backend
+          try {
+            const response = await axios.post('http://localhost:3000/solicitar-proyector', {
+              fechaInicio: startDate,
+              fechaFin: endDate,
+              motivo: 'Solicitud de proyector',
+              eventId: createdEvent.id
+            }, {
+              withCredentials: true
+            });
+            console.log('Solicitud creada:', response.data);
+          } catch (error) {
+            console.error('Error al crear la solicitud:', error);
+          }
         }
-      });
+      } catch (error) {
+        console.error('Error al crear el evento:', error);
+      }
     }
-    
+      
     fetchEvents(); // Actualiza la lista de eventos
     setShowTimeModal(false); // Cierra el modal de selección de horarios
   };
