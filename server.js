@@ -39,16 +39,13 @@ app.get('/usuarios', async (req, res) => {
 });
 
 const verifyToken = async (req, res, next) => {
-  const token = req.cookies.token;
-
-  console.log("Token recibido:", token);
+  const token = req.cookies.token || req.headers['authorization']?.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ message: 'No se proporcionó token' });
   }
 
   try {
-    // Primero, intenta verificar como token JWT
     const decoded = jwt.verify(token, JWT_SECRET);
     const usuarioExistente = await User.findById(decoded.id);
 
@@ -58,34 +55,9 @@ const verifyToken = async (req, res, next) => {
 
     req.user = usuarioExistente;
     next();
-  } catch (jwtError) {
-    console.error("Error al verificar el token JWT:", jwtError);
-
-    // Si falla la verificación JWT, intenta verificar como token de Google
-    try {
-      const ticket = await client.verifyIdToken({
-        idToken: token,
-        audience: CLIENT_ID,
-      });
-
-      const payload = ticket.getPayload();
-
-      if (!payload.email || !payload.email.endsWith('@unach.mx')) {
-        return res.status(403).json({ message: 'Correo no autorizado' });
-      }
-
-      const usuarioExistente = await User.findOne({ email: payload.email });
-
-      if (!usuarioExistente) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
-
-      req.user = usuarioExistente;
-      next();
-    } catch (googleError) {
-      console.error("Error al verificar el token de Google:", googleError);
-      return res.status(401).json({ message: 'Token inválido o expirado' });
-    }
+  } catch (error) {
+    console.error("Error al verificar el token JWT:", error);
+    return res.status(401).json({ message: 'Token inválido o expirado' });
   }
 };
 
@@ -94,24 +66,8 @@ app.post('/logout', (req, res) => {
   return res.status(200).json({ message: 'Sesión cerrada correctamente' });
 });
 
-app.get('/check-session', verifyToken, async (req, res) => {
-  const email = req.user ? req.user.email : null;
-
-  if (email) {
-    try {
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
-
-      const isFirstLogin = (!user.grado || !user.grupo);
-      return res.status(200).json({ message: 'Sesión activa', user, isFirstLogin });
-    } catch (error) {
-      return res.status(500).json({ message: 'Error al verificar la sesión', error });
-    }
-  }
-
-  res.status(200).json({ message: 'Sesión no autenticada' });
+app.get('/check-session', verifyToken, (req, res) => {
+  res.json({ user: req.user });
 });
 
 app.get('/protected', verifyToken, (req, res) => {
@@ -153,7 +109,7 @@ app.post('/login', async (req, res) => {
     if (usuarioExistente) {
       const jwtToken = jwt.sign({ id: usuarioExistente._id }, JWT_SECRET, { expiresIn: '1h' });
       res.cookie('token', jwtToken, { httpOnly: true });
-      return res.status(200).json({ message: 'Usuario ya existe', user: usuarioExistente });
+      return res.status(200).json({ message: 'Usuario ya existe', user: usuarioExistente, token: jwtToken });
     }
 
     const nuevoUsuario = new User({

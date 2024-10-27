@@ -205,64 +205,95 @@ const handleSignIn = async () => {
 
   const handleConfirmTimeSlots = async (selectedTimeSlots) => {
     setTimeSlots(selectedTimeSlots);
-    const savedToken = localStorage.getItem('accessToken');
-    if (!savedToken) {
-      console.error("El token no está disponible");
+    const jwtToken = sessionStorage.getItem('jwtToken');
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    
+    if (!jwtToken || !currentUser) {
+      console.error("No hay sesión activa");
+      // Redirigir al usuario a la página de inicio de sesión
+      // navigate('/login');
       return;
     }
 
-    for (const date of selectedDates) {
-      const startTime = selectedTimeSlots[date]?.start;
-      const endTime = selectedTimeSlots[date]?.end;
+    try {
+      // Verificar usuario antes de crear el evento
+      const checkSessionResponse = await axios.get('http://localhost:3000/check-session', {
+        headers: { 
+          'Authorization': `Bearer ${sessionStorage.getItem('jwtToken')}` 
+        }
+      });
 
-      if (!startTime || !endTime) {
-        console.error(`Faltan horarios para la fecha: ${date}`);
-        continue;
+      if (checkSessionResponse.data.user.email !== currentUser.email) {
+        console.error("La sesión ha cambiado. Por favor, vuelve a iniciar sesión.");
+        // Redirigir al usuario a la página de inicio de sesión
+        // navigate('/login');
+        return;
       }
 
-      const startDate = new Date(`${date}T${startTime}`);
-      const endDate = new Date(`${date}T${endTime}`);
-
-      const event = {
-        summary: 'Solicitud de proyector',
-        start: {
-          dateTime: startDate.toISOString(),
-          timeZone: 'America/Mexico_City',
-        },
-        end: {
-          dateTime: endDate.toISOString(),
-          timeZone: 'America/Mexico_City',
-        },
-      };
-
-      try {
-        // Crear el evento en Google Calendar
-        const createdEvent = await createEvent(event, savedToken);
-        if (createdEvent && createdEvent.id) {
-          console.log(`Evento creado con ID: ${createdEvent.id}`);
-
-          // Crear solicitud en el backend
-          try {
+      for (const date of selectedDates) {
+        const startTime = selectedTimeSlots[date]?.start;
+        const endTime = selectedTimeSlots[date]?.end;
+    
+        if (!startTime || !endTime) {
+          console.error(`Faltan horarios para la fecha: ${date}`);
+          continue;
+        }
+    
+        const startDate = new Date(`${date}T${startTime}`);
+        const endDate = new Date(`${date}T${endTime}`);
+    
+        const event = {
+          summary: 'Solicitud de proyector',
+          start: {
+            dateTime: startDate.toISOString(),
+            timeZone: 'America/Mexico_City',
+          },
+          end: {
+            dateTime: endDate.toISOString(),
+            timeZone: 'America/Mexico_City',
+          },
+        };
+    
+        try {
+          // Crear el evento en Google Calendar
+          const createdEvent = await createEvent(event, jwtToken);
+          if (createdEvent && createdEvent.id) {
+            console.log(`Evento creado con ID: ${createdEvent.id}`);
+  
+            // Crear solicitud en el backend
             const response = await axios.post('http://localhost:3000/solicitar-proyector', {
               fechaInicio: startDate,
               fechaFin: endDate,
               motivo: 'Solicitud de proyector',
               eventId: createdEvent.id
             }, {
-              withCredentials: true
+              headers: {
+                'Authorization': `Bearer ${jwtToken}`
+              }
             });
             console.log('Solicitud creada:', response.data);
-          } catch (error) {
-            console.error('Error al crear la solicitud:', error);
+          }
+        } catch (error) {
+          console.error('Error al crear el evento o la solicitud:', error);
+          if (error.response && error.response.status === 401) {
+            console.error('Error de autenticación. Por favor, vuelve a iniciar sesión.');
+            // Redirigir al usuario a la página de inicio de sesión
+            // navigate('/login');
+            return;
           }
         }
-      } catch (error) {
-        console.error('Error al crear el evento:', error);
+      }
+        
+      fetchEvents();
+      setShowTimeModal(false);
+    } catch (error) {
+      console.error('Error al verificar la sesión:', error);
+      if (error.response && error.response.status === 401) {
+        console.error('Error de autenticación. Por favor, vuelve a iniciar sesión.');
+        // Redirigir al usuario a la página de inicio de sesión
+        // navigate('/login');
       }
     }
-      
-    fetchEvents(); // Actualiza la lista de eventos
-    setShowTimeModal(false); // Cierra el modal de selección de horarios
   };
   
   

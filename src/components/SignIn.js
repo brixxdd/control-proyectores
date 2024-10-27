@@ -38,6 +38,17 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
           console.log('Inicio de sesión exitoso:', res.data);
           setIsAuthenticated(true);
           
+          if (res.data.token) {
+            sessionStorage.setItem('jwtToken', res.data.token);
+            console.log('Token JWT guardado:', res.data.token);
+          } else {
+            console.error('No se recibió token JWT del servidor');
+          }
+          
+          if (res.data.user) {
+            sessionStorage.setItem('currentUser', JSON.stringify(res.data.user));
+          }
+          
           const isAdmin = decoded.email === 'proyectoresunach@gmail.com';
           setIsAdmin(isAdmin);
           
@@ -76,6 +87,7 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
       googleLogout();
       navigate('/');
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('jwtToken'); // Asegúrate de eliminar también el jwtToken
     })
     .catch((error) => {
       console.error('Error al cerrar sesión:', error);
