@@ -17,10 +17,11 @@ import AdminDashboard from './components/AdminDashboard';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [showGradeGroupModal, setShowGradeGroupModal] = useState(false);
-  const [events, setEvents] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentPath, setCurrentPath] = useState('/dashboard');
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [userPicture, setUserPicture] = useState(null);
 
   const navigate = useNavigate();
 
@@ -28,26 +29,40 @@ function App() {
     const checkAuth = async () => {
       try {
         const token = sessionStorage.getItem('jwtToken');
+        const storedPicture = sessionStorage.getItem('userPicture');
+        console.log('Token:', token ? 'Existe' : 'No existe');
+        console.log('Imagen almacenada:', storedPicture);
+        
         if (token) {
           const response = await axios.get('http://localhost:3000/check-session', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
+          console.log('Respuesta del servidor:', response.data);
+          
           if (response.data.user) {
             setIsAuthenticated(true);
             setIsAdmin(response.data.user.email === 'proyectoresunach@gmail.com');
-            console.log('Sesión verificada:', response.data.user);
+            setUser(response.data.user);
+            setUserPicture(storedPicture || response.data.user.picture);
+            console.log('Usuario autenticado:', response.data.user);
+            console.log('Imagen de perfil establecida:', storedPicture || response.data.user.picture);
           } else {
+            console.log('No se encontró información del usuario en la respuesta');
             setIsAuthenticated(false);
             setIsAdmin(false);
+            setUser(null);
           }
         } else {
+          console.log('No se encontró token JWT');
           setIsAuthenticated(false);
           setIsAdmin(false);
+          setUser(null);
         }
       } catch (error) {
         console.error('Error al verificar la sesión:', error);
         setIsAuthenticated(false);
         setIsAdmin(false);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -109,14 +124,34 @@ function App() {
       )}
       <main className={`flex-1 ${isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
         <div className="p-4">
-          <div className="flex justify-end mb-4">
-            {isAuthenticated && (
-              <button 
-                onClick={handleLogout} 
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Cerrar Sesión
-              </button>
+          <div className="flex justify-end items-center mb-4 space-x-4 bg-gray-200 p-2 rounded">
+            {isAuthenticated && user ? (
+              <>
+                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                  {userPicture ? (
+                    <img 
+                      src={userPicture}
+                      alt="Perfil" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Error al cargar la imagen:', e);
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-gray-500">No img</span>
+                  )}
+                </div>
+                <span className="text-gray-700">{user.nombre || 'Usuario'}</span>
+                <button 
+                  onClick={handleLogout} 
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Cerrar Sesión
+                </button>
+              </>
+            ) : (
+              <span>No autenticado</span>
             )}
           </div>
   

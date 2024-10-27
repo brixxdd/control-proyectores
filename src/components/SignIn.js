@@ -23,12 +23,20 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
     if (response.credential) {
       const decoded = jwtDecode(response.credential);
       console.log('Información del usuario decodificada:', decoded);
-  
-      if (decoded.email && (decoded.email.endsWith('@unach.mx') || decoded.email === 'proyectoresunach@gmail.com')) {
+
+      if (decoded.email && (
+        decoded.email.endsWith('@unach.mx') || 
+        decoded.email === 'proyectoresunach@gmail.com' ||
+        decoded.email === 'brianes666@gmail.com'
+      )) {
         console.log('Bienvenido, usuario autorizado:', decoded.email);
-  
+
+        // Guardar la URL de la imagen de perfil en sessionStorage
+        sessionStorage.setItem('userPicture', decoded.picture);
+
         axios.post('http://localhost:3000/login', { 
-          token: response.credential 
+          token: response.credential,
+          picture: decoded.picture // Enviar la URL de la imagen al servidor
         }, { 
           withCredentials: true 
         })
@@ -44,7 +52,10 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
           }
           
           if (res.data.user) {
-            sessionStorage.setItem('currentUser', JSON.stringify(res.data.user));
+            sessionStorage.setItem('currentUser', JSON.stringify({
+              ...res.data.user,
+              picture: decoded.picture // Asegurarse de que la imagen de perfil esté incluida
+            }));
           }
           
           const isAdmin = decoded.email === 'proyectoresunach@gmail.com';

@@ -78,7 +78,15 @@ app.get('/check-session', async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-    res.json({ user: { id: user._id, email: user.email, name: user.name } });
+    console.log('Datos del usuario enviados:', user); // Agrega este log
+    res.json({ 
+      user: { 
+        id: user._id, 
+        email: user.email, 
+        nombre: user.nombre, 
+        picture: user.picture 
+      } 
+    });
   } catch (error) {
     console.error('Error al verificar el token:', error);
     res.status(401).json({ message: 'Token inválido o expirado' });
@@ -90,57 +98,37 @@ app.get('/protected', verifyToken, (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-  const { token } = req.body;
-
-  if (!token) {
-    const existingToken = req.cookies.token;
-    if (existingToken) {
-      try {
-        const decoded = jwt.verify(existingToken, JWT_SECRET);
-        const usuarioExistente = await User.findById(decoded.id);
-        if (usuarioExistente) {
-          return res.status(200).json({ message: 'Sesión activa', user: usuarioExistente });
-        }
-      } catch (error) {
-      }
-    }
-    return res.status(400).json({ message: 'Token no proporcionado y no hay sesión activa' });
-  }
-
+  const { token, picture } = req.body;
   try {
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: CLIENT_ID,
     });
-
     const payload = ticket.getPayload();
+    const { email, name, picture: googlePicture } = payload;
 
-    if (!payload.email || (!payload.email.endsWith('@unach.mx') && payload.email !== 'proyectoresunach@gmail.com')) {
-      return res.status(403).json({ message: 'Correo no autorizado' });
+    let usuario = await User.findOne({ email });
+    if (!usuario) {
+      usuario = new User({
+        nombre: name,
+        email: email,
+        picture: googlePicture // Usar la imagen de perfil de Google
+      });
+      await usuario.save();
+    } else {
+      // Actualizar la imagen de perfil si ha cambiado
+      if (googlePicture && usuario.picture !== googlePicture) {
+        usuario.picture = googlePicture;
+        await usuario.save();
+      }
     }
 
-    const usuarioExistente = await User.findOne({ email: payload.email });
-
-    if (usuarioExistente) {
-      const jwtToken = jwt.sign({ id: usuarioExistente._id }, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('token', jwtToken, { httpOnly: true });
-      return res.status(200).json({ message: 'Usuario ya existe', user: usuarioExistente, token: jwtToken });
-    }
-
-    const nuevoUsuario = new User({
-      nombre: payload.name,
-      email: payload.email,
-      grado: null,
-      grupo: null,
-      turno: null
-    });
-
-    await nuevoUsuario.save();
-    const jwtToken = jwt.sign({ id: nuevoUsuario._id }, JWT_SECRET, { expiresIn: '1h' });
+    const jwtToken = jwt.sign({ id: usuario._id }, JWT_SECRET, { expiresIn: '1h' });
     res.cookie('token', jwtToken, { httpOnly: true });
-    res.json({ message: 'Usuario creado exitosamente', user: nuevoUsuario });
+    res.status(200).json({ message: 'Login exitoso', user: usuario, token: jwtToken });
   } catch (error) {
-    return res.status(400).json({ message: 'Error al verificar el token', error });
+    console.error('Error en la autenticación:', error);
+    res.status(401).json({ message: 'Autenticación fallida' });
   }
 });
 
