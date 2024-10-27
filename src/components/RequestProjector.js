@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTv } from '@fortawesome/free-solid-svg-icons';
+import { faTv, faCalendarPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { gapi } from 'gapi-script';
 import Calendar from 'react-calendar';
 import axios from 'axios';
@@ -161,14 +161,16 @@ const handleSignIn = async () => {
   };
 
   const handleDateChange = (date) => {
-    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dateString = utcDate.toISOString().split('T')[0];
+    // Ajustar la fecha para la zona horaria local
+    const adjustedDate = new Date(date.setHours(12, 0, 0, 0));
+    const dateStr = adjustedDate.toISOString().split('T')[0];
     
-    setSelectedDates((prevDates) => {
-      if (prevDates.includes(dateString)) {
-        return prevDates.filter((d) => d !== dateString);
+    setSelectedDates(prev => {
+      const index = prev.indexOf(dateStr);
+      if (index > -1) {
+        return prev.filter(d => d !== dateStr);
       } else {
-        return [...prevDates, dateString];
+        return [...prev, dateStr];
       }
     });
   };
@@ -331,58 +333,103 @@ const handleSignIn = async () => {
     );
   };
 
-  const tileClassName = ({ date, view }) => {
-    if (view !== 'month') return null;
-    
-    const hasEvent = events.some(event => 
-      event.start.toISOString().split('T')[0] === date.toISOString().split('T')[0]
-    );
-    
-    const isSelected = selectedDates.some(selectedDate => 
-      new Date(selectedDate).toISOString().split('T')[0] === date.toISOString().split('T')[0]
-    );
-  
-    let classes = [];
-    if (hasEvent) classes.push('event-day');
-    if (isSelected) classes.push('selected-date');
-    return classes.join(' ');
-  };
-  
-
   return (
-    <div className="request-projector-container">
-      <div className="icon-container" aria-label="Icono de proyector">
-        <FontAwesomeIcon icon={faTv} size="6x" />
-      </div>
-      <Calendar
-        onChange={handleDateChange}
-        value={selectedDates.map(date => new Date(date))}
-        minDetail="month"
-        maxDetail="month"
-        tileDisabled={({ date }) => date.getDay() === 0 || date.getDay() === 6}
-        tileClassName={tileClassName}
-      />
-      <button className="request-button" onClick={handleRequest}>
-        Solicitar Proyector
-      </button>
-      <button className="delete-event-button" onClick={() => setShowModal(true)}>
-        Eliminar Eventos
-      </button>
-      <DeleteEventModal
-        show={showModal}
-        handleClose={() => setShowModal(false)}
-        handleDelete={handleDeleteEvents}
-        events={events}
-        toggleEventSelection={toggleEventSelection}
-      />
+    <div className="min-h-screen p-4 md:p-8 bg-gray-50">
+      {/* Contenedor principal */}
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        {/* Encabezado */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-blue-100 p-6 rounded-full mb-4 transform hover:scale-105 transition-transform duration-300">
+            <FontAwesomeIcon 
+              icon={faTv} 
+              className="text-blue-600 h-12 w-12 md:h-16 md:w-16" 
+              aria-label="Icono de proyector"
+            />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+            Solicitud de Proyector
+          </h2>
+          <p className="text-gray-600 text-center">
+            Selecciona las fechas en las que necesitas el proyector
+          </p>
+        </div>
 
-      {/* Modal de selección de horarios */}
-      <TimeSelectionModal
-        show={showTimeModal}
-        handleClose={() => setShowTimeModal(false)}
-        selectedDates={selectedDates}
-        handleConfirm={handleConfirmTimeSlots}
-      />
+        {/* Calendario */}
+        <div className="mb-8">
+          <div className="calendar-container p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
+            <Calendar
+              onChange={handleDateChange}
+              value={selectedDates.map(date => new Date(date))}
+              minDetail="month"
+              maxDetail="month"
+              tileDisabled={({ date }) => date.getDay() === 0 || date.getDay() === 6}
+              tileClassName={({ date, view }) => {
+                if (view !== 'month') return null;
+                
+                // Ajustar la fecha para comparación
+                const adjustedDate = new Date(date.setHours(12, 0, 0, 0));
+                const dateStr = adjustedDate.toISOString().split('T')[0];
+                
+                const hasEvent = events.some(event => {
+                  const eventDate = new Date(event.start);
+                  return eventDate.toISOString().split('T')[0] === dateStr;
+                });
+                
+                const isSelected = selectedDates.some(selectedDate => {
+                  return selectedDate === dateStr;
+                });
+
+                return `
+                  ${hasEvent ? 'bg-yellow-100 hover:bg-yellow-200' : 'hover:bg-gray-100'}
+                  ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
+                  rounded-lg transition-colors duration-200
+                `;
+              }}
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        {/* Botones de acción */}
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+          <button
+            onClick={handleRequest}
+            className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg
+                     hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-300
+                     transform hover:scale-105 active:scale-95"
+          >
+            <FontAwesomeIcon icon={faCalendarPlus} className="mr-2" />
+            Solicitar Proyector
+          </button>
+
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center justify-center px-6 py-3 bg-red-600 text-white rounded-lg
+                     hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition-all duration-300
+                     transform hover:scale-105 active:scale-95"
+          >
+            <FontAwesomeIcon icon={faTrash} className="mr-2" />
+            Eliminar Eventos
+          </button>
+        </div>
+
+        {/* Modal de eliminación de eventos */}
+        <DeleteEventModal
+          show={showModal}
+          handleClose={() => setShowModal(false)}
+          handleDelete={handleDeleteEvents}
+          events={events}
+          toggleEventSelection={toggleEventSelection}
+        />
+
+        {/* Modal de selección de horarios */}
+        <TimeSelectionModal
+          show={showTimeModal}
+          handleClose={() => setShowTimeModal(false)}
+          selectedDates={selectedDates}
+          handleConfirm={handleConfirmTimeSlots}
+        />
+      </div>
     </div>
   );
 };
