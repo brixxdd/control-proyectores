@@ -66,8 +66,23 @@ app.post('/logout', (req, res) => {
   return res.status(200).json({ message: 'Sesión cerrada correctamente' });
 });
 
-app.get('/check-session', verifyToken, (req, res) => {
-  res.json({ user: req.user });
+app.get('/check-session', async (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ message: 'No se proporcionó token' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    res.json({ user: { id: user._id, email: user.email, name: user.name } });
+  } catch (error) {
+    console.error('Error al verificar el token:', error);
+    res.status(401).json({ message: 'Token inválido o expirado' });
+  }
 });
 
 app.get('/protected', verifyToken, (req, res) => {

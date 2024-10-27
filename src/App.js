@@ -20,20 +20,26 @@ function App() {
   const [events, setEvents] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentPath, setCurrentPath] = useState('/dashboard');
+  const [isLoading, setIsLoading] = useState(true);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('http://localhost:3000/check-session', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(data.isAuthenticated);
-          setIsAdmin(data.email === 'proyectoresunach@gmail.com');
-          console.log('Estado de autenticación:', data.isAuthenticated, 'Es admin:', data.email === 'proyectoresunach@gmail.com');
+        const token = sessionStorage.getItem('jwtToken');
+        if (token) {
+          const response = await axios.get('http://localhost:3000/check-session', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.data.user) {
+            setIsAuthenticated(true);
+            setIsAdmin(response.data.user.email === 'proyectoresunach@gmail.com');
+            console.log('Sesión verificada:', response.data.user);
+          } else {
+            setIsAuthenticated(false);
+            setIsAdmin(false);
+          }
         } else {
           setIsAuthenticated(false);
           setIsAdmin(false);
@@ -42,6 +48,8 @@ function App() {
         console.error('Error al verificar la sesión:', error);
         setIsAuthenticated(false);
         setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
       }
     };
     checkAuth();
@@ -81,6 +89,10 @@ function App() {
     setCurrentPath(path);
     navigate(path);
   };
+
+  if (isLoading) {
+    return <div>Cargando...</div>; // O un componente de carga más elaborado
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

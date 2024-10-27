@@ -27,8 +27,6 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
       if (decoded.email && (decoded.email.endsWith('@unach.mx') || decoded.email === 'proyectoresunach@gmail.com')) {
         console.log('Bienvenido, usuario autorizado:', decoded.email);
   
-        localStorage.setItem('accessToken', response.credential);
-  
         axios.post('http://localhost:3000/login', { 
           token: response.credential 
         }, { 
