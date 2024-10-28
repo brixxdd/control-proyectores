@@ -13,169 +13,240 @@ import GradeGroupModal from './components/GradeGroupModal';
 import { googleLogout } from '@react-oauth/google';
 import axios from 'axios';
 import AdminDashboard from './components/AdminDashboard';
+import WelcomeAlert from './components/WelcomeAlert';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  // Modificamos el estado inicial de isAuthenticated a undefined
+  const [isAuthenticated, setIsAuthenticated] = useState(undefined);
   const [showGradeGroupModal, setShowGradeGroupModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentPath, setCurrentPath] = useState('/dashboard');
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [userPicture, setUserPicture] = useState(null);
+  const [showWelcomeAlert, setShowWelcomeAlert] = useState(false);
 
   const navigate = useNavigate();
+
+  // Función para manejar usuarios no autenticados
+  const handleUnauthenticated = () => {
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    setUser(null);
+    setUserPicture(null);
+    setShowWelcomeAlert(false);
+    navigate('/signin');
+  };
+
+  // Función para manejar la navegación
+  const handleNavigate = (path) => {
+    setCurrentPath(path);
+    navigate(path);
+  };
+
+  // Función para manejar el cierre de sesión
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:3000/logout', {}, { 
+        withCredentials: true 
+      });
+      
+      // Limpiar todos los estados
+      setIsAuthenticated(false);
+      setIsAdmin(false);
+      setUser(null);
+      setUserPicture(null);
+      setShowWelcomeAlert(false);
+      
+      // Limpiar storage
+      sessionStorage.clear();
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('jwtToken');
+      
+      // Cerrar sesión de Google
+      googleLogout();
+      
+      // Redirigir a signin
+      navigate('/signin');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  // Función para manejar el envío del formulario de grado y grupo
+  const handleGradeGroupSubmit = async (data) => {
+    try {
+      const response = await axios.put(
+        'http://localhost:3000/update-user',
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('jwtToken')}`
+          },
+          withCredentials: true
+        }
+      );
+
+      if (response.data) {
+        setUser(prevUser => ({
+          ...prevUser,
+          ...data
+        }));
+        setShowGradeGroupModal(false);
+      }
+    } catch (error) {
+      console.error('Error al actualizar información:', error);
+    }
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const token = sessionStorage.getItem('jwtToken');
         const storedPicture = sessionStorage.getItem('userPicture');
-        console.log('Token:', token ? 'Existe' : 'No existe');
-        console.log('Imagen almacenada:', storedPicture);
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        if (token) {
-          const response = await axios.get('http://localhost:3000/check-session', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          console.log('Respuesta del servidor:', response.data);
+        if (!token) {
+          handleUnauthenticated();
+          return;
+        }
+
+        const response = await axios.get('http://localhost:3000/check-session', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.data.user) {
+          // Actualizamos todos los estados juntos
+          setIsAuthenticated(true);
+          setIsAdmin(response.data.user.email === 'proyectoresunach@gmail.com');
+          setUser(response.data.user);
+          setUserPicture(storedPicture || response.data.user.picture);
+
+          const isNewUser = !response.data.user.grado || 
+                          !response.data.user.grupo || 
+                          !response.data.user.turno;
           
-          if (response.data.user) {
-            setIsAuthenticated(true);
-            setIsAdmin(response.data.user.email === 'proyectoresunach@gmail.com');
-            setUser(response.data.user);
-            setUserPicture(storedPicture || response.data.user.picture);
-            console.log('Usuario autenticado:', response.data.user);
-            console.log('Imagen de perfil establecida:', storedPicture || response.data.user.picture);
-          } else {
-            console.log('No se encontró información del usuario en la respuesta');
-            setIsAuthenticated(false);
-            setIsAdmin(false);
-            setUser(null);
+          if (isNewUser && window.location.pathname === '/dashboard') {
+            setShowWelcomeAlert(true);
           }
         } else {
-          console.log('No se encontró token JWT');
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          setUser(null);
+          handleUnauthenticated();
         }
       } catch (error) {
         console.error('Error al verificar la sesión:', error);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        setUser(null);
+        handleUnauthenticated();
       } finally {
         setIsLoading(false);
       }
     };
+
     checkAuth();
   }, []);
 
-  const handleLogout = () => {
-    axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
-      .then((res) => {
-        console.log('Sesión cerrada correctamente:', res.data);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        googleLogout();
-        navigate('/');
-      })
-      .catch((error) => {
-        console.error('Error al cerrar sesión:', error);
-      });
-  };
-
-  const handleGradeGroupSubmit = async (name, grade, shift) => {
-    try {
-      await fetch('http://localhost:3000/set-grade-group', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, grade, shift }),
-      });
-      setShowGradeGroupModal(false);
-    } catch (error) {
-      console.error('Error al guardar la información:', error);
-    }
-  };
-
-  const handleNavigate = (path) => {
-    setCurrentPath(path);
-    navigate(path);
-  };
-
-  if (isLoading) {
-    return <div>Cargando...</div>; // O un componente de carga más elaborado
+  // Mostramos el loader mientras isAuthenticated es undefined o isLoading es true
+  if (isAuthenticated === undefined || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {isAuthenticated && (
-        isAdmin ? (
-          <AdminSidebar 
-            onNavigate={handleNavigate}
-            openGradeGroupModal={() => setShowGradeGroupModal(true)}
-            currentPath={currentPath}
-          />
-        ) : (
-          <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
-        )
-      )}
-      <main className={`flex-1 ${isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
-        <div className="p-4">
-          <div className="flex justify-end items-center mb-4 space-x-4 bg-gray-200 p-2 rounded">
-            {isAuthenticated && user ? (
-              <>
-                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-                  {userPicture ? (
-                    <img 
-                      src={userPicture}
-                      alt="Perfil" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error('Error al cargar la imagen:', e);
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <span className="text-gray-500">No img</span>
-                  )}
-                </div>
-                <span className="text-gray-700">{user.nombre || 'Usuario'}</span>
-                <button 
-                  onClick={handleLogout} 
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Cerrar Sesión
-                </button>
-              </>
-            ) : (
-              <span>No autenticado</span>
-            )}
-          </div>
-  
-          <Routes>
-            <Route path="/" element={<Navigate to={isAuthenticated ? (isAdmin ? "/admin-dashboard" : "/dashboard") : "/signin"} />} />
-            <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} setIsAdmin={setIsAdmin} />} />
-            <Route path="/dashboard" element={isAuthenticated && !isAdmin ? <Dashboard /> : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />} />
-            <Route path="/admin-dashboard" element={isAuthenticated && isAdmin ? <AdminDashboard /> : <Navigate to="/signin" />} />
-            <Route path="/grupos" element={isAuthenticated ? <Grupos /> : <Navigate to="/signin" />} />
-            <Route path="/calendario" element={isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />} />
-          <Route path="/request-projector" element={isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />} />
-          <Route path="/upload-documents" element={isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />} />
-          <Route path="/view-documents" element={isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />} />
-        </Routes>   
-  
-          {showGradeGroupModal && (
-            <GradeGroupModal 
-              isOpen={showGradeGroupModal}
-              onClose={() => setShowGradeGroupModal(false)}
-              onSubmit={handleGradeGroupSubmit}
+      {isAuthenticated === true ? (
+        <>
+          {/* Contenido autenticado */}
+          {isAdmin ? (
+            <AdminSidebar 
+              onNavigate={handleNavigate}
+              openGradeGroupModal={() => setShowGradeGroupModal(true)}
+              currentPath={currentPath}
             />
+          ) : (
+            <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
           )}
+          <main className="flex-1 ml-64 min-h-screen transition-all duration-300">
+            <div className="p-4">
+              {/* Header con información del usuario */}
+              <div className="flex justify-end items-center mb-4 space-x-4 bg-gray-200 p-2 rounded">
+                {user && (
+                  <>
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                      {userPicture && (
+                        <img 
+                          src={userPicture}
+                          alt="Perfil" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Error al cargar la imagen:', e);
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span className="text-gray-700">{user.nombre}</span>
+                    <button 
+                      onClick={handleLogout} 
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Rutas */}
+              <Routes>
+                <Route path="/" element={<Navigate to={isAuthenticated ? (isAdmin ? "/admin-dashboard" : "/dashboard") : "/signin"} />} />
+                <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} setIsAdmin={setIsAdmin} />} />
+                <Route path="/dashboard" element={isAuthenticated && !isAdmin ? <Dashboard /> : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />} />
+                <Route path="/admin-dashboard" element={isAuthenticated && isAdmin ? <AdminDashboard /> : <Navigate to="/signin" />} />
+                <Route path="/grupos" element={isAuthenticated ? <Grupos /> : <Navigate to="/signin" />} />
+                <Route path="/calendario" element={isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />} />
+                <Route path="/request-projector" element={isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />} />
+                <Route path="/upload-documents" element={isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />} />
+                <Route path="/view-documents" element={isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />} />
+              </Routes>
+
+              {/* Modales */}
+              <WelcomeAlert 
+                isOpen={showWelcomeAlert} 
+                onClose={() => setShowWelcomeAlert(false)}
+                openGradeGroupModal={() => setShowGradeGroupModal(true)}
+              />
+
+              {showGradeGroupModal && (
+                <GradeGroupModal 
+                  isOpen={showGradeGroupModal}
+                  onClose={() => setShowGradeGroupModal(false)}
+                  onSubmit={handleGradeGroupSubmit}
+                />
+              )}
+            </div>
+          </main>
+        </>
+      ) : (
+        // Contenido no autenticado
+        <div className="w-full">
+          <Routes>
+            <Route 
+              path="/signin" 
+              element={
+                <SignIn 
+                  setIsAuthenticated={setIsAuthenticated} 
+                  setIsAdmin={setIsAdmin} 
+                />
+              } 
+            />
+            <Route path="*" element={<Navigate to="/signin" />} />
+          </Routes>
         </div>
-      </main>
+      )}
     </div>
   );
 }

@@ -4,80 +4,76 @@ import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion'; // Asegúrate de instalar framer-motion
-
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
+import 'animate.css';
 
 const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
+  // Efecto para verificar el estado de carga inicial
   useEffect(() => {
-    const token = document.cookie.split(';').find(c => c.trim().startsWith('token='));
-    if (token) {
-      // navigate('/dashboard');
-    } else {
-      setIsLoading(false);
-    }
-  }, [navigate]);
+    setIsLoading(false);
+  }, []);
 
-  const handleSuccess = (response) => {
+  const handleSuccess = async (response) => {
     if (response.credential) {
       const decoded = jwtDecode(response.credential);
       console.log('Información del usuario decodificada:', decoded);
-
-      if (decoded.email && (
-        decoded.email.endsWith('@unach.mx') || 
-        decoded.email === 'proyectoresunach@gmail.com' ||
-        decoded.email === 'brianes666@gmail.com'
-      )) {
-        console.log('Bienvenido, usuario autorizado:', decoded.email);
-
-        // Guardar la URL de la imagen de perfil en sessionStorage
-        sessionStorage.setItem('userPicture', decoded.picture);
-
-        axios.post('http://localhost:3000/login', { 
+      console.log('Bienvenido, usuario autorizado:', decoded.email);
+      
+      try {
+        const res = await axios.post('http://localhost:3000/login', { 
           token: response.credential,
-          picture: decoded.picture // Enviar la URL de la imagen al servidor
+          picture: decoded.picture
         }, { 
           withCredentials: true 
-        })
-        .then((res) => {
-          console.log('Inicio de sesión exitoso:', res.data);
-          setIsAuthenticated(true);
-          
-          if (res.data.token) {
-            sessionStorage.setItem('jwtToken', res.data.token);
-            console.log('Token JWT guardado:', res.data.token);
-          } else {
-            console.error('No se recibió token JWT del servidor');
-          }
-          
-          if (res.data.user) {
-            sessionStorage.setItem('currentUser', JSON.stringify({
-              ...res.data.user,
-              picture: decoded.picture // Asegurarse de que la imagen de perfil esté incluida
-            }));
-          }
-          
-          const isAdmin = decoded.email === 'proyectoresunach@gmail.com';
-          setIsAdmin(isAdmin);
-          
-          if (isAdmin) {
-            console.log('Redirigiendo a admin-dashboard');
-            navigate('/admin-dashboard');
-          } else {
-            console.log('Redirigiendo a dashboard');
-            navigate('/dashboard');
-          }
-        })
-        .catch((error) => {
-          console.error('Error al enviar el token al backend:', error);
-          setIsAuthenticated(false);
-          setIsAdmin(false);
         });
-      } else {
-        console.error('Correo no autorizado o campo email faltante');
+
+        console.log('Inicio de sesión exitoso:', res.data);
+        setIsAuthenticated(true);
+        
+        // Guardar datos en sessionStorage
+        if (res.data.token) {
+          sessionStorage.setItem('jwtToken', res.data.token);
+          console.log('Token JWT guardado:', res.data.token);
+        }
+        
+        if (res.data.user) {
+          const userData = {
+            ...res.data.user,
+            picture: decoded.picture
+          };
+          sessionStorage.setItem('currentUser', JSON.stringify(userData));
+          sessionStorage.setItem('userPicture', decoded.picture);
+        }
+
+        const isAdmin = decoded.email === 'proyectoresunach@gmail.com';
+        setIsAdmin(isAdmin);
+
+        // Verificar si es un usuario nuevo
+        const isNewUser = !res.data.user.grado || 
+                         !res.data.user.grupo || 
+                         !res.data.user.turno;
+
+        if (isNewUser) {
+          console.log('Usuario nuevo detectado, mostrando alerta de bienvenida');
+        }
+
+        // Redirigir según el rol
+        console.log('Redirigiendo a', isAdmin ? 'admin-dashboard' : 'dashboard');
+        window.location.href = isAdmin ? '/admin-dashboard' : '/dashboard';
+
+      } catch (error) {
+        console.error('Error al enviar el token al backend:', error);
         setIsAuthenticated(false);
         setIsAdmin(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error de inicio de sesión',
+          text: 'No se pudo iniciar sesión. Por favor, intente nuevamente.',
+        });
       }
     }
   };
@@ -85,22 +81,38 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
   const handleFailure = (error) => {
     console.error('Error en la autenticación:', error);
     setIsAuthenticated(false);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error de autenticación',
+      text: 'No se pudo autenticar con Google. Por favor, intente nuevamente.',
+    });
   };
 
-  const handleLogout = () => {
-    axios.post('http://localhost:3000/logout', {}, { withCredentials: true })
-    .then((res) => {
+  const handleLogout = async () => {
+    try {
+      const res = await axios.post('http://localhost:3000/logout', {}, { 
+        withCredentials: true 
+      });
+      
       console.log('Sesión cerrada correctamente:', res.data);
       setIsAuthenticated(false);
       setIsAdmin(false);
       googleLogout();
-      navigate('/');
+      
+      // Limpiar storage
+      sessionStorage.clear();
       localStorage.removeItem('accessToken');
-      localStorage.removeItem('jwtToken'); // Asegúrate de eliminar también el jwtToken
-    })
-    .catch((error) => {
+      localStorage.removeItem('jwtToken');
+      
+      navigate('/signin');
+    } catch (error) {
       console.error('Error al cerrar sesión:', error);
-    });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al cerrar sesión',
+        text: 'No se pudo cerrar la sesión correctamente.',
+      });
+    }
   };
   
   return (

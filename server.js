@@ -169,28 +169,53 @@ app.put('/update-user',
   body('grupo').notEmpty().withMessage('El grupo es requerido'),
   async (req, res) => {
     const { grado, grupo, turno } = req.body;
-    const userId = req.user._id;
-
+    
+    // Verificamos el email del usuario actual
+    const userEmail = req.user.email;
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     try {
-      const updatedUser = await User.findByIdAndUpdate(userId, {
-        grado,
-        grupo,
-        turno,
-      }, { new: true });
+      // Buscamos por email en lugar de ID
+      const updatedUser = await User.findOneAndUpdate(
+        { email: userEmail },
+        {
+          grado,
+          grupo,
+          turno,
+        },
+        { new: true }
+      );
 
       if (!updatedUser) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
+        return res.status(404).json({ 
+          message: 'Usuario no encontrado',
+          email: userEmail // Para debugging
+        });
       }
 
-      return res.json({ message: 'Usuario actualizado correctamente', user: updatedUser });
+      // Log para debugging
+      console.log('Usuario actualizado:', {
+        email: updatedUser.email,
+        grado,
+        grupo,
+        turno
+      });
+
+      return res.json({ 
+        message: 'Usuario actualizado correctamente', 
+        user: updatedUser 
+      });
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: 'Error al actualizar el usuario', error });
+      console.error('Error en actualización:', error);
+      return res.status(500).json({ 
+        message: 'Error al actualizar el usuario', 
+        error: error.message,
+        email: userEmail // Para debugging
+      });
     }
   }
 );
