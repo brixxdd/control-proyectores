@@ -16,25 +16,39 @@ import AdminDashboard from './components/AdminDashboard';
 import WelcomeAlert from './components/WelcomeAlert';
 
 function App() {
-  // Modificamos el estado inicial de isAuthenticated a undefined
-  const [isAuthenticated, setIsAuthenticated] = useState(undefined);
+  const [authState, setAuthState] = useState({
+    isAuthenticated: undefined,
+    isAdmin: false,
+    user: null,
+    userPicture: null,
+    isLoading: true
+  });
   const [showGradeGroupModal, setShowGradeGroupModal] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [currentPath, setCurrentPath] = useState('/dashboard');
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [userPicture, setUserPicture] = useState(null);
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(false);
 
   const navigate = useNavigate();
 
+  const MemoizedSidebar = React.memo(Sidebar);
+  const MemoizedAdminSidebar = React.memo(AdminSidebar);
+
+  // Actualiza el estado en batch
+  const updateAuthState = (updates) => {
+    setAuthState(prev => ({
+      ...prev,
+      ...updates
+    }));
+  };
+
   // Función para manejar usuarios no autenticados
   const handleUnauthenticated = () => {
-    setIsAuthenticated(false);
-    setIsAdmin(false);
-    setUser(null);
-    setUserPicture(null);
-    setShowWelcomeAlert(false);
+    updateAuthState({
+      isAuthenticated: false,
+      isAdmin: false,
+      user: null,
+      userPicture: null,
+      isLoading: false
+    });
     navigate('/signin');
   };
 
@@ -52,11 +66,13 @@ function App() {
       });
       
       // Limpiar todos los estados
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-      setUser(null);
-      setUserPicture(null);
-      setShowWelcomeAlert(false);
+      updateAuthState({
+        isAuthenticated: false,
+        isAdmin: false,
+        user: null,
+        userPicture: null,
+        isLoading: false
+      });
       
       // Limpiar storage
       sessionStorage.clear();
@@ -89,11 +105,13 @@ function App() {
       );
 
       if (response.data) {
-        setUser(prevUser => ({
-          ...prevUser,
-          ...data
-        }));
-        setShowGradeGroupModal(false);
+        updateAuthState({
+          user: prevUser => ({
+            ...prevUser,
+            ...data
+          }),
+          showGradeGroupModal: false
+        });
       }
     } catch (error) {
       console.error('Error al actualizar información:', error);
@@ -102,33 +120,37 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      updateAuthState({
+        isLoading: true
+      });
+  
       try {
         const token = sessionStorage.getItem('jwtToken');
-        const storedPicture = sessionStorage.getItem('userPicture');
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
         
         if (!token) {
           handleUnauthenticated();
           return;
         }
-
+  
         const response = await axios.get('http://localhost:3000/check-session', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (response.data.user) {
-          // Actualizamos todos los estados juntos
-          setIsAuthenticated(true);
-          setIsAdmin(response.data.user.email === 'proyectoresunach@gmail.com');
-          setUser(response.data.user);
-          setUserPicture(storedPicture || response.data.user.picture);
-
-          const isNewUser = !response.data.user.grado || 
-                          !response.data.user.grupo || 
-                          !response.data.user.turno;
-          
-          if (isNewUser && window.location.pathname === '/dashboard') {
-            setShowWelcomeAlert(true);
+          // Actualiza todos los estados en batch
+          const updates = {
+            isAuthenticated: true,
+            isAdmin: response.data.user.email === 'proyectoresunach@gmail.com',
+            user: response.data.user,
+            userPicture: sessionStorage.getItem('userPicture') || response.data.user.picture,
+            isLoading: false
+          };
+  
+          updateAuthState(updates);
+  
+          // Muestra la alerta de bienvenida para usuarios nuevos
+          if (!response.data.user.grado || !response.data.user.grupo || !response.data.user.turno) {
+            setShowWelcomeAlert(window.location.pathname === '/dashboard');
           }
         } else {
           handleUnauthenticated();
@@ -137,15 +159,18 @@ function App() {
         console.error('Error al verificar la sesión:', error);
         handleUnauthenticated();
       } finally {
-        setIsLoading(false);
+        updateAuthState({
+          isLoading: false
+        });
       }
     };
-
+  
     checkAuth();
-  }, []);
+  }, []); // Solo se ejecuta una vez al montar el componente
+   // Asegúrate de que las dependencias estén vacías si solo quieres que se ejecute una vez
 
   // Mostramos el loader mientras isAuthenticated es undefined o isLoading es true
-  if (isAuthenticated === undefined || isLoading) {
+  if (authState.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -158,95 +183,156 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {isAuthenticated === true ? (
-        <>
-          {/* Contenido autenticado */}
-          {isAdmin ? (
-            <AdminSidebar 
-              onNavigate={handleNavigate}
-              openGradeGroupModal={() => setShowGradeGroupModal(true)}
-              currentPath={currentPath}
-            />
-          ) : (
-            <Sidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
-          )}
-          <main className="flex-1 ml-64 min-h-screen transition-all duration-300">
-            <div className="p-4">
-              {/* Header con información del usuario */}
-              <div className="flex justify-end items-center mb-4 space-x-4 bg-gray-200 p-2 rounded">
-                {user && (
-                  <>
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-                      {userPicture && (
-                        <img 
-                          src={userPicture}
-                          alt="Perfil" 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error('Error al cargar la imagen:', e);
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      )}
-                    </div>
-                    <span className="text-gray-700">{user.nombre}</span>
-                    <button 
-                      onClick={handleLogout} 
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      Cerrar Sesión
-                    </button>
-                  </>
-                )}
-              </div>
+      {/* Sidebar condicional */}
+      {authState.isAuthenticated && (
+        authState.isAdmin ? (
+          <MemoizedAdminSidebar 
+            onNavigate={handleNavigate}
+            openGradeGroupModal={() => setShowGradeGroupModal(true)}
+            currentPath={currentPath}
+          />
+        ) : (
+          <MemoizedSidebar openGradeGroupModal={() => setShowGradeGroupModal(true)} />
+        )
+      )}
 
-              {/* Rutas */}
-              <Routes>
-                <Route path="/" element={<Navigate to={isAuthenticated ? (isAdmin ? "/admin-dashboard" : "/dashboard") : "/signin"} />} />
-                <Route path="/signin" element={<SignIn setIsAuthenticated={setIsAuthenticated} setIsAdmin={setIsAdmin} />} />
-                <Route path="/dashboard" element={isAuthenticated && !isAdmin ? <Dashboard /> : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />} />
-                <Route path="/admin-dashboard" element={isAuthenticated && isAdmin ? <AdminDashboard /> : <Navigate to="/signin" />} />
-                <Route path="/grupos" element={isAuthenticated ? <Grupos /> : <Navigate to="/signin" />} />
-                <Route path="/calendario" element={isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />} />
-                <Route path="/request-projector" element={isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />} />
-                <Route path="/upload-documents" element={isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />} />
-                <Route path="/view-documents" element={isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />} />
-              </Routes>
-
-              {/* Modales */}
-              <WelcomeAlert 
-                isOpen={showWelcomeAlert} 
-                onClose={() => setShowWelcomeAlert(false)}
-                openGradeGroupModal={() => setShowGradeGroupModal(true)}
-              />
-
-              {showGradeGroupModal && (
-                <GradeGroupModal 
-                  isOpen={showGradeGroupModal}
-                  onClose={() => setShowGradeGroupModal(false)}
-                  onSubmit={handleGradeGroupSubmit}
-                />
+      {/* Contenido principal */}
+      <main className={`flex-1 ${authState.isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
+        <div className="p-4">
+          {/* Header del usuario (solo se muestra si está autenticado) */}
+          {authState.isAuthenticated && (
+            <div className="flex justify-end items-center mb-4 space-x-4 bg-gray-200 p-2 rounded">
+              {authState.user && (
+                <>
+                  <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                    {authState.userPicture && (
+                      <img 
+                        src={authState.userPicture}
+                        alt="Perfil" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Error al cargar la imagen:', e);
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
+                  <span className="text-gray-700">{authState.user.nombre}</span>
+                  <button 
+                    onClick={handleLogout} 
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Cerrar Sesión
+                  </button>
+                </>
               )}
             </div>
-          </main>
-        </>
-      ) : (
-        // Contenido no autenticado
-        <div className="w-full">
+          )}
+
+          {/* Rutas unificadas */}
           <Routes>
+            {/* Ruta raíz con redirección condicional */}
             <Route 
-              path="/signin" 
+              path="/" 
               element={
-                <SignIn 
-                  setIsAuthenticated={setIsAuthenticated} 
-                  setIsAdmin={setIsAdmin} 
+                <Navigate 
+                  to={
+                    authState.isAuthenticated 
+                      ? (authState.isAdmin ? "/admin-dashboard" : "/dashboard") 
+                      : "/signin"
+                  } 
                 />
               } 
             />
+
+            {/* Ruta de inicio de sesión */}
+            <Route 
+              path="/signin" 
+              element={
+                authState.isAuthenticated 
+                  ? <Navigate to="/dashboard" />
+                  : <SignIn setIsAuthenticated={updateAuthState} setIsAdmin={updateAuthState} />
+              } 
+            />
+
+            {/* Rutas protegidas */}
+            <Route 
+              path="/dashboard" 
+              element={
+                authState.isAuthenticated && !authState.isAdmin 
+                  ? <Dashboard /> 
+                  : <Navigate to={authState.isAdmin ? "/admin-dashboard" : "/signin"} />
+              } 
+            />
+            <Route 
+              path="/admin-dashboard" 
+              element={
+                authState.isAuthenticated && authState.isAdmin 
+                  ? <AdminDashboard /> 
+                  : <Navigate to="/signin" />
+              } 
+            />
+            <Route 
+              path="/grupos" 
+              element={
+                authState.isAuthenticated 
+                  ? <Grupos /> 
+                  : <Navigate to="/signin" />
+              } 
+            />
+            <Route 
+              path="/calendario" 
+              element={
+                authState.isAuthenticated 
+                  ? <MiniCalendar /> 
+                  : <Navigate to="/signin" />
+              } 
+            />
+            <Route 
+              path="/request-projector" 
+              element={
+                authState.isAuthenticated 
+                  ? <RequestProjector /> 
+                  : <Navigate to="/signin" />
+              } 
+            />
+            <Route 
+              path="/upload-documents" 
+              element={
+                authState.isAuthenticated 
+                  ? <UploadDocuments /> 
+                  : <Navigate to="/signin" />
+              } 
+            />
+            <Route 
+              path="/view-documents" 
+              element={
+                authState.isAuthenticated 
+                  ? <ViewDocuments /> 
+                  : <Navigate to="/signin" />
+              } 
+            />
+
+            {/* Ruta para manejar URLs no encontradas */}
             <Route path="*" element={<Navigate to="/signin" />} />
           </Routes>
+
+          {/* Modales */}
+          <WelcomeAlert 
+            isOpen={showWelcomeAlert} 
+            onClose={() => setShowWelcomeAlert(false)}
+            openGradeGroupModal={() => setShowGradeGroupModal(true)}
+          />
+
+          {showGradeGroupModal && (
+            <GradeGroupModal 
+              isOpen={showGradeGroupModal}
+              onClose={() => setShowGradeGroupModal(false)}
+              onSubmit={handleGradeGroupSubmit}
+            />
+          )}
         </div>
-      )}
+      </main>
     </div>
   );
 }

@@ -17,66 +17,80 @@ const SignIn = ({ setIsAuthenticated, setIsAdmin }) => {
     setIsLoading(false);
   }, []);
 
-  const handleSuccess = async (response) => {
-    if (response.credential) {
-      const decoded = jwtDecode(response.credential);
-      console.log('Información del usuario decodificada:', decoded);
-      console.log('Bienvenido, usuario autorizado:', decoded.email);
+// SignIn.js
+const handleSuccess = async (response) => {
+  if (response.credential) {
+    const decoded = jwtDecode(response.credential);
+    console.log('Información del usuario decodificada:', decoded);
+    console.log('Bienvenido, usuario autorizado:', decoded.email);
+    
+    try {
+      const res = await axios.post('http://localhost:3000/login', { 
+        token: response.credential,
+        picture: decoded.picture
+      }, { 
+        withCredentials: true 
+      });
+
+      console.log('Inicio de sesión exitoso:', res.data);
       
-      try {
-        const res = await axios.post('http://localhost:3000/login', { 
-          token: response.credential,
-          picture: decoded.picture
-        }, { 
-          withCredentials: true 
-        });
-
-        console.log('Inicio de sesión exitoso:', res.data);
-        setIsAuthenticated(true);
-        
-        // Guardar datos en sessionStorage
-        if (res.data.token) {
-          sessionStorage.setItem('jwtToken', res.data.token);
-          console.log('Token JWT guardado:', res.data.token);
-        }
-        
-        if (res.data.user) {
-          const userData = {
-            ...res.data.user,
-            picture: decoded.picture
-          };
-          sessionStorage.setItem('currentUser', JSON.stringify(userData));
-          sessionStorage.setItem('userPicture', decoded.picture);
-        }
-
-        const isAdmin = decoded.email === 'proyectoresunach@gmail.com';
-        setIsAdmin(isAdmin);
-
-        // Verificar si es un usuario nuevo
-        const isNewUser = !res.data.user.grado || 
-                         !res.data.user.grupo || 
-                         !res.data.user.turno;
-
-        if (isNewUser) {
-          console.log('Usuario nuevo detectado, mostrando alerta de bienvenida');
-        }
-
-        // Redirigir según el rol
-        console.log('Redirigiendo a', isAdmin ? 'admin-dashboard' : 'dashboard');
-        window.location.href = isAdmin ? '/admin-dashboard' : '/dashboard';
-
-      } catch (error) {
-        console.error('Error al enviar el token al backend:', error);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error de inicio de sesión',
-          text: 'No se pudo iniciar sesión. Por favor, intente nuevamente.',
-        });
+      // Guardar datos en sessionStorage
+      if (res.data.token) {
+        sessionStorage.setItem('jwtToken', res.data.token);
+        console.log('Token JWT guardado:', res.data.token);
       }
+      
+      if (res.data.user) {
+        const userData = {
+          ...res.data.user,
+          picture: decoded.picture
+        };
+        sessionStorage.setItem('currentUser', JSON.stringify(userData));
+        sessionStorage.setItem('userPicture', decoded.picture);
+      }
+
+      const isAdmin = decoded.email === 'proyectoresunach@gmail.com';
+      setIsAuthenticated({
+        isAuthenticated: true,
+        isAdmin: isAdmin,
+        user: res.data.user,
+        userPicture: decoded.picture,
+        isLoading: false
+      });
+
+      // Verificar si es un usuario nuevo
+      const isNewUser = !res.data.user.grado || 
+                       !res.data.user.grupo || 
+                       !res.data.user.turno;
+
+      if (isNewUser) {
+        console.log('Usuario nuevo detectado, mostrando alerta de bienvenida');
+      }
+
+      // Redirigir según el rol usando navigate
+      console.log('Redirigiendo a', isAdmin ? 'admin-dashboard' : 'dashboard');
+      navigate(isAdmin ? '/admin-dashboard' : '/dashboard');
+
+    } catch (error) {
+      console.error('Error al enviar el token al backend:', error);
+      setIsAuthenticated({
+        isAuthenticated: false,
+        isAdmin: false,
+        user: null,
+        userPicture: null,
+        isLoading: false
+      });
+      
+      // Mostrar mensaje de error
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de inicio de sesión',
+        text: 'No se pudo iniciar sesión. Por favor, intente nuevamente.',
+      });
     }
-  };
+  }
+};
+
 
   const handleFailure = (error) => {
     console.error('Error en la autenticación:', error);
