@@ -24,6 +24,21 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' https://accounts.google.com https://*.google.com; " +
+    "frame-src 'self' https://accounts.google.com https://*.google.com; " +
+    "script-src 'self' https://accounts.google.com https://*.googleusercontent.com 'unsafe-inline' 'unsafe-eval';"
+  );
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 app.get('/', (req, res) => {
   res.send('Bienvenido a la API de control de proyectores');
@@ -112,11 +127,10 @@ app.post('/login', async (req, res) => {
       usuario = new User({
         nombre: name,
         email: email,
-        picture: googlePicture // Usar la imagen de perfil de Google
+        picture: googlePicture
       });
       await usuario.save();
     } else {
-      // Actualizar la imagen de perfil si ha cambiado
       if (googlePicture && usuario.picture !== googlePicture) {
         usuario.picture = googlePicture;
         await usuario.save();
@@ -124,8 +138,21 @@ app.post('/login', async (req, res) => {
     }
 
     const jwtToken = jwt.sign({ id: usuario._id }, JWT_SECRET, { expiresIn: '1h' });
-    res.cookie('token', jwtToken, { httpOnly: true });
-    res.status(200).json({ message: 'Login exitoso', user: usuario, token: jwtToken });
+    
+    res.cookie('token', jwtToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 3600000,
+      path: '/',
+      domain: 'localhost'
+    });
+
+    res.status(200).json({ 
+      message: 'Login exitoso', 
+      user: usuario, 
+      token: jwtToken 
+    });
   } catch (error) {
     console.error('Error en la autenticación:', error);
     res.status(401).json({ message: 'Autenticación fallida' });
