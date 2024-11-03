@@ -1,7 +1,7 @@
 export const AUTH_CONSTANTS = {
   ADMIN_EMAIL: 'proyectoresunach@gmail.com',
   API_BASE_URL: 'http://localhost:3000',
-  GOOGLE_CLIENT_ID: '217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID,
   STORAGE_KEYS: {
     JWT_TOKEN: 'jwtToken',
     USER_DATA: 'currentUser',
@@ -20,3 +20,6 @@ export const AUTH_CONSTANTS = {
     }
   }
 };
+
+console.log('Environment variable:', process.env.REACT_APP_GOOGLE_CLIENT_ID);
+console.log('CLIENT_ID:', AUTH_CONSTANTS.GOOGLE_CLIENT_ID);

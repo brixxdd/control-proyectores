@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTv, faUsers, faClipboardList, faBell, faCheck, faTimes, faEdit } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
+import { authService } from '../services/authService';
 
 function AdminDashboard() {
   const [requests, setRequests] = useState([]);
@@ -10,9 +10,12 @@ function AdminDashboard() {
   useEffect(() => {
     const fetchSolicitudes = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/solicitudes', { withCredentials: true });
+        console.log('Token actual:', authService.getStoredToken());
+        const response = await authService.api.get('/solicitudes');
+        console.log('Respuesta de solicitudes:', response.data);
         setRequests(response.data);
       } catch (error) {
+        console.error('Error detallado:', error.response?.data || error.message);
         console.error('Error al obtener las solicitudes:', error);
       }
     };
@@ -22,11 +25,10 @@ function AdminDashboard() {
 
   const handleStatusChange = async (requestId, newStatus) => {
     try {
-      // Aquí deberías hacer una llamada a tu API para actualizar el estado de la solicitud
-      // Por ejemplo:
-      // await axios.put(`http://localhost:3000/solicitudes/${requestId}`, { estado: newStatus }, { withCredentials: true });
+      await authService.api.put(`/solicitudes/${requestId}`, { 
+        estado: newStatus 
+      });
       
-      // Luego, actualiza el estado local
       setRequests(requests.map(request => 
         request._id === requestId ? { ...request, estado: newStatus } : request
       ));
@@ -89,6 +91,8 @@ function AdminDashboard() {
             <thead>
               <tr className="bg-gray-200">
                 <th className="p-3">Usuario</th>
+                <th className="p-3">Grado</th>
+                <th className="p-3">Grupo</th>
                 <th className="p-3">Fecha Inicio</th>
                 <th className="p-3">Fecha Fin</th>
                 <th className="p-3">Motivo</th>
@@ -139,21 +143,37 @@ function TableRow({ request, onStatusChange }) {
   };
   
   return (
-    <tr className="border-b">
-      <td className="p-3">{request.usuarioId.nombre}</td>
+    <tr className="border-b hover:bg-gray-50">
+      <td className="p-3">
+        <div className="font-medium">{request.usuarioId.nombre}</div>
+        <div className="text-xs text-gray-400">{request.usuarioId.email}</div>
+      </td>
+      <td className="p-3">{request.usuarioId.grado || 'N/A'}</td>
+      <td className="p-3">{request.usuarioId.grupo || 'N/A'}</td>
       <td className="p-3">{new Date(request.fechaInicio).toLocaleString()}</td>
       <td className="p-3">{new Date(request.fechaFin).toLocaleString()}</td>
       <td className="p-3">{request.motivo}</td>
-      <td className={`p-3 font-semibold ${statusColor[request.estado]}`}>{request.estado}</td>
+      <td className={`p-3 font-semibold ${statusColor[request.estado]}`}>
+        {request.estado}
+      </td>
       <td className="p-3">
         <div className="flex space-x-2">
-          <button onClick={() => onStatusChange(request._id, 'aprobado')} className="text-green-500 hover:text-green-700">
+          <button 
+            onClick={() => onStatusChange(request._id, 'aprobado')} 
+            className="text-green-500 hover:text-green-700"
+          >
             <FontAwesomeIcon icon={faCheck} />
           </button>
-          <button onClick={() => onStatusChange(request._id, 'rechazado')} className="text-red-500 hover:text-red-700">
+          <button 
+            onClick={() => onStatusChange(request._id, 'rechazado')} 
+            className="text-red-500 hover:text-red-700"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
-          <button onClick={() => console.log('Editar', request._id)} className="text-blue-500 hover:text-blue-700">
+          <button 
+            onClick={() => console.log('Editar', request._id)} 
+            className="text-blue-500 hover:text-blue-700"
+          >
             <FontAwesomeIcon icon={faEdit} />
           </button>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { jwtDecode } from 'jwt-decode';
 import Swal from 'sweetalert2';
+import { AUTH_CONSTANTS } from '../constants/auth';
 
 export const useAuth = () => {
   const [authState, setAuthState] = useState({
@@ -54,38 +55,40 @@ export const useAuth = () => {
       const decoded = jwtDecode(response.credential);
       console.log('Google credential decoded:', decoded);
 
+      if (decoded.email !== AUTH_CONSTANTS.ADMIN_EMAIL && !decoded.email.endsWith('@unach.mx')) {
+        throw new Error('Solo se permiten correos institucionales (@unach.mx) o administradores autorizados');
+      }
+
       const authResponse = await authService.login(response.credential, decoded.picture);
-      console.log('Auth response:', authResponse);
       
       if (!authResponse?.user) {
         throw new Error('No se recibió información del usuario');
       }
 
-      const isAdmin = authService.isAdmin(decoded.email);
+      const isAdmin = decoded.email === AUTH_CONSTANTS.ADMIN_EMAIL;
       
-      // Primero actualizamos el estado
-      await setAuthState(prev => ({
-        ...prev,
+      setAuthState({
         isAuthenticated: true,
         isAdmin,
         user: authResponse.user,
         userPicture: decoded.picture,
         isLoading: false
-      }));
+      });
 
-      // Después de actualizar el estado, navegamos
+      Swal.fire({
+        icon: 'success',
+        title: `Bienvenido${isAdmin ? ' Administrador' : ''}`,
+        text: `Has iniciado sesión como ${decoded.email}`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+
       const redirectPath = isAdmin ? '/admin-dashboard' : '/dashboard';
-      console.log('Redirigiendo a:', redirectPath);
       navigate(redirectPath, { replace: true });
 
     } catch (error) {
       console.error('Login error:', error);
       handleError(error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error de inicio de sesión',
-        text: error.message || 'Error al iniciar sesión'
-      });
     }
   }, [navigate, handleError]);
 
@@ -94,7 +97,7 @@ export const useAuth = () => {
       const response = await authService.checkSession();
       
       if (response.authenticated && response.user) {
-        updateAuthState({
+        setAuthState({
           isAuthenticated: true,
           isAdmin: authService.isAdmin(response.user.email),
           user: response.user,
@@ -102,7 +105,7 @@ export const useAuth = () => {
           isLoading: false
         });
       } else {
-        updateAuthState({
+        setAuthState({
           isAuthenticated: false,
           isAdmin: false,
           user: null,
@@ -113,12 +116,12 @@ export const useAuth = () => {
     } catch (error) {
       handleError(error);
     }
-  }, [updateAuthState, handleError]);
+  }, [handleError]);
 
   const handleLogout = useCallback(async () => {
     try {
       await authService.logout();
-      updateAuthState({
+      setAuthState({
         isAuthenticated: false,
         isAdmin: false,
         user: null,
@@ -129,7 +132,7 @@ export const useAuth = () => {
     } catch (error) {
       handleError(error);
     }
-  }, [navigate, updateAuthState, handleError]);
+  }, [navigate, handleError]);
 
   useEffect(() => {
     checkAuth();
@@ -137,7 +140,6 @@ export const useAuth = () => {
 
   return {
     ...authState,
-    updateAuthState,
     handleLoginSuccess,
     handleLogout,
     checkAuth

@@ -27,6 +27,7 @@ class AuthService {
   setAuthHeader(token) {
     if (token) {
       this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('Header de autorización configurado');
     } else {
       delete this.api.defaults.headers.common['Authorization'];
     }
@@ -34,19 +35,23 @@ class AuthService {
 
   async login(googleCredential, userPicture) {
     try {
+      console.log('Iniciando login con credencial:', googleCredential ? 'presente' : 'ausente');
+      
       const response = await this.api.post('/login', {
         token: googleCredential,
         picture: userPicture
       });
 
-      if (response.data?.token) {
-        this._handleAuthResponse(response.data);
-        return response.data;
-      } else {
-        throw new Error('No se recibió token de autenticación');
+      console.log('Respuesta del servidor:', response.data);
+
+      if (!response.data?.token) {
+        throw new Error('No se recibió token del servidor');
       }
+
+      this._handleAuthResponse(response.data);
+      return response.data;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Error detallado en login:', error.response?.data || error.message);
       throw this._handleError(error);
     }
   }
@@ -98,6 +103,7 @@ class AuthService {
     if (data.token) {
       sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN, data.token);
       this.setAuthHeader(data.token);
+      console.log('Token guardado y configurado');
     }
     
     if (data.user) {

@@ -177,31 +177,65 @@ const handleSignIn = async () => {
   
 
   const handleRequest = async () => {
-    const savedToken = localStorage.getItem('accessToken');
-    if (!savedToken) return;
-  
-    if (selectedDates.length === 0) {
-      alert("Por favor selecciona al menos un día entre lunes y viernes.");
-      return;
-    }
-  
-    // Aquí puedes filtrar los días seleccionados
-    const validDates = selectedDates.map(dateStr => {
-      const date = new Date(dateStr + 'T00:00:00');
-      const day = date.getDay();
-  
-      if (day === 0 || day === 6) {
-        alert("Por favor selecciona solo días de lunes a viernes.");
-        return null; // Retorna null si el día no es válido
+    try {
+      console.log('Iniciando solicitud de proyector...');
+      const authInstance = gapi.auth2.getAuthInstance();
+      console.log('Estado de autenticación:', authInstance?.isSignedIn.get());
+      
+      if (!authInstance.isSignedIn.get()) {
+        await handleSignIn();
+        return;
       }
-  
-      return date; // Retorna la fecha si es válida
-    }).filter(date => date !== null); // Filtra los null
-  
-    // Si hay fechas válidas, abre el modal de selección de horarios
-    if (validDates.length > 0) {
-      setShowTimeModal(true); // Abre el modal
-      setSelectedDates(validDates.map(date => date.toISOString().split('T')[0])); // Establece las fechas válidas
+
+      const user = authInstance.currentUser.get();
+      const currentToken = user.getAuthResponse().access_token;
+
+      const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString();
+      const endOfYear = new Date(new Date().getFullYear(), 11, 31).toISOString();
+
+      const response = await gapi.client.calendar.events.list({
+        'calendarId': 'primary',
+        'timeMin': startOfYear,
+        'timeMax': endOfYear,
+        'singleEvents': true,
+        'orderBy': 'startTime',
+        'q': 'Solicitud de proyector'
+      });
+
+      const fetchedEvents = response.result.items.map(event => ({
+        id: event.id,
+        summary: event.summary,
+        start: new Date(event.start.dateTime || event.start.date),
+        end: new Date(event.end.dateTime || event.end.date),
+        selected: false
+      }));
+
+      setEvents(fetchedEvents);
+
+      if (selectedDates.length === 0) {
+        alert("Por favor selecciona al menos un día entre lunes y viernes.");
+        return;
+      }
+
+      const validDates = selectedDates.map(dateStr => {
+        const date = new Date(dateStr + 'T00:00:00');
+        const day = date.getDay();
+
+        if (day === 0 || day === 6) {
+          alert("Por favor selecciona solo días de lunes a viernes.");
+          return null; // Retorna null si el día no es válido
+        }
+
+        return date; // Retorna la fecha si es válida
+      }).filter(date => date !== null); // Filtra los null
+
+      if (validDates.length > 0) {
+        console.log('Abriendo modal de selección de tiempo...');
+        setShowTimeModal(true);
+      }
+    } catch (error) {
+      console.error('Error detallado:', error);
+      alert('Hubo un error al procesar tu solicitud. Revisa la consola para más detalles.');
     }
   };
 

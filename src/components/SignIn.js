@@ -3,13 +3,19 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { AUTH_CONSTANTS } from '../constants/auth';
+import { Navigate } from 'react-router-dom';
 
 const SignIn = () => {
-  const { handleLoginSuccess } = useAuth();
+  const { handleLoginSuccess, isAuthenticated, isAdmin } = useAuth();
+
+  // Redirección inmediata si está autenticado
+  if (isAuthenticated) {
+    return <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />;
+  }
 
   return (
     <GoogleOAuthProvider 
-      clientId={AUTH_CONSTANTS.GOOGLE_CLIENT_ID}
+      clientId={"217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com"}
       onScriptLoadError={(err) => console.error('Google Script Load Error:', err)}
     >
       <div className="flex items-center justify-center min-h-screen bg-gray-100">

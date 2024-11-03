@@ -99,20 +99,24 @@ function App() {
             <Route 
               path="/" 
               element={
-                <Navigate to={
-                  isAuthenticated 
-                    ? (isAdmin ? "/admin-dashboard" : "/dashboard") 
-                    : "/signin"
-                } />
+                isAuthenticated 
+                  ? <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace /> 
+                  : <Navigate to="/signin" replace />
               } 
             />
 
             <Route 
               path="/signin" 
               element={
-                isAuthenticated 
-                  ? <Navigate to="/dashboard" />
-                  : <SignIn />
+                isLoading ? (
+                  <div className="min-h-screen flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+                  </div>
+                ) : isAuthenticated ? (
+                  <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />
+                ) : (
+                  <SignIn />
+                )
               } 
             />
 
