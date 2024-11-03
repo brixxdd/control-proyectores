@@ -132,7 +132,7 @@ app.post('/login', async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    console.log('Google payload:', payload); // Para debugging
+    console.log('Google payload:', payload);
 
     if (!payload) {
       return res.status(401).json({ message: 'Payload de Google inválido' });
@@ -140,9 +140,10 @@ app.post('/login', async (req, res) => {
 
     const { email, name, picture } = payload;
 
-    // Verificar dominio si es necesario
-    if (!email.endsWith('@unach.mx')) {
-      return res.status(401).json({ message: 'Solo se permiten correos de unach.mx' });
+    if (email !== 'proyectoresunach@gmail.com' && !email.endsWith('@unach.mx')) {
+      return res.status(401).json({ 
+        message: 'Solo se permiten correos institucionales (@unach.mx) o administradores autorizados' 
+      });
     }
 
     let usuario = await User.findOne({ email });
@@ -150,37 +151,38 @@ app.post('/login', async (req, res) => {
       usuario = new User({
         nombre: name,
         email: email,
-        picture: picture
+        picture: picture,
+        isAdmin: email === 'proyectoresunach@gmail.com'
       });
       await usuario.save();
-    } else {
-      if (picture && usuario.picture !== picture) {
-        usuario.picture = picture;
-        await usuario.save();
-      }
     }
 
-    const jwtToken = jwt.sign({ id: usuario._id }, JWT_SECRET, { expiresIn: '1h' });
-    
-    res.cookie('token', jwtToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 3600000,
-      path: '/',
-      domain: 'localhost'
+    const jwtToken = jwt.sign(
+      { 
+        id: usuario._id,
+        email: usuario.email,
+        isAdmin: email === 'proyectoresunach@gmail.com'
+      }, 
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    console.log('Usuario autenticado:', {
+      email: usuario.email,
+      isAdmin: email === 'proyectoresunach@gmail.com'
     });
 
     res.status(200).json({ 
-      message: 'Login exitoso', 
-      user: usuario, 
-      token: jwtToken 
+      message: 'Login exitoso',
+      user: usuario,
+      token: jwtToken
     });
+
   } catch (error) {
-    console.error('Error detallado en autenticación:', error);
+    console.error('Error en autenticación:', error);
     return res.status(401).json({ 
       message: 'Autenticación fallida',
-      details: error.message 
+      error: error.message 
     });
   }
 });
@@ -302,14 +304,17 @@ mongoose.connect('mongodb://localhost:27017/BDproyectores')
   });*/
 
 app.get('/solicitudes', verifyToken, async (req, res) => {
-  if (req.user.email !== 'proyectoresunach@gmail.com') {
-    return res.status(403).json({ message: 'Acceso no autorizado' });
-  }
-
   try {
+    // Verificar si el usuario es admin
+    if (req.user.email !== 'proyectoresunach@gmail.com') {
+      return res.status(403).json({ message: 'Acceso no autorizado' });
+    }
+
     const solicitudes = await Solicitud.find().populate('usuarioId', 'nombre email');
+    console.log('Solicitudes encontradas:', solicitudes.length);
     res.status(200).json(solicitudes);
   } catch (error) {
+    console.error('Error al obtener solicitudes:', error);
     res.status(500).json({ message: 'Error al obtener las solicitudes', error });
   }
 });
@@ -382,6 +387,40 @@ app.post('/refresh-token', async (req, res) => {
   } catch (error) {
     console.error('Error al renovar el token:', error);
     res.status(500).json({ error: 'No se pudo renovar el token' });
+  }
+});
+
+// Middleware para verificar si es admin
+const isAdmin = async (req, res, next) => {
+  const userEmail = req.user.email;
+  
+  if (userEmail !== 'proyectoresunach@gmail.com') {
+    console.log('Acceso denegado para:', userEmail);
+    return res.status(403).json({ 
+      message: 'Acceso denegado: Se requieren privilegios de administrador' 
+    });
+  }
+  
+  console.log('Acceso de administrador concedido para:', userEmail);
+  next();
+};
+
+// Rutas protegidas para admin
+app.get('/admin/usuarios', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const usuarios = await User.find();
+    res.status(200).json(usuarios);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener usuarios', error });
+  }
+});
+
+app.get('/admin/solicitudes', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const solicitudes = await Solicitud.find().populate('usuarioId', 'nombre email');
+    res.status(200).json(solicitudes);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener las solicitudes', error });
   }
 });
 

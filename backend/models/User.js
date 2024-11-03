@@ -7,7 +7,10 @@ const userSchema = new mongoose.Schema({
   grupo: { type: String, default: null },
   proyectores: { type: Array, default: [] },
   turno: { type: String, default: null },
-  picture: { type: String, default: null } // Agregar el campo para la imagen de perfil
+  picture: { type: String, default: null },
+  isAdmin: { type: Boolean, default: false }
+}, {
+  timestamps: true
 });
 
 module.exports = mongoose.model('User', userSchema);
