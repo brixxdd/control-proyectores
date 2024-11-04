@@ -218,62 +218,48 @@ app.post('/calendar-event', verifyToken, async (req, res) => {
   }
 });
 
-app.put('/update-user', 
-  verifyToken, 
-  body('grado').notEmpty().withMessage('El grado es requerido'),
-  body('grupo').notEmpty().withMessage('El grupo es requerido'),
-  async (req, res) => {
+app.put('/update-user', verifyToken, async (req, res) => {
+  try {
     const { grado, grupo, turno } = req.body;
-    
-    // Verificamos el email del usuario actual
-    const userEmail = req.user.email;
-    
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    const userId = req.user._id;
 
-    try {
-      // Buscamos por email en lugar de ID
-      const updatedUser = await User.findOneAndUpdate(
-        { email: userEmail },
-        {
-          grado,
-          grupo,
-          turno,
-        },
-        { new: true }
-      );
-
-      if (!updatedUser) {
-        return res.status(404).json({ 
-          message: 'Usuario no encontrado',
-          email: userEmail // Para debugging
-        });
-      }
-
-      // Log para debugging
-      console.log('Usuario actualizado:', {
-        email: updatedUser.email,
-        grado,
-        grupo,
-        turno
-      });
-
-      return res.json({ 
-        message: 'Usuario actualizado correctamente', 
-        user: updatedUser 
-      });
-    } catch (error) {
-      console.error('Error en actualización:', error);
-      return res.status(500).json({ 
-        message: 'Error al actualizar el usuario', 
-        error: error.message,
-        email: userEmail // Para debugging
+    // Validar los datos recibidos
+    if (!grado || !grupo || !turno) {
+      return res.status(400).json({ 
+        message: 'Todos los campos son requeridos' 
       });
     }
+
+    // Actualizar el usuario
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { 
+        grado, 
+        grupo, 
+        turno 
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        message: 'Usuario no encontrado' 
+      });
+    }
+
+    res.json({ 
+      message: 'Usuario actualizado correctamente',
+      user: updatedUser 
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(500).json({ 
+      message: 'Error al actualizar el usuario',
+      error: error.message 
+    });
   }
-);
+});
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -310,7 +296,8 @@ app.get('/solicitudes', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'Acceso no autorizado' });
     }
 
-    const solicitudes = await Solicitud.find().populate('usuarioId', 'nombre email');
+    // Modificamos el populate para incluir los campos adicionales
+    const solicitudes = await Solicitud.find().populate('usuarioId', 'nombre email grado grupo turno');
     console.log('Solicitudes encontradas:', solicitudes.length);
     res.status(200).json(solicitudes);
   } catch (error) {
@@ -321,60 +308,73 @@ app.get('/solicitudes', verifyToken, async (req, res) => {
 
 app.post('/solicitar-proyector', verifyToken, async (req, res) => {
   try {
-    const { fechaInicio, fechaFin, motivo, eventId } = req.body;
+    const { fechaInicio, fechaFin, motivo, eventId, grado, grupo, turno } = req.body;
     const usuarioId = req.user._id;
     
-    // Validaciones
-    if (!fechaInicio || !fechaFin || !motivo || !eventId) {
+    // Log para verificar los datos recibidos
+    console.log('Datos recibidos en el backend:', {
+      fechaInicio,
+      fechaFin,
+      motivo,
+      eventId,
+      grado,
+      grupo,
+      turno,
+      usuarioId
+    });
+
+    // Validaciones mejoradas
+    if (!fechaInicio || !fechaFin || !motivo || !eventId || !grado || !grupo || !turno) {
       return res.status(400).json({ 
-        message: 'Todos los campos son requeridos: fechaInicio, fechaFin, motivo, eventId' 
+        message: 'Todos los campos son requeridos',
+        camposRecibidos: {
+          fechaInicio: !!fechaInicio,
+          fechaFin: !!fechaFin,
+          motivo: !!motivo,
+          eventId: !!eventId,
+          grado: !!grado,
+          grupo: !!grupo,
+          turno: !!turno
+        }
       });
     }
 
-    // Verificar que las fechas sean válidas
-    const startDate = new Date(fechaInicio);
-    const endDate = new Date(fechaFin);
-    
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return res.status(400).json({
-        message: 'Las fechas proporcionadas no son válidas'
-      });
-    }
-
-    // Verificar que la fecha de fin sea posterior a la de inicio
-    if (endDate <= startDate) {
-      return res.status(400).json({
-        message: 'La fecha de fin debe ser posterior a la fecha de inicio'
-      });
-    }
-
-    // Por ahora, asignaremos un proyectorId fijo (deberías tener una lógica para asignar el proyector)
     const proyectorId = new mongoose.Types.ObjectId('650000000000000000000001');
 
-    // Crear la nueva solicitud
     const nuevaSolicitud = new Solicitud({
       usuarioId,
       proyectorId,
-      fechaInicio: startDate,
-      fechaFin: endDate,
+      fechaInicio,
+      fechaFin,
       motivo,
       eventId,
+      grado,
+      grupo,
+      turno
     });
 
-    // Guardar la solicitud
-    await nuevaSolicitud.save();
+    // Log antes de guardar
+    console.log('Nueva solicitud a guardar:', nuevaSolicitud);
 
-    // Responder con la solicitud creada
+    const solicitudGuardada = await nuevaSolicitud.save();
+
+    // Log después de guardar
+    console.log('Solicitud guardada:', solicitudGuardada);
+
+    // Populate los datos del usuario para la respuesta
+    const solicitudConUsuario = await solicitudGuardada.populate('usuarioId', 'nombre email');
+
     res.status(201).json({ 
       message: 'Solicitud creada exitosamente',
-      solicitud: await nuevaSolicitud.populate('usuarioId', 'nombre email')
+      solicitud: solicitudConUsuario
     });
 
   } catch (error) {
-    console.error('Error al crear la solicitud:', error);
+    console.error('Error detallado al crear la solicitud:', error);
     res.status(500).json({ 
       message: 'Error al procesar la solicitud',
-      error: error.message
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

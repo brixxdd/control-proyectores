@@ -33,16 +33,29 @@ const solicitudSchema = new mongoose.Schema({
     default: 'pendiente'
   },
   grado: {
-    type: String
+    type: String,
+    required: true
   },
   grupo: {
-    type: String
+    type: String,
+    required: true
+  },
+  turno: {
+    type: String,
+    required: true
   }
 }, {
   timestamps: true
 });
 
+// Agregar un middleware pre-save para logging
+solicitudSchema.pre('save', function(next) {
+  console.log('Pre-save solicitud:', this);
+  next();
+});
+
 solicitudSchema.index({ usuarioId: 1, fechaInicio: 1 });
 solicitudSchema.index({ estado: 1 });
 
-module.exports = mongoose.model('Solicitud', solicitudSchema);
+const Solicitud = mongoose.model('Solicitud', solicitudSchema);
+module.exports = Solicitud;
