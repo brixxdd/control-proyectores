@@ -93,6 +93,7 @@ function AdminDashboard() {
                 <th className="p-3">Usuario</th>
                 <th className="p-3">Grado</th>
                 <th className="p-3">Grupo</th>
+                <th className="p-3">Turno</th>
                 <th className="p-3">Fecha Inicio</th>
                 <th className="p-3">Fecha Fin</th>
                 <th className="p-3">Motivo</th>
@@ -149,7 +150,8 @@ function TableRow({ request, onStatusChange }) {
         <div className="text-xs text-gray-400">{request.usuarioId.email}</div>
       </td>
       <td className="p-3">{request.usuarioId.grado || 'N/A'}</td>
-      <td className="p-3">{request.usuarioId.grupo || 'N/A'}</td>
+      <td className="p-3">{request.usuarioId.grupo?.toUpperCase() || 'N/A'}</td>
+      <td className="p-3">{request.usuarioId.turno || 'N/A'}</td>
       <td className="p-3">{new Date(request.fechaInicio).toLocaleString()}</td>
       <td className="p-3">{new Date(request.fechaFin).toLocaleString()}</td>
       <td className="p-3">{request.motivo}</td>
@@ -161,18 +163,21 @@ function TableRow({ request, onStatusChange }) {
           <button 
             onClick={() => onStatusChange(request._id, 'aprobado')} 
             className="text-green-500 hover:text-green-700"
+            title="Aprobar solicitud"
           >
             <FontAwesomeIcon icon={faCheck} />
           </button>
           <button 
             onClick={() => onStatusChange(request._id, 'rechazado')} 
             className="text-red-500 hover:text-red-700"
+            title="Rechazar solicitud"
           >
             <FontAwesomeIcon icon={faTimes} />
           </button>
           <button 
             onClick={() => console.log('Editar', request._id)} 
             className="text-blue-500 hover:text-blue-700"
+            title="Editar solicitud"
           >
             <FontAwesomeIcon icon={faEdit} />
           </button>

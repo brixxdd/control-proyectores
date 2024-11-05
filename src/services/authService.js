@@ -101,6 +101,10 @@ class AuthService {
 
   _handleAuthResponse(data) {
     if (data.token) {
+      if(data.pvez){
+        console.log('Eres nuevo por aqui? ',data.pvez)
+        sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.FIRSTLOG, data.pvez);
+      }
       sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN, data.token);
       this.setAuthHeader(data.token);
       console.log('Token guardado y configurado');

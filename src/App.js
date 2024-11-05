@@ -53,7 +53,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {isAuthenticated && (
         <>
           {isAdmin ? (
@@ -69,12 +69,15 @@ function App() {
       )}
 
       {/* Contenido principal */}
-      <main className={`flex-1 ${isAuthenticated ? 'ml-64' : ''} min-h-screen transition-all duration-300`}>
-        <div className="p-4">
+      <main className={`flex-1 transition-all duration-300
+                       ${isAuthenticated ? 'lg:ml-64' : ''}`}>
+        <div className="p-4 mt-16 lg:mt-0">
           {/* Header del usuario */}
           {isAuthenticated && user && (
-            <div className="flex justify-end items-center mb-4 space-x-4 bg-gray-200 p-2 rounded">
-              <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="flex justify-end items-center mb-4 space-x-4 
+                          bg-gray-200 dark:bg-gray-800 p-2 rounded">
+              <div className="w-10 h-10 bg-gray-300 dark:bg-gray-700 rounded-full 
+                            flex items-center justify-center overflow-hidden">
                 {userPicture && (
                   <img 
                     src={userPicture}
@@ -84,10 +87,11 @@ function App() {
                   />
                 )}
               </div>
-              <span className="text-gray-700">{user.nombre}</span>
+              <span className="text-gray-700 dark:text-gray-200">{user.nombre}</span>
               <button 
                 onClick={handleLogout} 
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg 
+                         hover:bg-red-700 transition-colors"
               >
                 Cerrar Sesión
               </button>
@@ -125,7 +129,7 @@ function App() {
               path="/dashboard" 
               element={
                 isAuthenticated && !isAdmin 
-                  ? <Dashboard /> 
+                  ? <Dashboard isAuthenticated={isAuthenticated} isAdmin={isAdmin} setShowGradeGroupModal={setShowGradeGroupModal}/> 
                   : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />
               } 
             />

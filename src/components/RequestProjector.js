@@ -161,9 +161,10 @@ const handleSignIn = async () => {
   };
 
   const handleDateChange = (date) => {
-    // Ajustar la fecha para la zona horaria local
-    const adjustedDate = new Date(date.setHours(12, 0, 0, 0));
-    const dateStr = adjustedDate.toISOString().split('T')[0];
+    // Crear una nueva fecha y establecer la hora a mediodía
+    const localDate = new Date(date);
+    localDate.setHours(12, 0, 0, 0);
+    const dateStr = localDate.toISOString().split('T')[0];
     
     setSelectedDates(prev => {
       const index = prev.indexOf(dateStr);
@@ -246,8 +247,6 @@ const handleSignIn = async () => {
     
     if (!jwtToken || !currentUser) {
       console.error("No hay sesión activa");
-      // Redirigir al usuario a la página de inicio de sesión
-      // navigate('/login');
       return;
     }
 
@@ -255,14 +254,12 @@ const handleSignIn = async () => {
       // Verificar usuario antes de crear el evento
       const checkSessionResponse = await axios.get('http://localhost:3000/check-session', {
         headers: { 
-          'Authorization': `Bearer ${sessionStorage.getItem('jwtToken')}` 
+          'Authorization': `Bearer ${jwtToken}` 
         }
       });
 
       if (checkSessionResponse.data.user.email !== currentUser.email) {
         console.error("La sesión ha cambiado. Por favor, vuelve a iniciar sesión.");
-        // Redirigir al usuario a la página de inicio de sesión
-        // navigate('/login');
         return;
       }
 
@@ -296,12 +293,16 @@ const handleSignIn = async () => {
           if (createdEvent && createdEvent.id) {
             console.log(`Evento creado con ID: ${createdEvent.id}`);
   
-            // Crear solicitud en el backend
+            // Crear solicitud en el backend con los campos adicionales
             const response = await axios.post('http://localhost:3000/solicitar-proyector', {
               fechaInicio: startDate,
               fechaFin: endDate,
               motivo: 'Solicitud de proyector',
-              eventId: createdEvent.id
+              eventId: createdEvent.id,
+              // Agregar los campos del usuario
+              grado: currentUser.grado,
+              grupo: currentUser.grupo,
+              turno: currentUser.turno
             }, {
               headers: {
                 'Authorization': `Bearer ${jwtToken}`
@@ -313,8 +314,6 @@ const handleSignIn = async () => {
           console.error('Error al crear el evento o la solicitud:', error);
           if (error.response && error.response.status === 401) {
             console.error('Error de autenticación. Por favor, vuelve a iniciar sesión.');
-            // Redirigir al usuario a la página de inicio de sesión
-            // navigate('/login');
             return;
           }
         }
@@ -326,8 +325,6 @@ const handleSignIn = async () => {
       console.error('Error al verificar la sesión:', error);
       if (error.response && error.response.status === 401) {
         console.error('Error de autenticación. Por favor, vuelve a iniciar sesión.');
-        // Redirigir al usuario a la página de inicio de sesión
-        // navigate('/login');
       }
     }
   };
@@ -368,29 +365,29 @@ const handleSignIn = async () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 bg-gray-50">
+    <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
       {/* Contenedor principal */}
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
         {/* Encabezado */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="bg-blue-100 p-6 rounded-full mb-4 transform hover:scale-105 transition-transform duration-300">
+        <div className="flex flex-col items-center mb-6 sm:mb-8">
+          <div className="bg-blue-100 dark:bg-blue-900 p-4 sm:p-6 rounded-full mb-4 transform hover:scale-105 transition-transform duration-300">
             <FontAwesomeIcon 
               icon={faTv} 
-              className="text-blue-600 h-12 w-12 md:h-16 md:w-16" 
+              className="text-blue-600 dark:text-blue-300 h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" 
               aria-label="Icono de proyector"
             />
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2 text-center">
             Solicitud de Proyector
           </h2>
-          <p className="text-gray-600 text-center">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 text-center px-4">
             Selecciona las fechas en las que necesitas el proyector
           </p>
         </div>
 
         {/* Calendario */}
-        <div className="mb-8">
-          <div className="calendar-container p-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
+        <div className="mb-6 sm:mb-8">
+          <div className="calendar-container p-2 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
             <Calendar
               onChange={handleDateChange}
               value={selectedDates.map(date => new Date(date))}
@@ -400,37 +397,45 @@ const handleSignIn = async () => {
               tileClassName={({ date, view }) => {
                 if (view !== 'month') return null;
                 
-                // Ajustar la fecha para comparación
-                const adjustedDate = new Date(date.setHours(12, 0, 0, 0));
-                const dateStr = adjustedDate.toISOString().split('T')[0];
+                const localDate = new Date(date);
+                localDate.setHours(12, 0, 0, 0);
+                const dateStr = localDate.toISOString().split('T')[0];
                 
                 const hasEvent = events.some(event => {
                   const eventDate = new Date(event.start);
+                  eventDate.setHours(12, 0, 0, 0);
                   return eventDate.toISOString().split('T')[0] === dateStr;
                 });
                 
-                const isSelected = selectedDates.some(selectedDate => {
-                  return selectedDate === dateStr;
-                });
+                const isSelected = selectedDates.includes(dateStr);
+                
+                let classes = ['calendar-tile']; // Clase base para todos los días
 
-                return `
-                  ${hasEvent ? 'bg-yellow-100 hover:bg-yellow-200' : 'hover:bg-gray-100'}
-                  ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
-                  rounded-lg transition-colors duration-200
-                `;
+                if (hasEvent && isSelected) {
+                  classes.push('event-day selected-date');
+                } else if (hasEvent) {
+                  classes.push('event-day');
+                } else if (isSelected) {
+                  classes.push('selected-date');
+                }
+
+                return classes.join(' ');
               }}
-              className="w-full"
+              className="w-full text-sm sm:text-base dark:text-white"
             />
           </div>
         </div>
 
-        {/* Botones de acción */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+        {/* Botones */}
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
           <button
             onClick={handleRequest}
-            className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg
-                     hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-300
-                     transform hover:scale-105 active:scale-95"
+            className="flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
+                     bg-blue-600 dark:bg-blue-500 text-white text-sm sm:text-base rounded-lg
+                     hover:bg-blue-700 dark:hover:bg-blue-600 
+                     focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 
+                     transition-all duration-300 transform hover:scale-105 
+                     active:scale-95 w-full sm:w-auto"
           >
             <FontAwesomeIcon icon={faCalendarPlus} className="mr-2" />
             Solicitar Proyector
@@ -438,30 +443,34 @@ const handleSignIn = async () => {
 
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center justify-center px-6 py-3 bg-red-600 text-white rounded-lg
-                     hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition-all duration-300
-                     transform hover:scale-105 active:scale-95"
+            className="flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
+                     bg-red-600 dark:bg-red-500 text-white text-sm sm:text-base rounded-lg
+                     hover:bg-red-700 dark:hover:bg-red-600 
+                     focus:ring-4 focus:ring-red-300 dark:focus:ring-red-700 
+                     transition-all duration-300 transform hover:scale-105 
+                     active:scale-95 w-full sm:w-auto mt-2 sm:mt-0"
           >
             <FontAwesomeIcon icon={faTrash} className="mr-2" />
             Eliminar Eventos
           </button>
         </div>
 
-        {/* Modal de eliminación de eventos */}
+        {/* Modales */}
         <DeleteEventModal
           show={showModal}
           handleClose={() => setShowModal(false)}
           handleDelete={handleDeleteEvents}
           events={events}
           toggleEventSelection={toggleEventSelection}
+          className="max-w-lg mx-auto"
         />
 
-        {/* Modal de selección de horarios */}
         <TimeSelectionModal
           show={showTimeModal}
           handleClose={() => setShowTimeModal(false)}
           selectedDates={selectedDates}
           handleConfirm={handleConfirmTimeSlots}
+          className="max-w-lg mx-auto"
         />
       </div>
     </div>

@@ -60,7 +60,17 @@ app.get('/usuarios', async (req, res) => {
 });
 
 const verifyToken = async (req, res, next) => {
-  const token = req.cookies.token || req.headers['authorization']?.split(' ')[1];
+  const cookieToken = req.cookies.token;
+  const headerToken = req.headers['authorization']?.split(' ')[1];
+  const token = cookieToken || headerToken;
+
+  console.log('=== Token Verification Debug ===');
+  console.log('Cookie Token:', cookieToken ? 'Presente' : 'No presente');
+  console.log('Header Authorization:', headerToken ? 'Presente' : 'No presente');
+  console.log('Token usado:', token ? 'Token encontrado' : 'No se encontró token');
+  console.log('Headers completos:', req.headers);
+  console.log('Cookies completas:', req.cookies);
+  console.log('============================');
 
   if (!token) {
     return res.status(401).json({ message: 'No se proporcionó token' });
@@ -146,6 +156,7 @@ app.post('/login', async (req, res) => {
       });
     }
 
+    let pvez = null;
     let usuario = await User.findOne({ email });
     if (!usuario) {
       usuario = new User({
@@ -155,7 +166,13 @@ app.post('/login', async (req, res) => {
         isAdmin: email === 'proyectoresunach@gmail.com'
       });
       await usuario.save();
+      pvez = true
+    }else{
+      if(usuario.grado === null && usuario.grupo === null && usuario.turno === null){
+        pvez = true
+      }
     }
+
 
     const jwtToken = jwt.sign(
       { 
@@ -175,7 +192,8 @@ app.post('/login', async (req, res) => {
     res.status(200).json({ 
       message: 'Login exitoso',
       user: usuario,
-      token: jwtToken
+      token: jwtToken,
+      pvez
     });
 
   } catch (error) {
