@@ -75,7 +75,7 @@ function App() {
           {/* Header del usuario */}
           {isAuthenticated && user && (
             <div className="flex justify-end items-center mb-4 space-x-4 
-                          bg-gray-200 dark:bg-gray-800 p-2 rounded">
+                          bg-gray-200   :bg-gray-800 p-2 rounded">
               <div className="w-10 h-10 bg-gray-300 dark:bg-gray-700 rounded-full 
                             flex items-center justify-center overflow-hidden">
                 {userPicture && (

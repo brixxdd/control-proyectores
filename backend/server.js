@@ -1,3 +1,8 @@
+require('dotenv').config(); // Cargar variables de entorno
+
+// Agrega el log aquí para ver las variables de entorno
+console.log('Variables de entorno:', process.env);
+
 const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
 const cookieParser = require('cookie-parser');
@@ -9,6 +14,8 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 require('dotenv').config();
 const axios = require('axios');
+const { MongoClient, ServerApiVersion } = require('mongodb');
+
 
 if (!process.env.CLIENT_ID || !process.env.JWT_SECRET) {
   console.error('Error: Variables de entorno no configuradas correctamente');
@@ -21,7 +28,7 @@ const app = express();
 const PORT = 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const JWT_SECRET = process.env.JWT_SECRET;
-const client = new OAuth2Client(CLIENT_ID);
+const oauth2Client = new OAuth2Client(CLIENT_ID);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -136,7 +143,7 @@ app.post('/login', async (req, res) => {
   }
 
   try {
-    const ticket = await client.verifyIdToken({
+    const ticket = await oauth2Client.verifyIdToken({
       idToken: token,
       audience: CLIENT_ID,
     });
@@ -285,16 +292,16 @@ app.use((err, req, res, next) => {
 });
 
 
-mongoose.connect('mongodb://localhost:27017/BDproyectores')
+/*mongoose.connect('mongodb://localhost:27017/BDproyectores')
   .then(() => {
-    console.log('Conectado a MongoDB :)');
-    app.listen(PORT, () => {
+    console.log('Conectado a MongoDB 🥳');
+        app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
   })
   .catch(err => {
     console.error('Error al conectar a MongoDB:', err);
-  });
+  });*/
 
 /*mongoose.connect(process.env.MONGODB_URI || 'mongodb://mongodb:27017/BDproyectores')
   .then(() => {
@@ -400,7 +407,7 @@ app.post('/solicitar-proyector', verifyToken, async (req, res) => {
 app.post('/refresh-token', async (req, res) => {
   const { refreshToken } = req.body;
   try {
-    const { tokens } = await client.refreshToken(refreshToken);
+    const { tokens } = await oauth2Client.refreshToken(refreshToken);
     res.json({ accessToken: tokens.access_token });
   } catch (error) {
     console.error('Error al renovar el token:', error);
@@ -442,3 +449,26 @@ app.get('/admin/solicitudes', verifyToken, isAdmin, async (req, res) => {
   }
 });
 
+const uri = process.env.MONGODB_URI; // Asegúrate de que esto esté configurado
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+// Conectar a MongoDB
+mongoose.connect(process.env.MONGODB_URI, { 
+  useNewUrlParser: true, 
+  useUnifiedTopology: true 
+})
+  .then(() => {
+    console.log('Conectado a MongoDB Atlas! 🥳');
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Error al conectar a MongoDB:', err);
+  });
