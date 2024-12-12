@@ -24,6 +24,7 @@ const Document = require('./models/Document');
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
 const FileType = require('file-type');
+const proyectorRoutes = require('./routes/proyectorRoutes');
 
 
 if (!process.env.CLIENT_ID || !process.env.JWT_SECRET) {
@@ -925,49 +926,5 @@ app.get('/view-pdf/:filename', (req, res) => {
   }
 });
 
-// Rutas para proyectores
-app.get('/api/proyectores', async (req, res) => {
-  try {
-    const proyectores = await Proyector.find();
-    res.json(proyectores);
-  } catch (error) {
-    console.error('Error al obtener proyectores:', error);
-    res.status(500).json({ message: 'Error al obtener los proyectores' });
-  }
-});
-
-// Ruta para agregar un nuevo proyector
-app.post('/api/proyectores', async (req, res) => {
-  try {
-    const { nombre, codigo, ubicacion, estado, observaciones } = req.body;
-    const proyector = new Proyector({
-      nombre,
-      codigo,
-      ubicacion,
-      estado,
-      observaciones
-    });
-    await proyector.save();
-    res.status(201).json(proyector);
-  } catch (error) {
-    console.error('Error al crear proyector:', error);
-    res.status(500).json({ message: 'Error al crear el proyector' });
-  }
-});
-
-// Ruta para actualizar el estado de un proyector
-app.put('/api/proyectores/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado, observaciones } = req.body;
-    const proyector = await Proyector.findByIdAndUpdate(
-      id,
-      { estado, observaciones },
-      { new: true }
-    );
-    res.json(proyector);
-  } catch (error) {
-    console.error('Error al actualizar proyector:', error);
-    res.status(500).json({ message: 'Error al actualizar el proyector' });
-  }
-});
+// Usar las rutas de proyectores
+app.use('/api/proyectores', proyectorRoutes);
