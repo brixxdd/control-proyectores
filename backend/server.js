@@ -928,3 +928,68 @@ app.get('/view-pdf/:filename', (req, res) => {
 
 // Usar las rutas de proyectores
 app.use('/api/proyectores', proyectorRoutes);
+
+app.put('/api/solicitudes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado, proyectorId } = req.body;
+    
+    const solicitudActualizada = await Solicitud.findByIdAndUpdate(
+      id,
+      { 
+        estado,
+        proyectorId 
+      },
+      { new: true }
+    );
+
+    if (!solicitudActualizada) {
+      return res.status(404).json({ message: 'Solicitud no encontrada' });
+    }
+
+    res.json(solicitudActualizada);
+  } catch (error) {
+    console.error('Error al actualizar solicitud:', error);
+    res.status(500).json({ message: 'Error al actualizar la solicitud' });
+  }
+});
+
+// Ruta para actualizar el estado del proyector
+app.put('/api/proyectores/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    
+    const proyectorActualizado = await Proyector.findByIdAndUpdate(
+      id,
+      { estado },
+      { new: true }
+    );
+
+    if (!proyectorActualizado) {
+      return res.status(404).json({ message: 'Proyector no encontrado' });
+    }
+
+    res.json(proyectorActualizado);
+  } catch (error) {
+    console.error('Error al actualizar proyector:', error);
+    res.status(500).json({ message: 'Error al actualizar el proyector' });
+  }
+});
+
+// Ruta para eliminar proyector
+app.delete('/api/proyectores/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const proyector = await Proyector.findByIdAndDelete(id);
+    
+    if (!proyector) {
+      return res.status(404).json({ message: 'Proyector no encontrado' });
+    }
+    
+    res.json({ message: 'Proyector eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar proyector:', error);
+    res.status(500).json({ message: 'Error al eliminar el proyector' });
+  }
+});

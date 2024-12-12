@@ -8,8 +8,7 @@ const solicitudSchema = new mongoose.Schema({
   },
   proyectorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Proyector',
-    required: true
+    ref: 'Proyector'
   },
   motivo: {
     type: String,
@@ -25,7 +24,7 @@ const solicitudSchema = new mongoose.Schema({
   },
   estado: {
     type: String,
-    enum: ['pendiente', 'aprobado', 'rechazado'],
+    enum: ['pendiente', 'aprobado', 'rechazado', 'devuelto'],
     default: 'pendiente'
   }
 }, {

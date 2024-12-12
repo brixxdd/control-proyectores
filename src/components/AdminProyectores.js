@@ -8,6 +8,13 @@ const AdminProyectores = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [proyectorEditar, setProyectorEditar] = useState(null);
+  const [formData, setFormData] = useState({
+    codigo: '',
+    grado: '',
+    grupo: '',
+    estado: 'disponible'
+  });
 
   const cargarProyectores = async () => {
     try {
@@ -27,15 +34,58 @@ const AdminProyectores = () => {
     cargarProyectores();
   }, []);
 
-  const handleCrearProyector = async (nuevoProyector) => {
+  const handleEditar = (proyector) => {
+    setProyectorEditar(proyector);
+    setFormData({
+      codigo: proyector.codigo,
+      grado: proyector.grado,
+      grupo: proyector.grupo,
+      estado: proyector.estado
+    });
+    setShowModal(true);
+  };
+
+  const handleBorrar = async (proyectorId) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este proyector?')) {
+      try {
+        await authService.api.delete(`/api/proyectores/${proyectorId}`);
+        setProyectores(proyectores.filter(p => p._id !== proyectorId));
+        toast.success('Proyector eliminado exitosamente');
+      } catch (error) {
+        console.error('Error al eliminar proyector:', error);
+        toast.error('Error al eliminar el proyector');
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const response = await authService.api.post('/api/proyectores', nuevoProyector);
-      setProyectores([...proyectores, response.data]);
-      toast.success('Proyector creado exitosamente');
+      if (proyectorEditar) {
+        // Actualizar proyector existente
+        const response = await authService.api.put(
+          `/api/proyectores/${proyectorEditar._id}`, 
+          formData
+        );
+        setProyectores(proyectores.map(p => 
+          p._id === proyectorEditar._id ? response.data : p
+        ));
+        toast.success('Proyector actualizado exitosamente');
+      } else {
+        // Crear nuevo proyector
+        const response = await authService.api.post('/api/proyectores', formData);
+        setProyectores([...proyectores, response.data]);
+        toast.success('Proyector creado exitosamente');
+      }
       setShowModal(false);
+      setProyectorEditar(null);
+      setFormData({ codigo: '', grado: '', grupo: '', estado: 'disponible' });
     } catch (error) {
-      console.error('Error al crear proyector:', error);
-      toast.error('Error al crear el proyector');
+      console.error('Error:', error);
+      toast.error(proyectorEditar ? 
+        'Error al actualizar el proyector' : 
+        'Error al crear el proyector'
+      );
     }
   };
 
@@ -84,13 +134,15 @@ const AdminProyectores = () => {
               <div className="flex gap-2">
                 <button
                   className="p-1 text-gray-500 hover:text-blue-500 transition-colors"
-                  onClick={() => {/* Implementar edición */}}
+                  onClick={() => handleEditar(proyector)}
+                  title="Editar proyector"
                 >
                   <Edit2 size={18} />
                 </button>
                 <button
                   className="p-1 text-gray-500 hover:text-red-500 transition-colors"
-                  onClick={() => {/* Implementar eliminación */}}
+                  onClick={() => handleBorrar(proyector._id)}
+                  title="Eliminar proyector"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -117,24 +169,70 @@ const AdminProyectores = () => {
 
       {/* Modal para crear/editar proyector */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Nuevo Proyector</h2>
-            {/* Aquí va el formulario */}
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {/* Implementar creación */}}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Guardar
-              </button>
-            </div>
+            <h2 className="text-xl font-bold mb-4">
+              {proyectorEditar ? 'Editar Proyector' : 'Nuevo Proyector'}
+            </h2>
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Código
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.codigo}
+                    onChange={(e) => setFormData({...formData, codigo: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Grado
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.grado}
+                    onChange={(e) => setFormData({...formData, grado: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Grupo
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.grupo}
+                    onChange={(e) => setFormData({...formData, grupo: e.target.value})}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setProyectorEditar(null);
+                    setFormData({ codigo: '', grado: '', grupo: '', estado: 'disponible' });
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  {proyectorEditar ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
