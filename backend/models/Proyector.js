@@ -1,31 +1,31 @@
 const mongoose = require('mongoose');
 
 const proyectorSchema = new mongoose.Schema({
-  nombre: {
-    type: String,
-    required: true
-  },
   codigo: {
     type: String,
     required: true,
     unique: true
   },
-  estado: {
-    type: String,
-    enum: ['en uso', 'en espera de recolección', 'devuelto', 'reservado'],
-    default: 'devuelto'
-  },
-  ubicacion: {
+  grado: {
     type: String,
     required: true
   },
-  observaciones: {
-    type: String
+  grupo: {
+    type: String,
+    required: true
+  },
+  estado: {
+    type: String,
+    enum: ['disponible', 'ocupado', 'mantenimiento'],
+    default: 'disponible'
+  },
+  asignadoA: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true
 });
 
-const Proyector = mongoose.model('Proyector', proyectorSchema);
-
-module.exports = Proyector; 
+module.exports = mongoose.model('Proyector', proyectorSchema); 

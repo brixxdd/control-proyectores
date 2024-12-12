@@ -3,6 +3,7 @@ import { X, Search, Check, Edit, AlertCircle, Eye, Trash2, Minus, Plus } from 'l
 import { authService } from '../services/authService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiRefreshCw } from 'react-icons/fi'; // Importar icono de recarga
+import AsignarProyectorModal from './AsignarProyectorModal';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
@@ -19,47 +20,39 @@ const UserRequests = () => {
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshStatus, setRefreshStatus] = useState(null);
+  const [showAsignarModal, setShowAsignarModal] = useState(false);
+  const [selectedSolicitud, setSelectedSolicitud] = useState(null);
+
+  const fetchSolicitudes = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authService.api.get('/solicitudes');
+      
+      // Procesar y organizar los datos
+      const userMap = response.data.reduce((acc, solicitud) => {
+        if (!solicitud.usuarioId) return acc;
+        
+        if (!acc[solicitud.usuarioId._id]) {
+          acc[solicitud.usuarioId._id] = {
+            userData: solicitud.usuarioId,
+            solicitudes: [],
+            documentos: []
+          };
+        }
+        acc[solicitud.usuarioId._id].solicitudes.push(solicitud);
+        return acc;
+      }, {});
+
+      setUsers(Object.values(userMap));
+    } catch (error) {
+      console.error('Error al obtener solicitudes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const [solicitudesResponse, documentosResponse] = await Promise.all([
-          authService.api.get('/solicitudes'),
-          authService.api.get('/documentos')
-        ]);
-
-        console.log('Documentos recibidos:', documentosResponse.data); // Para debugging
-
-        const userMap = solicitudesResponse.data.reduce((acc, solicitud) => {
-          if (!solicitud.usuarioId) return acc;
-          
-          if (!acc[solicitud.usuarioId._id]) {
-            acc[solicitud.usuarioId._id] = {
-              userData: solicitud.usuarioId,
-              solicitudes: [],
-              documentos: []
-            };
-          }
-          acc[solicitud.usuarioId._id].solicitudes.push(solicitud);
-          return acc;
-        }, {});
-
-        // Asegurarse de que los documentos se asignen correctamente
-        documentosResponse.data.forEach(documento => {
-          if (documento.usuarioId && userMap[documento.usuarioId._id]) {
-            userMap[documento.usuarioId._id].documentos.push(documento);
-          }
-        });
-
-        console.log('UserMap después de procesar:', userMap); // Para debugging
-        
-        setUsers(Object.values(userMap));
-      } catch (error) {
-        console.error('Error al obtener usuarios y documentos:', error);
-      }
-    };
-
-    fetchUsers();
+    fetchSolicitudes();
   }, []);
 
   const filteredUsers = users.filter(user => 
@@ -82,9 +75,15 @@ const UserRequests = () => {
     setShowModal(true);
   };
 
-  const handleStatusChange = async (id, newStatus, type = 'solicitud') => {
+  const handleStatusChange = async (solicitud, newStatus) => {
     try {
-      const endpoint = type === 'solicitud' ? `/solicituds/${id}` : `/documentos/${id}`;
+      if (newStatus === 'aprobado') {
+        setSelectedSolicitud(solicitud);
+        setShowAsignarModal(true);
+        return;
+      }
+      
+      const endpoint = newStatus === 'solicitud' ? `/solicituds/${solicitud._id}` : `/documentos/${solicitud._id}`;
       const response = await authService.api.put(endpoint, { 
         estado: newStatus 
       });
@@ -93,9 +92,9 @@ const UserRequests = () => {
         setUsers(prevUsers => 
           prevUsers.map(user => ({
             ...user,
-            [type === 'solicitud' ? 'solicitudes' : 'documentos']: 
-              user[type === 'solicitud' ? 'solicitudes' : 'documentos'].map(item => 
-                item._id === id 
+            [newStatus === 'solicitud' ? 'solicitudes' : 'documentos']: 
+              user[newStatus === 'solicitud' ? 'solicitudes' : 'documentos'].map(item => 
+                item._id === solicitud._id 
                   ? { ...item, estado: newStatus }
                   : item
               )
@@ -104,7 +103,7 @@ const UserRequests = () => {
 
         setAlert({
           show: true,
-          message: `${type === 'solicitud' ? 'Solicitud' : 'Documento'} ${newStatus} exitosamente`,
+          message: `${newStatus === 'solicitud' ? 'Solicitud' : 'Documento'} ${newStatus} exitosamente`,
           type: newStatus === 'aprobado' ? 'success' : 'warning'
         });
 
@@ -516,14 +515,14 @@ const UserRequests = () => {
                                 {solicitud.estado === 'pendiente' ? (
                                   <>
                                     <button
-                                      onClick={() => handleStatusChange(solicitud._id, 'aprobado')}
+                                      onClick={() => handleStatusChange(solicitud, 'aprobado')}
                                       className="p-1 text-green-600 hover:bg-green-50 rounded-full transition-colors"
                                       title="Aprobar solicitud"
                                     >
                                       <Check className="w-5 h-5" />
                                     </button>
                                     <button
-                                      onClick={() => handleStatusChange(solicitud._id, 'rechazado')}
+                                      onClick={() => handleStatusChange(solicitud, 'rechazado')}
                                       className="p-1 text-red-600 hover:bg-red-50 rounded-full transition-colors"
                                       title="Rechazar solicitud"
                                     >
@@ -532,7 +531,7 @@ const UserRequests = () => {
                                   </>
                                 ) : (
                                   <button
-                                    onClick={() => handleStatusChange(solicitud._id, 'pendiente')}
+                                    onClick={() => handleStatusChange(solicitud, 'pendiente')}
                                     className="p-1 text-yellow-600 hover:bg-yellow-50 rounded-full transition-colors"
                                     title="Marcar como pendiente"
                                   >
@@ -695,6 +694,17 @@ const UserRequests = () => {
           </div>
         </div>
       )}
+
+      <AsignarProyectorModal
+        show={showAsignarModal}
+        onClose={() => setShowAsignarModal(false)}
+        solicitud={selectedSolicitud}
+        onAsignar={(proyector) => {
+          // Actualizar la interfaz después de asignar
+          fetchSolicitudes();
+          setShowAsignarModal(false);
+        }}
+      />
     </div>
   );
 };

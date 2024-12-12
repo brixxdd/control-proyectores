@@ -7,6 +7,7 @@ import {
   Menu,
   X,
   Monitor,
+  Projector,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
@@ -87,8 +88,8 @@ const AdminSidebar = () => {
             Ver Documentos
           </NavItem>
           
-          <NavItem path="/admin-proyectores" icon={Monitor}>
-            Estado de Proyectores
+          <NavItem path="/admin-proyectores" icon={Projector}>
+            Gestión de Proyectores
           </NavItem>
         </nav>
 
