@@ -16,7 +16,7 @@ const proyectorSchema = new mongoose.Schema({
   },
   estado: {
     type: String,
-    enum: ['disponible', 'ocupado', 'mantenimiento'],
+    enum: ['disponible', 'en uso', 'devuelto'],
     default: 'disponible'
   },
   asignadoA: {

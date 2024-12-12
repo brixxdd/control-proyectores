@@ -1,91 +1,111 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { authService } from '../services/authService';
-import { AUTH_CONSTANTS } from '../constants/auth';
+import { X, Search } from 'lucide-react';
 
-const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar, className }) => {
-  const [nuevoProyector, setNuevoProyector] = useState({
-    grado: '',
-    grupo: ''
-  });
+const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
+  const [proyectoresDisponibles, setProyectoresDisponibles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleCrearProyector = async (e) => {
-    e.preventDefault();
-    setError(null);
+  useEffect(() => {
+    const cargarProyectoresDisponibles = async () => {
+      try {
+        const response = await authService.api.get('/api/proyectores?estado=disponible');
+        setProyectoresDisponibles(response.data);
+      } catch (error) {
+        console.error('Error al cargar proyectores:', error);
+        setError('Error al cargar los proyectores disponibles');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (show) {
+      cargarProyectoresDisponibles();
+    }
+  }, [show]);
+
+  const handleAsignarProyector = async (proyector) => {
     try {
-      console.log('Enviando datos:', nuevoProyector);
-      
-      const response = await authService.api.post('/api/proyectores', nuevoProyector);
-      
-      console.log('Respuesta:', response.data);
-      onAsignar(response.data);
+      // Actualizar estado de la solicitud a aprobado
+      await authService.api.put(`/api/solicitudes/${solicitud._id}`, {
+        estado: 'aprobado',
+        proyectorId: proyector._id
+      });
+
+      // Actualizar estado del proyector a "en uso"
+      await authService.api.put(`/api/proyectores/${proyector._id}`, {
+        estado: 'en uso'
+      });
+
+      onAsignar(proyector);
       onClose();
     } catch (error) {
-      console.error('Error detallado:', error.response?.data || error);
-      setError(
-        error.response?.data?.message || 
-        'Error al crear proyector. Por favor, intenta de nuevo.'
-      );
+      console.error('Error al asignar proyector:', error);
+      setError('Error al asignar el proyector. Por favor, intenta de nuevo.');
     }
   };
 
-  return (
-    show && (
-      <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full relative z-50">
-          <h2 className="text-xl font-bold mb-4">Crear Nuevo Proyector</h2>
-          
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleCrearProyector}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Grado</label>
-              <input
-                type="text"
-                value={nuevoProyector.grado}
-                onChange={(e) => setNuevoProyector({...nuevoProyector, grado: e.target.value})}
-                className="w-full p-2 border rounded"
-                required
-              />
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Grupo</label>
-              <input
-                type="text"
-                value={nuevoProyector.grupo}
-                onChange={(e) => setNuevoProyector({...nuevoProyector, grupo: e.target.value})}
-                className="w-full p-2 border rounded"
-                required
-              />
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                disabled={loading}
-              >
-                {loading ? 'Creando...' : 'Crear Proyector'}
-              </button>
-            </div>
-          </form>
+  return show && (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full relative">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Asignar Proyector</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="w-6 h-6" />
+          </button>
         </div>
+
+        {/* Barra de búsqueda */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Buscar proyector..."
+              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+            {proyectoresDisponibles
+              .filter(p => 
+                p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                `${p.grado}${p.grupo}`.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map(proyector => (
+                <div
+                  key={proyector._id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleAsignarProyector(proyector)}
+                >
+                  <h3 className="font-semibold text-lg">{proyector.codigo}</h3>
+                  <p className="text-sm text-gray-600">Grado: {proyector.grado}</p>
+                  <p className="text-sm text-gray-600">Grupo: {proyector.grupo}</p>
+                  <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                    Disponible
+                  </span>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
-    )
+    </div>
   );
 };
 
