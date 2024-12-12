@@ -481,7 +481,7 @@ const UserRequests = () => {
 
       {/* Modal de Solicitudes */}
       {showModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black bg-opacity-50">
           <div className="relative w-full max-w-2xl mx-auto">
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow">
               {/* Header del Modal */}
@@ -764,10 +764,10 @@ const UserRequests = () => {
         onClose={() => setShowAsignarModal(false)}
         solicitud={selectedSolicitud}
         onAsignar={(proyector) => {
-          // Actualizar la interfaz después de asignar
           fetchSolicitudes();
           setShowAsignarModal(false);
         }}
+        className="z-50"
       />
     </div>
   );
