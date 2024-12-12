@@ -7,7 +7,7 @@ const proyectorSchema = new mongoose.Schema({
     unique: true
   },
   grado: {
-    type: String,
+    type: Number,
     required: true
   },
   grupo: {
@@ -27,5 +27,8 @@ const proyectorSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Agregar índice único compuesto para grado y grupo
+proyectorSchema.index({ grado: 1, grupo: 1 }, { unique: true });
 
 module.exports = mongoose.model('Proyector', proyectorSchema); 
