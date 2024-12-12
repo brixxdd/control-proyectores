@@ -119,22 +119,39 @@ const createEvent = async (event, token) => {
     const auth2 = gapi.auth2.getAuthInstance();
     const currentUser = auth2.currentUser.get();
     let accessToken = currentUser.getAuthResponse().access_token;
+    
     if (accessToken === sessionStorage.getItem('accessRequest')) {
       console.log('Misma sesión');
     } else {
       accessToken = sessionStorage.getItem('accessRequest');
       console.log('Nueva sesión');
     }
+
+    // Asegurarse de que las fechas estén en el formato correcto
+    console.log('Creando evento con datos:', event);
+
     gapi.client.setToken({
       access_token: accessToken
     });
+
     const response = await gapi.client.calendar.events.insert({
       'calendarId': 'primary',
-      'resource': event
+      'resource': {
+        summary: event.summary,
+        start: {
+          dateTime: new Date(event.start.dateTime).toISOString(),
+          timeZone: 'America/Mexico_City'
+        },
+        end: {
+          dateTime: new Date(event.end.dateTime).toISOString(),
+          timeZone: 'America/Mexico_City'
+        }
+      }
     });
-    return response.result; // Esto debería incluir el ID del evento
+
+    return response.result;
   } catch (error) {
-    console.error('Error al crear el evento:', error);
+    console.error('Error detallado al crear evento:', error);
     throw error;
   }
 };
@@ -213,18 +230,30 @@ const createEvent = async (event, token) => {
           continue;
         }
     
-        const startDate = new Date(`${date}T${startTime}`);
-        const endDate = new Date(`${date}T${endTime}`);
-    
+        // Crear fechas completas combinando fecha y hora
+        const startDateTime = new Date(`${date}T${startTime}`);
+        const endDateTime = new Date(`${date}T${endTime}`);
+
+        console.log('Fechas a usar:', {
+          start: startDateTime,
+          end: endDateTime
+        });
+
+        // Verificar que las fechas sean válidas
+        if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+          console.error('Fechas inválidas:', { startDateTime, endDateTime });
+          continue;
+        }
+
         // Crear el evento en Google Calendar
         const event = {
           summary: 'Solicitud de proyector',
           start: {
-            dateTime: startDate.toISOString(),
+            dateTime: startDateTime.toISOString(),
             timeZone: 'America/Mexico_City',
           },
           end: {
-            dateTime: endDate.toISOString(),
+            dateTime: endDateTime.toISOString(),
             timeZone: 'America/Mexico_City',
           },
         };
@@ -240,8 +269,8 @@ const createEvent = async (event, token) => {
           // Crear solicitud en el backend
           const response = await axios.post('http://localhost:3000/solicitar-proyector', 
             {
-              fechaInicio: startDate.toISOString(),
-              fechaFin: endDate.toISOString(),
+              fechaInicio: startDateTime.toISOString(),
+              fechaFin: endDateTime.toISOString(),
               motivo: 'Solicitud de proyector',
               eventId: createdEvent.id,
               grado: currentUser?.grado,
