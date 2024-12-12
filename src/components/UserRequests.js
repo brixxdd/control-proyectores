@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Search, Check, Edit, AlertCircle, Eye, Trash2, Minus, Plus } from 'lucide-react';
+import { X, Search, Check, Edit, AlertCircle, Eye, Trash2, Minus, Plus, Calendar } from 'lucide-react';
 import { authService } from '../services/authService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiRefreshCw } from 'react-icons/fi'; // Importar icono de recarga
 import AsignarProyectorModal from './AsignarProyectorModal';
+import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
@@ -70,8 +71,30 @@ const UserRequests = () => {
     });
   };
 
+  const obtenerSolicitudesSemanaActual = (solicitudes) => {
+    const hoy = new Date();
+    const inicioDeSemana = startOfWeek(hoy, { weekStartsOn: 1 });
+    const finDeSemana = endOfWeek(hoy, { weekStartsOn: 1 });
+
+    // Filtrar solicitudes de la semana actual (L-V)
+    return solicitudes
+      .filter(solicitud => {
+        const fechaSolicitud = new Date(solicitud.fechaInicio);
+        return isWithinInterval(fechaSolicitud, {
+          start: inicioDeSemana,
+          end: finDeSemana
+        }) && fechaSolicitud.getDay() !== 0 && fechaSolicitud.getDay() !== 6;
+      })
+      .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio));
+  };
+
   const handleUserClick = (user) => {
-    setSelectedUser(user);
+    // Filtrar y ordenar las solicitudes antes de mostrar el modal
+    const solicitudesFiltradas = obtenerSolicitudesSemanaActual(user.solicitudes);
+    setSelectedUser({
+      ...user,
+      solicitudes: solicitudesFiltradas
+    });
     setShowModal(true);
   };
 
@@ -284,7 +307,11 @@ const UserRequests = () => {
             documentos: []
           };
         }
-        acc[solicitud.usuarioId._id].solicitudes.push(solicitud);
+        // Filtrar las solicitudes por semana actual antes de agregarlas
+        const solicitudesFiltradas = obtenerSolicitudesSemanaActual([solicitud]);
+        if (solicitudesFiltradas.length > 0) {
+          acc[solicitud.usuarioId._id].solicitudes.push(...solicitudesFiltradas);
+        }
         return acc;
       }, {});
 
@@ -295,7 +322,15 @@ const UserRequests = () => {
         }
       });
 
-      setUsers(Object.values(userMap));
+      // Ordenar usuarios por cantidad de solicitudes
+      const usuariosOrdenados = Object.values(userMap)
+        .map(user => ({
+          ...user,
+          solicitudes: obtenerSolicitudesSemanaActual(user.solicitudes)
+        }))
+        .sort((a, b) => b.solicitudes.length - a.solicitudes.length);
+
+      setUsers(usuariosOrdenados);
       setRefreshStatus('success');
     } catch (error) {
       console.error('Error al recargar datos:', error);
@@ -391,6 +426,30 @@ const UserRequests = () => {
           </div>
         </div>
 
+        {/* Agregar indicador de semana actual */}
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+            <h3 className="font-semibold text-blue-800 dark:text-blue-100">
+              Semana Actual
+            </h3>
+          </div>
+          <p className="text-blue-800 dark:text-blue-100">
+            Del {startOfWeek(new Date(), { weekStartsOn: 1 }).toLocaleDateString('es-MX', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long'
+            })} al {endOfWeek(new Date(), { weekStartsOn: 1 }).toLocaleDateString('es-MX', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long'
+            })}
+          </p>
+          <p className="text-sm text-blue-600 dark:text-blue-200 mt-2">
+            Mostrando máximo una solicitud por día (Lunes a Viernes)
+          </p>
+        </div>
+
         {/* Lista de usuarios */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredUsers.map((user) => (
@@ -427,9 +486,14 @@ const UserRequests = () => {
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow">
               {/* Header del Modal */}
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-t-lg">
-                <h3 className="text-xl font-semibold text-blue-800">
-                  Solicitudes de {selectedUser.userData.nombre}
-                </h3>
+                <div>
+                  <h3 className="text-xl font-semibold text-blue-800">
+                    Solicitudes de {selectedUser.userData.nombre}
+                  </h3>
+                  <p className="text-sm text-blue-600 mt-1">
+                    Mostrando solicitudes de la semana actual (Lunes a Viernes)
+                  </p>
+                </div>
                 <button
                   onClick={() => setShowModal(false)}
                   className="p-1 ml-auto bg-transparent hover:bg-blue-100 rounded-full transition-colors"
