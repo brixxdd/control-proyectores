@@ -993,3 +993,14 @@ app.delete('/api/proyectores/:id', async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar el proyector' });
   }
 });
+
+app.get('/api/proyectores', async (req, res) => {
+  try {
+    const { estado } = req.query;
+    const query = estado ? { estado } : {};
+    const proyectores = await Proyector.find(query);
+    res.json(proyectores);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener proyectores', error });
+  }
+});
