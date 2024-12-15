@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { AUTH_CONSTANTS } from '../constants/auth';
 import { gapi } from 'gapi-script';
+import Swal from 'sweetalert2';
 
 class AuthService {
   constructor() {
@@ -19,30 +20,65 @@ class AuthService {
       async error => {
         const originalRequest = error.config;
 
-        // Si el error es 401 y no es un intento de renovación
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true;
+        // Condiciones para intentar renovar el token
+        const is401Error = error.response?.status === 401;
+        const isNotRefreshTokenEndpoint = originalRequest.url !== '/refresh-token';
+        const hasNotExceededRetries = !originalRequest._retryCount || originalRequest._retryCount < 2;
 
+        if (is401Error && isNotRefreshTokenEndpoint && hasNotExceededRetries) {
+          // Incrementar el contador de reintentos
+          originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+          
           try {
             // Intentar renovar el token
             const response = await this.refreshToken();
+            
             if (response?.data?.token) {
+              // Actualizar token en sesión y encabezados
               this._handleAuthResponse(response.data);
-              originalRequest.headers['Authorization'] = `Bearer ${response.data.token}`;
-              return this.api(originalRequest);
+              
+              // Clonar y actualizar la configuración original
+              const updatedConfig = {
+                ...originalRequest,
+                headers: {
+                  ...originalRequest.headers,
+                  Authorization: `Bearer ${response.data.token}`
+                }
+              };
+
+              // Reintentar la solicitud original
+              return this.api(updatedConfig);
             }
           } catch (refreshError) {
+            console.error('Error al renovar token:', refreshError);
+            // Limpiar autenticación y redirigir
             this._clearAuth();
-            window.location.href = '/login'; // Redirigir al login
+            // Mostrar la alerta personalizada
+            Swal.fire({
+              icon: 'error',
+              title: 'Es necesario volver a iniciar sesión',
+              text:  'Token expirado',
+              timer: 3000,
+              showConfirmButton: false,
+            }).then(() => {
+              // Redirigir al usuario después de cerrar la alerta
+              window.location.href = '/login';
+            });
+            // Rechazar la promesa para detener cualquier reintento adicional
+            return Promise.reject(refreshError);
           }
         }
+
+        // Para cualquier otro caso de error, rechazar la promesa
         return Promise.reject(error);
       }
     );
 
+
     this.api.interceptors.request.use(config => {
       const token = sessionStorage.getItem('jwtToken');
-      if (token) {
+      // Evitar configurar encabezados globales en solicitudes de refresh
+      if (token && config.url !== '/refresh-token') {
         console.log('Token encontrado:', token.substring(0, 20) + '...'); // Para debugging
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -57,6 +93,15 @@ class AuthService {
     } else {
       delete this.api.defaults.headers.common['Authorization'];
     }
+  }
+
+  getAuthHeaderWithRefreshToken() {
+      const token = sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_REFRESH_TOKEN);
+      if (!token) {
+          throw new Error('No refresh token found in session storage');
+      }
+
+      return { Authorization: `Bearer ${token}` };
   }
 
   async login(googleCredential, userPicture) {
@@ -138,6 +183,7 @@ class AuthService {
       }
       sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN, data.token);
       console.log('Token almacenado:', sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN));
+      if(data.refreshToken) {sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_REFRESH_TOKEN,data.refreshToken)}
       this.setAuthHeader(data.token);
       console.log('Token guardado y configurado');
     }
@@ -173,10 +219,11 @@ class AuthService {
   // Agregar método para renovar token
   async refreshToken() {
     try {
-      const response = await this.api.post('/refresh-token');
-      return response;
+        const headers = this.getAuthHeaderWithRefreshToken(); // Obtiene los encabezados
+        return this.api.post('/refresh-token', {}, { headers }); // Usa los encabezados en esta solicitud
     } catch (error) {
-      throw error;
+        console.error('Error al obtener el refresh token:', error);
+        throw error;
     }
   }
 

@@ -20,8 +20,10 @@ import { Toaster } from 'react-hot-toast';
 import UserRequests from './components/UserRequests';
 import MySolicitudes from './components/MySolicitudes';
 import AdminProyectores from './components/AdminProyectores';
+import useInactivityTimer from "./hooks/useInactivityTimer";
 
-function App() {
+
+const App = () => {
   const { 
     isAuthenticated, 
     isAdmin, 
@@ -30,6 +32,8 @@ function App() {
     userPicture,
     handleLogout 
   } = useAuth();
+
+  useInactivityTimer(handleLogout, 10 * 60 * 1000); // 10 minutos
 
   const [showGradeGroupModal, setShowGradeGroupModal] = React.useState(false);
   const [showWelcomeAlert, setShowWelcomeAlert] = React.useState(false);
