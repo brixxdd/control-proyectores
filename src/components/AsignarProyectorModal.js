@@ -85,8 +85,10 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
             {proyectoresDisponibles
               .filter(p => 
-                p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                `${p.grado}${p.grupo}`.toLowerCase().includes(searchTerm.toLowerCase())
+                p.estado === 'disponible' && (
+                  p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  `${p.grado}${p.grupo}`.toLowerCase().includes(searchTerm.toLowerCase())
+                )
               )
               .map(proyector => (
                 <div
@@ -97,8 +99,14 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
                   <h3 className="font-semibold text-lg">{proyector.codigo}</h3>
                   <p className="text-sm text-gray-600">Grado: {proyector.grado}</p>
                   <p className="text-sm text-gray-600">Grupo: {proyector.grupo}</p>
-                  <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                    Disponible
+                  <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs ${
+                    proyector.estado === 'disponible'
+                      ? 'bg-green-100 text-green-800'
+                      : proyector.estado === 'en uso'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {proyector.estado}
                   </span>
                 </div>
               ))}

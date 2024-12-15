@@ -53,7 +53,7 @@ const UserRequests = () => {
   };
 
   useEffect(() => {
-    fetchSolicitudes();
+    refreshData();
   }, []);
 
   const filteredUsers = users.filter(user => 
@@ -415,13 +415,6 @@ const UserRequests = () => {
                 className={`w-5 h-5 text-gray-600 dark:text-gray-300
                   ${isLoading ? 'animate-spin' : ''}`}
               />
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-gray-600">Proyectores Unach</span>
-            <button className="bg-red-500 text-white px-4 py-2 rounded">
-              Cerrar Sesión
             </button>
           </div>
         </div>

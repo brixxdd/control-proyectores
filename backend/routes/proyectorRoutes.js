@@ -72,7 +72,6 @@ router.post('/', verifyToken, async (req, res) => {
     res.status(201).json(proyectorGuardado);
 
   } catch (error) {
-    // Si es un error de duplicado de MongoDB
     if (error.code === 11000) {
       return res.status(400).json({ 
         message: `Ya existe un proyector asignado a este grado y grupo`

@@ -22,7 +22,13 @@ const AdminProyectores = () => {
   const cargarProyectores = async () => {
     try {
       const response = await authService.api.get('/api/proyectores');
-      setProyectores(response.data);
+      const proyectoresOrdenados = response.data.sort((a, b) => {
+        if (a.grado === b.grado) {
+          return a.grupo.localeCompare(b.grupo);
+        }
+        return a.grado - b.grado;
+      });
+      setProyectores(proyectoresOrdenados);
       setError(null);
     } catch (error) {
       console.error('Error al cargar proyectores:', error);
