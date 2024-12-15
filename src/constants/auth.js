@@ -6,7 +6,8 @@ export const AUTH_CONSTANTS = {
     JWT_TOKEN: 'jwtToken',
     USER_DATA: 'currentUser',
     USER_PICTURE: 'userPicture',
-    FIRSTLOG: 'new'
+    FIRSTLOG: 'new',
+    JWT_REFRESH_TOKEN: 'jwtRefresh'
   },
   ERROR_MESSAGES: {
     NO_TOKEN: 'No token found',
