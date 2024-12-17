@@ -16,6 +16,7 @@ import WelcomeAlert from './components/WelcomeAlert';
 import { authService } from './services/authService';
 import { useCallback } from 'react';
 import { Toaster } from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 import UserRequests from './components/UserRequests';
 import MySolicitudes from './components/MySolicitudes';
@@ -37,6 +38,8 @@ const App = () => {
 
   const [showGradeGroupModal, setShowGradeGroupModal] = React.useState(false);
   const [showWelcomeAlert, setShowWelcomeAlert] = React.useState(false);
+  const [tokenTimeLeft, setTokenTimeLeft] = React.useState(30 * 60); // 30 minutos en segundos
+  const [showWarning, setShowWarning] = React.useState(false);
 
   const handleProfileUpdate = useCallback(async (data) => {
     try {
@@ -48,6 +51,51 @@ const App = () => {
       throw error;
     }
   }, []);
+
+  React.useEffect(() => {
+    let timer;
+    if (isAuthenticated) {
+      setTokenTimeLeft(30 * 60); // 30 minutos en segundos
+      timer = setInterval(() => {
+        setTokenTimeLeft(prev => {
+          // Mostrar advertencia cuando queden 2 minutos
+          if (prev === 120) {
+            Swal.fire({
+              title: '¡Advertencia!',
+              text: 'Tu sesión expirará en 2 minutos',
+              icon: 'warning',
+              timer: 5000,
+              timerProgressBar: true,
+              showConfirmButton: false
+            });
+          }
+
+          if (prev <= 1) {
+            clearInterval(timer);
+            Swal.fire({
+              title: 'Sesión Expirada',
+              text: 'Tu sesión ha expirado',
+              icon: 'info',
+              confirmButtonText: 'Entendido',
+              allowOutsideClick: false
+            }).then(() => {
+              handleLogout();
+            });
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isAuthenticated, handleLogout]);
+
+  // Función para formatear el tiempo restante
+  const formatTimeLeft = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   // Mostrar loader mientras se verifica la autenticación
   if (isLoading) {
@@ -84,26 +132,74 @@ const App = () => {
           <div className="p-4 mt-16 lg:mt-0">
             {/* Header del usuario */}
             {isAuthenticated && user && (
-              <div className="flex justify-end items-center mb-4 space-x-4 
-                            bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full 
-                                flex items-center justify-center overflow-hidden">
-                    {userPicture && (
-                      <img 
-                        src={userPicture}
-                        alt="Perfil" 
-                        className="w-full h-full object-cover"
-                        onError={(e) => e.target.style.display = 'none'}
+              <div className="flex justify-between items-center mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                {/* Temporizador en la izquierda */}
+                <div className="flex items-center">
+                  <div className={`
+                    px-4 py-2 rounded-full font-medium text-sm
+                    flex items-center gap-2
+                    ${tokenTimeLeft <= 120 
+                      ? 'bg-red-100 text-red-700 border border-red-200' 
+                      : tokenTimeLeft <= 300 
+                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' 
+                        : 'bg-blue-50 text-blue-700 border border-blue-100'
+                    }
+                  `}>
+                    <svg 
+                      className="w-4 h-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
                       />
-                    )}
+                    </svg>
+                    <span>Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
                   </div>
-                  <span className="text-gray-900 dark:text-white font-medium">{user.nombre}</span>
+                </div>
+
+                {/* Información del usuario en la derecha */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full 
+                                      flex items-center justify-center overflow-hidden">
+                      {userPicture && (
+                        <img 
+                          src={userPicture}
+                          alt="Perfil" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      )}
+                    </div>
+                    <span className="text-gray-900 dark:text-white font-medium">
+                      {user.nombre}
+                    </span>
+                  </div>
                   <button 
                     onClick={handleLogout} 
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg 
-                             hover:bg-red-700 transition-colors duration-200"
+                    className="px-4 py-2 bg-red-500 text-white rounded-full
+                             hover:bg-red-600 transition-all duration-200 ease-in-out
+                             shadow-sm hover:shadow-md
+                             flex items-center gap-2"
                   >
+                    <svg 
+                      className="w-4 h-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                      />
+                    </svg>
                     Cerrar Sesión
                   </button>
                 </div>

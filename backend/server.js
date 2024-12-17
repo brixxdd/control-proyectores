@@ -205,13 +205,13 @@ app.post('/login', async (req, res) => {
         isAdmin: email === 'proyectoresunach@gmail.com'
       }, 
       JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '30m' }
     );
 
     const refreshToken = jwt.sign(
       { id: usuario._id },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
     console.log('Usuario autenticado:', {
