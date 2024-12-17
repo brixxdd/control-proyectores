@@ -474,39 +474,40 @@ const UserRequests = () => {
 
       {/* Modal de Solicitudes */}
       {showModal && selectedUser && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/50">
           <div className="relative w-full max-w-2xl mx-auto">
-            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl">
               {/* Header del Modal */}
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-t-lg">
+              <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/50 rounded-t-lg">
                 <div>
-                  <h3 className="text-xl font-semibold text-blue-800">
+                  <h3 className="text-xl font-semibold text-blue-800 dark:text-blue-100">
                     Solicitudes de {selectedUser.userData.nombre}
                   </h3>
-                  <p className="text-sm text-blue-600 mt-1">
+                  <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
                     Mostrando solicitudes de la semana actual (Lunes a Viernes)
                   </p>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="p-1 ml-auto bg-transparent hover:bg-blue-100 rounded-full transition-colors"
+                  className="p-1 ml-auto bg-transparent hover:bg-blue-100 dark:hover:bg-blue-800/50 
+                           rounded-full transition-colors"
                 >
-                  <X className="w-6 h-6 text-blue-800" />
+                  <X className="w-6 h-6 text-blue-800 dark:text-blue-100" />
                 </button>
               </div>
 
               {/* Contenido del Modal */}
-              <div className="p-6">
+              <div className="p-6 dark:text-gray-100">
                 {/* Pestañas para alternar entre solicitudes y documentos */}
-                <div className="mb-4 border-b border-gray-200">
+                <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
                   <ul className="flex flex-wrap -mb-px">
                     <li className="mr-2">
                       <button
                         onClick={() => setActiveTab('solicitudes')}
                         className={`inline-block p-4 ${
                           activeTab === 'solicitudes'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-500 hover:text-gray-600'
+                            ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                         }`}
                       >
                         Solicitudes
@@ -517,8 +518,8 @@ const UserRequests = () => {
                         onClick={() => setActiveTab('documentos')}
                         className={`inline-block p-4 ${
                           activeTab === 'documentos'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-500 hover:text-gray-600'
+                            ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                         }`}
                       >
                         Documentos
@@ -554,16 +555,21 @@ const UserRequests = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {selectedUser.solicitudes.map((solicitud) => (
-                          <tr key={solicitud._id} className="hover:bg-gray-50">
-                            <td className="p-3 text-sm">{solicitud._id.slice(-4)}</td>
-                            <td className="p-3 text-sm">{solicitud.motivo}</td>
-                            <td className="p-3 text-sm">{formatDate(solicitud.fechaInicio)}</td>
-                            <td className="p-3 text-sm">{formatDate(solicitud.fechaFin)}</td>
+                          <tr key={solicitud._id} 
+                              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 
+                                       transition-colors duration-150 ease-in-out">
+                            <td className="p-3 text-sm dark:text-gray-200">{solicitud._id.slice(-4)}</td>
+                            <td className="p-3 text-sm dark:text-gray-200">{solicitud.motivo}</td>
+                            <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaInicio)}</td>
+                            <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaFin)}</td>
                             <td className="p-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium
-                                ${solicitud.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800' : 
-                                  solicitud.estado === 'aprobado' ? 'bg-green-100 text-green-800' : 
-                                  'bg-red-100 text-red-800'}`}>
+                                ${solicitud.estado === 'pendiente' 
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                                  : solicitud.estado === 'aprobado' 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                }`}>
                                 {solicitud.estado}
                               </span>
                             </td>
@@ -631,7 +637,9 @@ const UserRequests = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {selectedUser.documentos.map((documento) => (
-                          <tr key={documento._id} className="hover:bg-gray-50">
+                          <tr key={documento._id} 
+                              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150
+                                       text-gray-700 dark:text-gray-200">
                             <td className="p-3 text-sm">
                               {documento.filePath.split('/').pop()}
                             </td>
@@ -640,9 +648,12 @@ const UserRequests = () => {
                             </td>
                             <td className="p-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium
-                                ${documento.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800' : 
-                                  documento.estado === 'aprobado' ? 'bg-green-100 text-green-800' : 
-                                  'bg-red-100 text-red-800'}`}>
+                                ${documento.estado === 'pendiente' 
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                                  : documento.estado === 'aprobado' 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                }`}>
                                 {documento.estado}
                               </span>
                             </td>
@@ -650,14 +661,18 @@ const UserRequests = () => {
                               <div className="flex items-center space-x-2">
                                 <button
                                   onClick={() => handleViewPdf(documento.filePath)}
-                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                  className="p-1 text-blue-600 dark:text-blue-400 
+                                           hover:bg-blue-50 dark:hover:bg-blue-900/30 
+                                           rounded-full transition-colors"
                                   title="Ver PDF"
                                 >
                                   <Eye className="w-5 h-5" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteDocument(documento._id, documento.usuarioId)}
-                                  className="p-1 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                  className="p-1 text-red-600 dark:text-red-400 
+                                           hover:bg-red-50 dark:hover:bg-red-900/30 
+                                           rounded-full transition-colors"
                                   title="Eliminar documento"
                                 >
                                   <Trash2 className="w-5 h-5" />
@@ -673,10 +688,12 @@ const UserRequests = () => {
               </div>
 
               {/* Footer del Modal */}
-              <div className="flex items-center justify-end gap-3 p-4 bg-gray-50 rounded-b-lg">
+              <div className="flex items-center justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 
+                           bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
+                           rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Cerrar
                 </button>
@@ -688,13 +705,15 @@ const UserRequests = () => {
 
       {/* Modal de previsualización de PDF */}
       {pdfPreviewModal.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="relative w-11/12 h-5/6 bg-white rounded-lg shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-medium">Previsualización del documento</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-11/12 h-5/6 bg-white dark:bg-gray-800 rounded-lg shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+              <h3 className="text-lg font-medium dark:text-gray-100">
+                Previsualización del documento
+              </h3>
               <button
                 onClick={() => setPdfPreviewModal({ show: false, url: '' })}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
                 <X className="w-6 h-6" />
               </button>

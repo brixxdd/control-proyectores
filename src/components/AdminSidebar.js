@@ -84,10 +84,6 @@ const AdminSidebar = () => {
             Solicitudes por Usuario
           </NavItem>
           
-          <NavItem path="/view-documents" icon={Files}>
-            Ver Documentos
-          </NavItem>
-          
           <NavItem path="/admin-proyectores" icon={Projector}>
             Gestión de Proyectores
           </NavItem>
