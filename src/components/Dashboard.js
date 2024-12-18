@@ -17,13 +17,9 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
     const fetchStats = async () => {
       try {
         const response = await authService.api.get('/dashboard-stats');
-        const activeSolicitudes = response.data.solicitudes.filter(
-          sol => sol.estado === 'aprobado'
-        ).length;
-        
         setStats({
-          solicitudesActivas: activeSolicitudes,
-          misSolicitudes: response.data.solicitudes.length
+          solicitudesActivas: response.data.solicitudesActivas || 0,
+          misSolicitudes: response.data.misSolicitudes || 0
         });
       } catch (error) {
         console.error('Error al obtener estadísticas:', error);
