@@ -607,18 +607,25 @@ app.get('/dashboard-stats', verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Obtener estadísticas
+    // Obtener todas las solicitudes del usuario
+    const solicitudesUsuario = await Solicitud.find({ usuarioId: userId });
+    
+    // Calcular estadísticas
     const stats = {
+      solicitudesActivas: solicitudesUsuario.filter(s => s.estado === 'aprobado').length,
+      misSolicitudes: solicitudesUsuario.length,
+      // Otras estadísticas que quieras incluir
       proyectoresDisponibles: await Proyector.countDocuments({ estado: 'disponible' }),
-      solicitudesPendientes: await Solicitud.countDocuments({ estado: 'pendiente' }),
-      solicitudesActivas: await Solicitud.countDocuments({ estado: 'aprobado' }),
-      misSolicitudes: await Solicitud.countDocuments({ usuarioId: userId })
+      solicitudesPendientes: solicitudesUsuario.filter(s => s.estado === 'pendiente').length
     };
 
     res.json(stats);
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
-    res.status(500).json({ message: 'Error al obtener estadísticas' });
+    res.status(500).json({ 
+      message: 'Error al obtener estadísticas',
+      error: error.message 
+    });
   }
 });
 
