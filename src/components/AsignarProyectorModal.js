@@ -39,6 +39,13 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
         estado: 'en uso'
       });
 
+      // Enviar notificación al usuario DESPUÉS de asignar el proyector
+      await authService.api.post('/api/notifications', {
+        usuarioId: solicitud.usuarioId._id,
+        mensaje: `Tu solicitud de proyector ha sido aprobada para la fecha ${new Date(solicitud.fechaInicio).toLocaleDateString()}. Proyector asignado: ${proyector.codigo}`,
+        tipo: 'success'
+      });
+
       onAsignar(proyector);
       onClose();
     } catch (error) {

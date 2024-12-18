@@ -22,6 +22,7 @@ import UserRequests from './components/UserRequests';
 import MySolicitudes from './components/MySolicitudes';
 import AdminProyectores from './components/AdminProyectores';
 import useInactivityTimer from "./hooks/useInactivityTimer";
+import NotificationsDropdown from './components/NotificationsDropdown';
 
 
 const App = () => {
@@ -38,7 +39,7 @@ const App = () => {
 
   const [showGradeGroupModal, setShowGradeGroupModal] = React.useState(false);
   const [showWelcomeAlert, setShowWelcomeAlert] = React.useState(false);
-  const [tokenTimeLeft, setTokenTimeLeft] = React.useState(30 * 60); // 30 minutos en segundos
+  const [tokenTimeLeft, setTokenTimeLeft] = React.useState(15 * 60); // 15 minutos en segundos
   const [showWarning, setShowWarning] = React.useState(false);
 
   const handleProfileUpdate = useCallback(async (data) => {
@@ -55,7 +56,7 @@ const App = () => {
   React.useEffect(() => {
     let timer;
     if (isAuthenticated) {
-      setTokenTimeLeft(30 * 60); // 30 minutos en segundos
+      setTokenTimeLeft(15 * 60); // 15 minutos en segundos
       timer = setInterval(() => {
         setTokenTimeLeft(prev => {
           // Mostrar advertencia cuando queden 2 minutos
@@ -72,23 +73,18 @@ const App = () => {
 
           if (prev <= 1) {
             clearInterval(timer);
-            Swal.fire({
-              title: 'Sesión Expirada',
-              text: 'Tu sesión ha expirado',
-              icon: 'info',
-              confirmButtonText: 'Entendido',
-              allowOutsideClick: false
-            }).then(() => {
-              handleLogout();
-            });
+            handleLogout();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(timer);
-  }, [isAuthenticated, handleLogout]);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isAuthenticated]);
 
   // Función para formatear el tiempo restante
   const formatTimeLeft = (seconds) => {
@@ -133,16 +129,16 @@ const App = () => {
             {/* Header del usuario */}
             {isAuthenticated && user && (
               <div className="flex justify-between items-center mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
-                {/* Temporizador en la izquierda */}
-                <div className="flex items-center">
+                {/* Temporizador y Notificaciones en la izquierda */}
+                <div className="flex items-center gap-4">
                   <div className={`
                     px-4 py-2 rounded-full font-medium text-sm
                     flex items-center gap-2
                     ${tokenTimeLeft <= 120 
-                      ? 'bg-red-100 text-red-700 border border-red-200' 
+                      ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300' 
                       : tokenTimeLeft <= 300 
-                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' 
-                        : 'bg-blue-50 text-blue-700 border border-blue-100'
+                        ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                        : 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300'
                     }
                   `}>
                     <svg 
@@ -160,6 +156,8 @@ const App = () => {
                     </svg>
                     <span>Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
                   </div>
+                  {/* Componente de Notificaciones */}
+                  <NotificationsDropdown />
                 </div>
 
                 {/* Información del usuario en la derecha */}

@@ -104,6 +104,12 @@ const UserRequests = () => {
         setSelectedSolicitud(solicitud);
         setShowAsignarModal(true);
         return;
+      } else if (newStatus === 'rechazado') {
+        await authService.api.post('/api/notifications', {
+          usuarioId: solicitud.usuarioId._id,
+          mensaje: `Tu solicitud de proyector para la fecha ${formatDate(solicitud.fechaInicio)} ha sido rechazada`,
+          tipo: 'error'
+        });
       }
       
       const endpoint = newStatus === 'solicitud' ? `/solicituds/${solicitud._id}` : `/documentos/${solicitud._id}`;
