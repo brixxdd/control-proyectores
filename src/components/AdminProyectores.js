@@ -13,7 +13,8 @@ const AdminProyectores = () => {
     codigo: '',
     grado: '',
     grupo: '',
-    estado: 'disponible'
+    estado: 'disponible',
+    turno: 'Matutino'
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -49,7 +50,8 @@ const AdminProyectores = () => {
       codigo: proyector.codigo,
       grado: proyector.grado,
       grupo: proyector.grupo,
-      estado: proyector.estado
+      estado: proyector.estado,
+      turno: proyector.turno
     });
     setShowModal(true);
   };
@@ -110,7 +112,7 @@ const AdminProyectores = () => {
       }
       setShowModal(false);
       setProyectorEditar(null);
-      setFormData({ codigo: '', grado: '', grupo: '', estado: 'disponible' });
+      setFormData({ codigo: '', grado: '', grupo: '', estado: 'disponible', turno: 'Matutino' });
     } catch (error) {
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
@@ -218,6 +220,9 @@ const AdminProyectores = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       Grupo: {proyector.grupo}
                     </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Turno: {proyector.turno}
+                    </p>
                     <div className="flex items-center">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         proyector.estado === 'disponible'
@@ -312,6 +317,22 @@ const AdminProyectores = () => {
                       required
                       placeholder="Ej: E"
                     />
+                  </div>
+
+                  {/* Campo Turno */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Turno
+                    </label>
+                    <select
+                      value={formData.turno}
+                      onChange={(e) => setFormData({...formData, turno: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
+                      required
+                    >
+                      <option value="Matutino">Matutino</option>
+                      <option value="Vespertino">Vespertino</option>
+                    </select>
                   </div>
 
                   {/* Estado */}

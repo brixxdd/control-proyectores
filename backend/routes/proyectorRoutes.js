@@ -17,18 +17,21 @@ router.get('/', verifyToken, async (req, res) => {
 // POST /api/proyectores
 router.post('/', verifyToken, async (req, res) => {
   try {
-    let { grado, grupo } = req.body;
+    console.log('Datos recibidos:', req.body); // Debug
 
-    // Validar que grado y grupo existan
-    if (!grado || !grupo) {
+    const { codigo, grado, grupo, estado, turno } = req.body;
+
+    // Validar que todos los campos requeridos existan
+    if (!codigo || !grado || !grupo || !turno) {
+      console.log('Campos faltantes:', { codigo, grado, grupo, turno }); // Debug
       return res.status(400).json({ 
-        message: 'Grado y grupo son requeridos',
-        received: { grado, grupo }
+        message: 'Todos los campos son requeridos',
+        received: { codigo, grado, grupo, turno }
       });
     }
 
     // Convertir grupo a mayúsculas
-    grupo = grupo.toUpperCase();
+    const grupoUpper = grupo.toUpperCase();
     
     // Convertir grado a número
     const gradoNum = parseInt(grado);
@@ -40,48 +43,64 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
-    if (!/^[A-F]$/.test(grupo)) {
+    if (!/^[A-F]$/.test(grupoUpper)) {
       return res.status(400).json({ 
         message: 'El grupo debe ser una letra entre A y F'
       });
     }
 
-    // Verificar si ya existe un proyector con el mismo grado y grupo
+    if (!['Matutino', 'Vespertino'].includes(turno)) {
+      return res.status(400).json({ 
+        message: 'El turno debe ser Matutino o Vespertino'
+      });
+    }
+
+    // Verificar si ya existe un proyector con el mismo grado, grupo y turno
     const proyectorExistente = await Proyector.findOne({ 
       grado: gradoNum, 
-      grupo: grupo 
+      grupo: grupoUpper,
+      turno
     });
 
     if (proyectorExistente) {
       return res.status(400).json({ 
-        message: `Ya existe un proyector asignado al grado ${gradoNum} grupo ${grupo}`
+        message: `Ya existe un proyector asignado al grado ${gradoNum} grupo ${grupoUpper} turno ${turno}`
       });
     }
 
-    // Generar código único
-    const codigo = `PRY-${gradoNum}${grupo}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-
-    const proyector = new Proyector({
-      codigo,
+    // Crear el objeto proyector explícitamente
+    const proyectorData = {
+      codigo: codigo,
       grado: gradoNum,
-      grupo,
-      estado: 'disponible'
-    });
+      grupo: grupoUpper,
+      estado: estado || 'disponible',
+      turno: turno // Asegurarnos que el turno se asigna explícitamente
+    };
+
+    console.log('Datos del proyector a crear:', proyectorData); // Debug
+
+    const proyector = new Proyector(proyectorData);
+    
+    console.log('Proyector antes de guardar:', proyector); // Debug
 
     const proyectorGuardado = await proyector.save();
+    
+    console.log('Proyector guardado:', proyectorGuardado); // Debug
+
     res.status(201).json(proyectorGuardado);
 
   } catch (error) {
+    console.error('Error completo:', error); // Debug completo del error
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: `Ya existe un proyector asignado a este grado y grupo`
+        message: `Ya existe un proyector asignado a este grado, grupo y turno`
       });
     }
 
-    console.error('Error al crear proyector:', error);
     res.status(500).json({ 
       message: 'Error al crear proyector', 
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 });
