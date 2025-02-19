@@ -19,6 +19,7 @@ const AdminProyectores = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [proyectorToDelete, setProyectorToDelete] = useState(null);
+  const [turnoFilter, setTurnoFilter] = useState('todos');
 
   const cargarProyectores = async () => {
     try {
@@ -91,9 +92,10 @@ const AdminProyectores = () => {
 
     try {
       const dataToSend = {
-        ...formData,
+        grado: gradoNum,
         grupo: grupoUpper,
-        grado: gradoNum
+        turno: formData.turno,
+        estado: formData.estado
       };
 
       if (proyectorEditar) {
@@ -107,12 +109,25 @@ const AdminProyectores = () => {
         toast.success('Proyector actualizado exitosamente');
       } else {
         const response = await authService.api.post('/api/proyectores', dataToSend);
-        setProyectores([...proyectores, response.data]);
+        // Ordenar los proyectores después de agregar uno nuevo
+        const nuevosProyectores = [...proyectores, response.data].sort((a, b) => {
+          if (a.grado === b.grado) {
+            return a.grupo.localeCompare(b.grupo);
+          }
+          return a.grado - b.grado;
+        });
+        setProyectores(nuevosProyectores);
         toast.success('Proyector creado exitosamente');
       }
       setShowModal(false);
       setProyectorEditar(null);
-      setFormData({ codigo: '', grado: '', grupo: '', estado: 'disponible', turno: 'Matutino' });
+      setFormData({ 
+        codigo: '', 
+        grado: '', 
+        grupo: '', 
+        estado: 'disponible', 
+        turno: 'Matutino' 
+      });
     } catch (error) {
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
@@ -121,6 +136,18 @@ const AdminProyectores = () => {
       }
     }
   };
+
+  // Función para filtrar proyectores
+  const filteredProyectores = proyectores
+    .filter(p => 
+      // Filtro de búsqueda
+      (p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       p.grado.toString().includes(searchTerm) ||
+       p.grupo.toLowerCase().includes(searchTerm.toLowerCase()))
+      && 
+      // Filtro por turno
+      (turnoFilter === 'todos' || p.turno === turnoFilter)
+    );
 
   if (loading) {
     return (
@@ -157,87 +184,97 @@ const AdminProyectores = () => {
           </div>
         </div>
 
-        {/* Barra de búsqueda */}
-        <div className="max-w-lg w-full mb-6">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+        {/* Barra de filtros */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          {/* Búsqueda existente */}
+          <div className="flex-1">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-800 dark:border-gray-700 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Buscar proyector..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-800 dark:border-gray-700 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Buscar proyector..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          </div>
+
+          {/* Filtro por turno */}
+          <div className="md:w-48">
+            <select
+              value={turnoFilter}
+              onChange={(e) => setTurnoFilter(e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-800 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >
+              <option value="todos">Todos los turnos</option>
+              <option value="Matutino">Matutino</option>
+              <option value="Vespertino">Vespertino</option>
+            </select>
           </div>
         </div>
 
         {/* Grid de Proyectores */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {proyectores
-            .filter(p => 
-              p.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              p.grado.toString().includes(searchTerm) ||
-              p.grupo.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .map((proyector) => (
-              <div
-                key={proyector._id}
-                className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-300"
-              >
-                <div className="px-4 py-5 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        <Projector className="h-6 w-6 text-blue-500" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                          {proyector.codigo}
-                        </h3>
-                      </div>
+          {filteredProyectores.map((proyector) => (
+            <div
+              key={proyector._id}
+              className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-300"
+            >
+              <div className="px-4 py-5 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <Projector className="h-6 w-6 text-blue-500" />
                     </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditar(proyector)}
-                        className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Edit2 className="h-5 w-5 text-gray-500 hover:text-blue-500" />
-                      </button>
-                      <button
-                        onClick={() => handleBorrar(proyector)}
-                        className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Trash2 className="h-5 w-5 text-gray-500 hover:text-red-500" />
-                      </button>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                        {proyector.codigo}
+                      </h3>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Grado: {proyector.grado}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Grupo: {proyector.grupo}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Turno: {proyector.turno}
-                    </p>
-                    <div className="flex items-center">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        proyector.estado === 'disponible'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                          : proyector.estado === 'en uso'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                          : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
-                      }`}>
-                        {proyector.estado}
-                      </span>
-                    </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEditar(proyector)}
+                      className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Edit2 className="h-5 w-5 text-gray-500 hover:text-blue-500" />
+                    </button>
+                    <button
+                      onClick={() => handleBorrar(proyector)}
+                      className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <Trash2 className="h-5 w-5 text-gray-500 hover:text-red-500" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Grado: {proyector.grado}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Grupo: {proyector.grupo}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Turno: {proyector.turno}
+                  </p>
+                  <div className="flex items-center">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      proyector.estado === 'disponible'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                        : proyector.estado === 'en uso'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                        : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                    }`}>
+                      {proyector.estado}
+                    </span>
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       </div>
 
