@@ -213,12 +213,29 @@ const getWeekBounds = () => {
   return { monday, friday };
 };
 
-// Función para deshabilitar fechas fuera de la semana actual
+// Versión 2: Habilitar siguiente semana solo los viernes a las 21:00
 const tileDisabled = ({ date }) => {
   const { monday, friday } = getWeekBounds();
   const day = date.getDay();
+  const currentTime = new Date();
+  const currentHour = currentTime.getHours();
+  const isCurrentlyFriday = currentTime.getDay() === 5; // 5 es viernes
   
-  // Deshabilitar fines de semana y días fuera de la semana actual
+  // Si es viernes después de las 14:00, permitir la siguiente semana
+  if (isCurrentlyFriday && currentHour >= 14) {
+    const nextMonday = new Date(monday);
+    nextMonday.setDate(monday.getDate() + 7);
+    const nextFriday = new Date(friday);
+    nextFriday.setDate(friday.getDate() + 7);
+    
+    // Deshabilitar fines de semana y días fuera de la siguiente semana
+    return date < nextMonday || 
+           date > nextFriday || 
+           day === 0 || 
+           day === 6;
+  }
+  
+  // Comportamiento normal si no es viernes o antes de las 21:00
   return date < monday || 
          date > friday || 
          day === 0 || 
@@ -426,7 +443,7 @@ return (
       {/* Reloj en zona horaria fija */}
       <div className="text-center mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
         <div className="text-sm text-gray-600 dark:text-gray-300">
-          Zona horaria: Ciudad de México
+          Zona horaria: Ciudad de Tapachula, Chiapas
         </div>
         <div className="text-lg font-mono text-gray-800 dark:text-gray-100">
           {formatInTimeZone(currentTime, targetTimeZone, 'HH:mm:ss')}
