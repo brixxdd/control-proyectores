@@ -4,7 +4,9 @@ import { authService } from '../services/authService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiRefreshCw } from 'react-icons/fi'; // Importar icono de recarga
 import AsignarProyectorModal from './AsignarProyectorModal';
-import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { Temporal } from '@js-temporal/polyfill';
+import { useTimeZone } from '../contexts/TimeZoneContext';
+import { alertaExito, alertaError } from './Alert';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
@@ -23,6 +25,31 @@ const UserRequests = () => {
   const [refreshStatus, setRefreshStatus] = useState(null);
   const [showAsignarModal, setShowAsignarModal] = useState(false);
   const [selectedSolicitud, setSelectedSolicitud] = useState(null);
+  const [error, setError] = useState(null);
+  
+  // Nuevos estados para manejar los datos
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
+  const [usuariosSolicitudes, setUsuariosSolicitudes] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const targetTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const fetchSolicitudes = async () => {
     try {
@@ -56,44 +83,213 @@ const UserRequests = () => {
     refreshData();
   }, []);
 
-  const filteredUsers = users.filter(user => 
-    user.userData.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.userData.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    const filtered = users.filter(user => 
+      user.userData.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.userData.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(filtered);
+  }, [users, searchTerm]);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+  // Función para obtener el inicio de la semana usando Date en lugar de Temporal
+  const startOfWeek = (date) => {
+    // Crear una copia de la fecha
+    const result = new Date(date);
+    // Obtener el día de la semana (0 = domingo, 1 = lunes, ..., 6 = sábado)
+    const day = result.getDay();
+    // Calcular cuántos días restar para llegar al lunes
+    // Si es domingo (0), restar 6 días para llegar al lunes anterior
+    // Si es otro día, restar (día - 1) días
+    const diff = day === 0 ? 6 : day - 1;
+    // Restar los días necesarios
+    result.setDate(result.getDate() - diff);
+    // Establecer la hora a 00:00:00
+    result.setHours(0, 0, 0, 0);
+    return result;
+  };
+
+  // Función para obtener el fin de la semana
+  const endOfWeek = (date) => {
+    // Obtener el inicio de la semana
+    const start = startOfWeek(date);
+    // Crear una copia y añadir 6 días para llegar al domingo
+    const result = new Date(start);
+    result.setDate(start.getDate() + 6);
+    // Establecer la hora a 23:59:59
+    result.setHours(23, 59, 59, 999);
+    return result;
+  };
+
+  // Función para verificar si una fecha está dentro de un intervalo
+  const isWithinInterval = (date, interval) => {
+    // Convertir todo a objetos Date para comparación
+    const checkDate = date instanceof Date ? date : new Date(date);
+    const start = interval.start instanceof Date ? interval.start : new Date(interval.start);
+    const end = interval.end instanceof Date ? interval.end : new Date(interval.end);
+    
+    // Normalizar las fechas estableciendo la hora a mediodía para evitar problemas de zona horaria
+    checkDate.setHours(12, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    // Comparar las fechas
+    return checkDate >= start && checkDate <= end;
+  };
+
+  // Función para obtener las solicitudes de la semana actual
+  const obtenerSolicitudesSemanaActual = (solicitudes) => {
+    // Obtener los límites de la semana actual
+    const now = new Date();
+    const monday = startOfWeek(now);
+    const sunday = endOfWeek(now);
+    
+    // Filtrar las solicitudes que están dentro de la semana actual
+    return solicitudes.filter(solicitud => {
+      const fechaInicio = new Date(solicitud.fechaInicio);
+      return isWithinInterval(fechaInicio, { start: monday, end: sunday });
     });
   };
 
-  const obtenerSolicitudesSemanaActual = (solicitudes) => {
-    const hoy = new Date();
-    const inicioDeSemana = startOfWeek(hoy, { weekStartsOn: 1 });
-    const finDeSemana = endOfWeek(hoy, { weekStartsOn: 1 });
+  // Función para agrupar solicitudes por usuario
+  const agruparSolicitudesPorUsuario = (solicitudes, usuarios) => {
+    // Crear un mapa para almacenar las solicitudes por usuario
+    const solicitudesPorUsuario = {};
+    
+    // Agrupar las solicitudes por usuario
+    solicitudes.forEach(solicitud => {
+      const usuarioId = solicitud.usuarioId;
+      if (!solicitudesPorUsuario[usuarioId]) {
+        // Buscar los datos del usuario
+        const userData = usuarios.find(u => u._id === usuarioId);
+        solicitudesPorUsuario[usuarioId] = {
+          userData: userData || { _id: usuarioId, nombre: 'Usuario Desconocido', email: 'No disponible' },
+          solicitudes: [],
+          documentos: []
+        };
+      }
+      solicitudesPorUsuario[usuarioId].solicitudes.push(solicitud);
+    });
+    
+    // Convertir el objeto a un array
+    return Object.values(solicitudesPorUsuario);
+  };
 
-    // Filtrar solicitudes de la semana actual (L-V)
-    return solicitudes
-      .filter(solicitud => {
-        const fechaSolicitud = new Date(solicitud.fechaInicio);
-        return isWithinInterval(fechaSolicitud, {
-          start: inicioDeSemana,
-          end: finDeSemana
-        }) && fechaSolicitud.getDay() !== 0 && fechaSolicitud.getDay() !== 6;
-      })
-      .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio));
+  // Función para ordenar solicitudes por fecha (más recientes primero)
+  const ordenarSolicitudesPorFecha = (solicitudes) => {
+    return [...solicitudes].sort((a, b) => {
+      const fechaA = new Date(a.fechaInicio);
+      const fechaB = new Date(b.fechaInicio);
+      return fechaB - fechaA; // Orden descendente (más recientes primero)
+    });
+  };
+
+  // Función para cargar los datos
+  const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Obtener el token JWT
+      const token = sessionStorage.getItem('jwtToken');
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+      
+      // Configurar los headers
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      // Obtener las solicitudes
+      const solicitudesResponse = await fetch('http://localhost:3000/solicitudes', {
+        headers
+      });
+      
+      if (!solicitudesResponse.ok) {
+        throw new Error(`Error al obtener solicitudes: ${solicitudesResponse.statusText}`);
+      }
+      
+      const solicitudesData = await solicitudesResponse.json();
+      
+      // Obtener los usuarios
+      const usuariosResponse = await fetch('http://localhost:3000/usuarios', {
+        headers
+      });
+      
+      if (!usuariosResponse.ok) {
+        throw new Error(`Error al obtener usuarios: ${usuariosResponse.statusText}`);
+      }
+      
+      const usuariosData = await usuariosResponse.json();
+      
+      // Obtener los documentos
+      const documentosResponse = await fetch('http://localhost:3000/documentos', {
+        headers
+      });
+      
+      if (!documentosResponse.ok) {
+        throw new Error(`Error al obtener documentos: ${documentosResponse.statusText}`);
+      }
+      
+      const documentosData = await documentosResponse.json();
+      
+      // Agrupar las solicitudes por usuario
+      const solicitudesPorUsuario = agruparSolicitudesPorUsuario(solicitudesData, usuariosData);
+      
+      // Agregar los documentos a cada usuario
+      documentosData.forEach(documento => {
+        const usuarioId = documento.usuarioId;
+        const usuario = solicitudesPorUsuario.find(u => u.userData._id === usuarioId);
+        if (usuario) {
+          if (!usuario.documentos) {
+            usuario.documentos = [];
+          }
+          usuario.documentos.push(documento);
+        }
+      });
+      
+      // Ordenar las solicitudes por fecha (más recientes primero)
+      const solicitudesOrdenadas = ordenarSolicitudesPorFecha(solicitudesData);
+      setSolicitudes(solicitudesOrdenadas);
+      
+      // Actualizar el estado
+      setUsuarios(usuariosData);
+      setDocumentos(documentosData);
+      setUsuariosSolicitudes(solicitudesPorUsuario);
+      
+      // Filtrar los usuarios que tienen solicitudes en la semana actual
+      const solicitudesSemanaActual = obtenerSolicitudesSemanaActual(solicitudesData);
+      const usuariosConSolicitudesSemanaActual = solicitudesPorUsuario.filter(usuario => {
+        return usuario.solicitudes.some(solicitud => 
+          solicitudesSemanaActual.some(s => s._id === solicitud._id)
+        );
+      });
+      
+      setFilteredUsers(usuariosConSolicitudesSemanaActual);
+      
+    } catch (error) {
+      console.error('Error al recargar datos:', error);
+      setError('Error al cargar los datos. Por favor, intenta de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleUserClick = (user) => {
     // Filtrar y ordenar las solicitudes antes de mostrar el modal
     const solicitudesFiltradas = obtenerSolicitudesSemanaActual(user.solicitudes);
+    
+    // Ordenar las solicitudes por fecha (más antiguas primero)
+    const solicitudesOrdenadas = [...solicitudesFiltradas].sort((a, b) => {
+      const fechaA = new Date(a.fechaInicio);
+      const fechaB = new Date(b.fechaInicio);
+      return fechaA - fechaB; // Orden ascendente (más antiguas primero)
+    });
+    
     setSelectedUser({
       ...user,
-      solicitudes: solicitudesFiltradas
+      solicitudes: solicitudesOrdenadas
     });
     setShowModal(true);
   };
@@ -130,11 +326,7 @@ const UserRequests = () => {
           }))
         );
 
-        setAlert({
-          show: true,
-          message: `${newStatus === 'solicitud' ? 'Solicitud' : 'Documento'} ${newStatus} exitosamente`,
-          type: newStatus === 'aprobado' ? 'success' : 'warning'
-        });
+        alertaExito(`${newStatus === 'solicitud' ? 'Solicitud' : 'Documento'} ${newStatus} exitosamente`);
 
         setTimeout(() => {
           setAlert({ show: false, message: '', type: '' });
@@ -142,11 +334,7 @@ const UserRequests = () => {
       }
     } catch (error) {
       console.error('Error al actualizar estado:', error);
-      setAlert({
-        show: true,
-        message: `Error al actualizar estado`,
-        type: 'error'
-      });
+      alertaError('Error al actualizar estado');
     }
   };
 
@@ -434,11 +622,11 @@ const UserRequests = () => {
             </h3>
           </div>
           <p className="text-blue-800 dark:text-blue-100">
-            Del {startOfWeek(new Date(), { weekStartsOn: 1 }).toLocaleDateString('es-MX', {
+            Del {startOfWeek(new Date()).toLocaleDateString('es-MX', {
               weekday: 'long',
               day: 'numeric',
               month: 'long'
-            })} al {endOfWeek(new Date(), { weekStartsOn: 1 }).toLocaleDateString('es-MX', {
+            })} al {endOfWeek(new Date()).toLocaleDateString('es-MX', {
               weekday: 'long',
               day: 'numeric',
               month: 'long'

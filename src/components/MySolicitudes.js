@@ -2,71 +2,125 @@ import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { motion } from 'framer-motion';
 import { Check, X, Clock, Calendar, User, BookOpen } from 'lucide-react';
-import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { useTimeZone } from '../contexts/TimeZoneContext';
 
 const MySolicitudes = () => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const { formatDate } = useTimeZone();
+
+  // Dentro del componente MySolicitudes, añadir esta función de formato de fecha
+  const formatDateLocal = (dateString) => {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Función para obtener el inicio de la semana usando Date en lugar de Temporal
+  const startOfWeek = (date) => {
+    // Crear una copia de la fecha
+    const result = new Date(date);
+    // Obtener el día de la semana (0 = domingo, 1 = lunes, ..., 6 = sábado)
+    const day = result.getDay();
+    // Calcular cuántos días restar para llegar al lunes
+    // Si es domingo (0), restar 6 días para llegar al lunes anterior
+    // Si es otro día, restar (día - 1) días
+    const diff = day === 0 ? 6 : day - 1;
+    // Restar los días necesarios
+    result.setDate(result.getDate() - diff);
+    // Establecer la hora a 00:00:00
+    result.setHours(0, 0, 0, 0);
+    return result;
+  };
+
+  // Función para obtener el fin de la semana
+  const endOfWeek = (date) => {
+    // Obtener el inicio de la semana
+    const start = startOfWeek(date);
+    // Crear una copia y añadir 6 días para llegar al domingo
+    const result = new Date(start);
+    result.setDate(start.getDate() + 6);
+    // Establecer la hora a 23:59:59
+    result.setHours(23, 59, 59, 999);
+    return result;
+  };
+
+  // Función para verificar si una fecha está dentro de un intervalo
+  const isWithinInterval = (date, interval) => {
+    // Convertir todo a objetos Date para comparación
+    const checkDate = date instanceof Date ? date : new Date(date);
+    const start = interval.start instanceof Date ? interval.start : new Date(interval.start);
+    const end = interval.end instanceof Date ? interval.end : new Date(interval.end);
+    
+    // Normalizar las fechas estableciendo la hora a mediodía para evitar problemas de zona horaria
+    checkDate.setHours(12, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    // Comparar las fechas
+    return checkDate >= start && checkDate <= end;
+  };
+
+  // Función para obtener las solicitudes de la semana actual
   const obtenerSolicitudesSemanaActual = (solicitudes) => {
-    const hoy = new Date();
-    const inicioDeSemana = startOfWeek(hoy, { weekStartsOn: 1 });
-    const finDeSemana = endOfWeek(hoy, { weekStartsOn: 1 });
+    // Obtener los límites de la semana actual
+    const now = new Date();
+    const monday = startOfWeek(now);
+    const sunday = endOfWeek(now);
+    
+    // Filtrar las solicitudes que están dentro de la semana actual
+    return solicitudes.filter(solicitud => {
+      const fechaInicio = new Date(solicitud.fechaInicio);
+      return isWithinInterval(fechaInicio, { start: monday, end: sunday });
+    });
+  };
 
-    // Crear un mapa para agrupar por día
-    const solicitudesPorDia = new Map();
-
-    // Filtrar y agrupar por día
-    solicitudes
-      .filter(solicitud => {
-        const fechaSolicitud = new Date(solicitud.fechaInicio);
-        return isWithinInterval(fechaSolicitud, {
-          start: inicioDeSemana,
-          end: finDeSemana
-        }) && fechaSolicitud.getDay() !== 0 && fechaSolicitud.getDay() !== 6;
-      })
-      .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio))
-      .forEach(solicitud => {
-        const fecha = new Date(solicitud.fechaInicio);
-        const dia = fecha.getDay(); // 1-5 (Lunes-Viernes)
+  // Función para cargar las solicitudes del usuario
+  const fetchMySolicitudes = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Iniciando fetch de solicitudes...');
+      const response = await authService.api.get('/mis-solicitudes');
+      
+      if (!response.data || response.data.length === 0) {
+        console.log('No se recibieron solicitudes del servidor');
+        setSolicitudes([]);
+      } else {
+        console.log('Solicitudes recibidas:', response.data);
+        const solicitudesFiltradas = obtenerSolicitudesSemanaActual(response.data);
+        console.log('Solicitudes filtradas:', solicitudesFiltradas);
         
-        // Solo guardar la primera solicitud de cada día
-        if (!solicitudesPorDia.has(dia)) {
-          solicitudesPorDia.set(dia, solicitud);
-        }
-      });
-
-    // Convertir el mapa a array y ordenar por día
-    const solicitudesFinales = Array.from(solicitudesPorDia.values())
-      .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio));
-
-    return solicitudesFinales;
+        // Ordenar las solicitudes por fecha (más antiguas primero)
+        const solicitudesOrdenadas = solicitudesFiltradas.sort((a, b) => {
+          const fechaA = new Date(a.fechaInicio);
+          const fechaB = new Date(b.fechaInicio);
+          return fechaA - fechaB; // Orden ascendente (más antiguas primero)
+        });
+        
+        setSolicitudes(solicitudesOrdenadas);
+      }
+    } catch (error) {
+      console.error('Error completo:', error);
+      setError('Error al cargar tus solicitudes: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchMySolicitudes = async () => {
-      try {
-        console.log('Iniciando fetch de solicitudes...');
-        const response = await authService.api.get('/mis-solicitudes');
-        
-        if (!response.data || response.data.length === 0) {
-          console.log('No se recibieron solicitudes del servidor');
-          setSolicitudes([]);
-        } else {
-          console.log('Solicitudes recibidas:', response.data);
-          const solicitudesFiltradas = obtenerSolicitudesSemanaActual(response.data);
-          console.log('Solicitudes filtradas:', solicitudesFiltradas);
-          setSolicitudes(solicitudesFiltradas);
-        }
-      } catch (error) {
-        console.error('Error completo:', error);
-        setError('Error al cargar tus solicitudes: ' + (error.response?.data?.message || error.message));
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMySolicitudes();
   }, []);
 
@@ -124,17 +178,37 @@ const MySolicitudes = () => {
             Semana Actual
           </h3>
         </div>
-        <p className="text-blue-800 dark:text-blue-100">
-          Del {startOfWeek(new Date(), { weekStartsOn: 1 }).toLocaleDateString('es-MX', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long'
-          })} al {endOfWeek(new Date(), { weekStartsOn: 1 }).toLocaleDateString('es-MX', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long'
-          })}
-        </p>
+        {(() => {
+          // Obtener el inicio de la semana (lunes)
+          const today = new Date();
+          const currentDay = today.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
+          const diff = currentDay === 0 ? 6 : currentDay - 1; // Ajustar para que el lunes sea el primer día
+          
+          const monday = new Date(today);
+          monday.setDate(today.getDate() - diff);
+          monday.setHours(0, 0, 0, 0);
+          
+          // Obtener el fin de la semana (viernes)
+          const friday = new Date(monday);
+          friday.setDate(monday.getDate() + 4); // +4 días desde el lunes = viernes
+          friday.setHours(23, 59, 59, 999);
+          
+          return (
+            <p className="text-blue-800 dark:text-blue-100">
+              Del {monday.toLocaleDateString('es-MX', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })} al {friday.toLocaleDateString('es-MX', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </p>
+          );
+        })()}
         <p className="text-sm text-blue-600 dark:text-blue-200 mt-2">
           Mostrando máximo una solicitud por día (Lunes a Viernes)
         </p>
@@ -168,20 +242,10 @@ const MySolicitudes = () => {
                     {solicitud.motivo}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(solicitud.fechaInicio).toLocaleString('es-MX', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatDateLocal(solicitud.fechaInicio)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(solicitud.fechaFin).toLocaleString('es-MX', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatDateLocal(solicitud.fechaFin)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
