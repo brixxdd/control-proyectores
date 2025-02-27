@@ -176,17 +176,18 @@ const createEvent = async (event) => {
 
 const handleDateChange = (newDate) => {
   if (newDate && newDate instanceof Date && !isNaN(newDate)) {
-    // Convertir la fecha a la zona horaria objetivo
+    // Asegurarnos de que la fecha esté en la zona horaria correcta
     const zonedDate = utcToZonedTime(newDate, targetTimeZone);
+    // Resetear la hora a medianoche en la zona horaria local
     zonedDate.setHours(0, 0, 0, 0);
     
     const dateStr = formatInTimeZone(zonedDate, targetTimeZone, 'yyyy-MM-dd');
     
     console.log('Fecha seleccionada:', {
-      original: newDate,
-      zonedDate: zonedDate,
-      dateStr: dateStr,
-      targetTimeZone
+      dateStr,
+      targetTimeZone,
+      zonedTime: formatInTimeZone(zonedDate, targetTimeZone, 'yyyy-MM-dd HH:mm:ss'),
+      originalDate: newDate.toISOString() // Para debugging
     });
 
     setSelectedDates(prev => {
@@ -244,15 +245,17 @@ const tileDisabled = ({ date }) => {
 
 const tileClassName = ({ date, view }) => {
   if (view !== 'month') return null;
-  
-  // Convertir la fecha del tile a la zona horaria objetivo
-  const zonedDate = utcToZonedTime(date, targetTimeZone);
-  const dateStr = formatInTimeZone(zonedDate, targetTimeZone, 'yyyy-MM-dd');
+
+  // Convertir la fecha del tile usando la zona horaria del contexto
+  const dateStr = formatInTimeZone(date, targetTimeZone, 'yyyy-MM-dd');
   
   const hasEvent = events.some(event => {
-    const eventDate = utcToZonedTime(new Date(event.start), targetTimeZone);
-    const eventDateStr = formatInTimeZone(eventDate, targetTimeZone, 'yyyy-MM-dd');
-    return eventDateStr === dateStr;
+    const eventDate = formatInTimeZone(
+      new Date(event.start), 
+      targetTimeZone, 
+      'yyyy-MM-dd'
+    );
+    return eventDate === dateStr;
   });
   
   const isSelected = selectedDates.includes(dateStr);
@@ -420,6 +423,35 @@ const toggleEventSelection = (id) => {
   );
 };
 
+// Componente de fechas seleccionadas
+const SelectedDatesComponent = () => (
+  selectedDates.length > 0 && (
+    <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">
+        Fechas seleccionadas:
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {selectedDates.map(date => {
+          // Crear la fecha correctamente en la zona horaria objetivo
+          const [year, month, day] = date.split('-');
+          const zonedDate = new Date(Date.UTC(year, month - 1, day));
+          
+          return (
+            <span 
+              key={date}
+              className="px-3 py-1 bg-blue-100 dark:bg-blue-900 
+                       text-blue-800 dark:text-blue-100 
+                       rounded-full text-sm"
+            >
+              {formatInTimeZone(zonedDate, targetTimeZone, 'dd/MM/yyyy')}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  )
+);
+
 return (
   <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
     {/* Contenedor principal */}
@@ -457,7 +489,11 @@ return (
       <div className="calendar-container p-2 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md">
         <Calendar
           onChange={handleDateChange}
-          value={selectedDates.map(date => new Date(date))}
+          value={selectedDates.map(dateStr => {
+            const date = new Date(dateStr);
+            // Asegurarnos de que la fecha esté en la zona horaria correcta
+            return utcToZonedTime(date, targetTimeZone);
+          })}
           minDetail="month"
           maxDetail="month"
           tileDisabled={tileDisabled}
@@ -465,6 +501,8 @@ return (
           className="w-full dark:bg-gray-800 dark:text-white"
         />
       </div>
+
+      <SelectedDatesComponent />
 
       {/* Botones con estilos mejorados */}
       <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
