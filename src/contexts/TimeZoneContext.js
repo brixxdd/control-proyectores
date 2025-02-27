@@ -1,29 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { formatInTimeZone } from 'date-fns-tz';
+import { Temporal } from '@js-temporal/polyfill';
 
 const TimeZoneContext = createContext();
 
-export function TimeZoneProvider({ children }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
+export const useTimeZone = () => useContext(TimeZoneContext);
+
+export const TimeZoneProvider = ({ children }) => {
+  const [currentTime, setCurrentTime] = useState(Temporal.Now.zonedDateTimeISO('America/Mexico_City'));
   const targetTimeZone = 'America/Mexico_City';
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
+    const interval = setInterval(() => {
+      setCurrentTime(Temporal.Now.zonedDateTimeISO(targetTimeZone));
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(interval);
   }, []);
 
-  const formatDate = (date) => {
-    return formatInTimeZone(date, targetTimeZone, 'yyyy-MM-dd HH:mm:ss');
-  };
-
   return (
-    <TimeZoneContext.Provider value={{ currentTime, targetTimeZone, formatDate }}>
+    <TimeZoneContext.Provider value={{ currentTime, targetTimeZone }}>
       {children}
     </TimeZoneContext.Provider>
   );
-}
-
-export const useTimeZone = () => useContext(TimeZoneContext); 
+};

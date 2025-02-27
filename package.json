@@ -8,6 +8,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "@js-temporal/polyfill": "^0.4.4",
     "@mui/icons-material": "^6.1.1",
     "@mui/material": "^6.1.1",
     "@react-oauth/google": "^0.12.1",
@@ -19,7 +20,6 @@
     "bootstrap": "^5.3.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "express-fileupload": "^1.4.0",
@@ -41,7 +41,8 @@
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
     "react-icons": "^5.3.0",
-    "react-router-dom": "^6.26.2",
+    "react-router": "^6.10.0",
+    "react-router-dom": "^6.10.0",
     "react-scripts": "^5.0.1",
     "sweetalert2": "^11.14.4",
     "web-vitals": "^2.1.4"
@@ -72,8 +73,15 @@
   },
   "devDependencies": {
     "@types/jwt-decode": "^3.1.0",
+    "assert": "^2.1.0",
     "autoprefixer": "^10.4.20",
+    "browserify-zlib": "^0.2.0",
+    "https-browserify": "^1.0.0",
     "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.11"
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "tailwindcss": "^3.4.11",
+    "url": "^0.11.4",
+    "util": "^0.12.5"
   }
 }
