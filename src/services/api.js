@@ -1,6 +1,7 @@
-const API_URL = process.env.NODE_ENV === 'production'
-  ? 'https://control-proyectores.onrender.com'
-  : 'http://localhost:3000';
+import { BACKEND_URL } from '../config/config';
+
+// Reemplaza la definición de API_URL
+const API_URL = BACKEND_URL;
 
 // Función para login
 export const loginUser = async (token) => {

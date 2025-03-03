@@ -1,12 +1,12 @@
 import axios from 'axios';
-import { AUTH_CONSTANTS } from '../constants/auth';
+import { AUTH_CONFIG } from '../config/config';
 import { gapi } from 'gapi-script';
 import Swal from 'sweetalert2';
 
 class AuthService {
   constructor() {
     this.api = axios.create({
-      baseURL: AUTH_CONSTANTS.API_BASE_URL,
+      baseURL: AUTH_CONFIG.API_BASE_URL,
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ class AuthService {
   }
 
   getAuthHeaderWithRefreshToken() {
-      const token = sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_REFRESH_TOKEN);
+      const token = sessionStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.JWT_REFRESH_TOKEN);
       if (!token) {
           throw new Error('No refresh token found in session storage');
       }
@@ -167,11 +167,11 @@ class AuthService {
   }
 
   isAdmin(email) {
-    return email === AUTH_CONSTANTS.ADMIN_EMAIL;
+    return email === AUTH_CONFIG.ADMIN_EMAIL;
   }
 
   getStoredToken() {
-    return sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN);
+    return sessionStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.JWT_TOKEN);
   }
 
   _handleAuthResponse(data) {
@@ -179,11 +179,11 @@ class AuthService {
       //comprobacion si el servidor devolvio si el usuario normal no tiene grado, grupo y turno
       if (data.pvez) {
         console.log('Eres nuevo por aqui? ', data.pvez)
-        sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.FIRSTLOG, data.pvez);
+        sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.FIRSTLOG, data.pvez);
       }
-      sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN, data.token);
-      console.log('Token almacenado:', sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_TOKEN));
-      if(data.refreshToken) {sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.JWT_REFRESH_TOKEN,data.refreshToken)}
+      sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.JWT_TOKEN, data.token);
+      console.log('Token almacenado:', sessionStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.JWT_TOKEN));
+      if(data.refreshToken) {sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.JWT_REFRESH_TOKEN,data.refreshToken)}
       this.setAuthHeader(data.token);
       console.log('Token guardado y configurado');
     }
@@ -191,9 +191,9 @@ class AuthService {
     if (data.user) {
       const userData = {
         ...data.user,
-        picture: data.user.picture || sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.USER_PICTURE)
+        picture: data.user.picture || sessionStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.USER_PICTURE)
       };
-      sessionStorage.setItem(AUTH_CONSTANTS.STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+      sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
     }
   }
 

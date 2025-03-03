@@ -11,6 +11,8 @@ import TimeSelectionModal from './TimeSelectionModal';
 import DeleteEventModal from './DeleteEventModal';
 import { useTimeZone } from '../contexts/TimeZoneContext';
 import { alertaExito, alertaError } from './Alert';
+import { BACKEND_URL } from '../config/config';
+import { fetchFromAPI } from '../utils/fetchHelper';
 
 const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
 const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
@@ -447,8 +449,9 @@ const RequestProjector = () => {
           }
 
           // Crear solicitud en el backend
-          const response = await axios.post('http://localhost:3000/solicitar-proyector', 
-            {
+          const response = await fetchFromAPI('/solicitar-proyector', {
+            method: 'POST',
+            body: JSON.stringify({
               fechaInicio: startDateTime.toISOString(),
               fechaFin: endDateTime.toISOString(),
               motivo: 'Solicitud de proyector',
@@ -456,14 +459,8 @@ const RequestProjector = () => {
               grado: currentUser?.grado || '',
               grupo: currentUser?.grupo || '',
               turno: currentUser?.turno || ''
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${jwtToken}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
+            })
+          });
 
           console.log('Solicitud creada:', response.data);
         } catch (error) {
