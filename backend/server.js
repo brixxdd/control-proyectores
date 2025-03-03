@@ -46,7 +46,7 @@ app.use(cookieParser());
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL,
-    'https://control-proyectores-2wir.vercel.app'
+    'https://control-proyectores-unach.vercel.app'
   ],
   credentials: true,
 }));
