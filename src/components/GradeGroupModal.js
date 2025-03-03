@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BACKEND_URL } from '../config/config';
+import { fetchFromAPI } from '../utils/fetchHelper';
 
 const GradeGroupModal = ({ isOpen, onClose }) => {
   const [grade, setGrade] = useState('');
@@ -30,15 +32,17 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
         throw new Error('No hay token de autenticación');
       }
 
-      const response = await fetch('http://localhost:3000/update-user', {
+      const response = await fetchFromAPI('/update-user', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
-        body: JSON.stringify({ grado: grade, grupo: group, turno: shift }),
+        body: JSON.stringify({
+          grado: grade,
+          grupo: group,
+          turno: shift
+        })
       });
 
       if (response.ok) {

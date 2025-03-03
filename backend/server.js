@@ -36,7 +36,7 @@ if (!process.env.CLIENT_ID || !process.env.JWT_SECRET) {
 }
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 5000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const JWT_SECRET = process.env.JWT_SECRET;
 const oauth2Client = new OAuth2Client(CLIENT_ID);
@@ -45,7 +45,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
   origin: [
-    'http://localhost:3001',
+    process.env.FRONTEND_URL,
     'https://control-proyectores-2wir.vercel.app'
   ],
   credentials: true,
@@ -316,29 +316,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Error interno del servidor' });
 });
 
-
-/*mongoose.connect('mongodb://localhost:27017/BDproyectores')
-  .then(() => {
-    console.log('Conectado a MongoDB 🥳');
-        app.listen(PORT, () => {
-      console.log(`Servidor corriendo en http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Error al conectar a MongoDB:', err);
-  });*/
-
-/*mongoose.connect(process.env.MONGODB_URI || 'mongodb://mongodb:27017/BDproyectores')
-  .then(() => {
-    console.log('Conectado a MongoDB :)');
-    app.listen(PORT, () => {
-      console.log(`Servidor corriendo en http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Error al conectar a MongoDB:', err);
-  });*/
-
 app.get('/solicitudes', verifyToken, async (req, res) => {
   try {
     // Verificar si el usuario es admin
@@ -553,7 +530,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   .then(() => {
     console.log('Conectado a MongoDB Atlas! 🥳');
     app.listen(PORT, () => {
-      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+      console.log(`Servidor corriendo en el puerto ${PORT}`);
     });
   })
   .catch(err => {

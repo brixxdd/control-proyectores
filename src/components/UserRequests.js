@@ -7,6 +7,8 @@ import AsignarProyectorModal from './AsignarProyectorModal';
 import { Temporal } from '@js-temporal/polyfill';
 import { useTimeZone } from '../contexts/TimeZoneContext';
 import { alertaExito, alertaError } from './Alert';
+import { fetchFromAPI } from '../utils/fetchHelper';
+import { BACKEND_URL } from '../config/config';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
@@ -189,50 +191,14 @@ const UserRequests = () => {
     setError(null);
     
     try {
-      // Obtener el token JWT
-      const token = sessionStorage.getItem('jwtToken');
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-      
-      // Configurar los headers
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      
-      // Obtener las solicitudes
-      const solicitudesResponse = await fetch('http://localhost:3000/solicitudes', {
-        headers
-      });
-      
-      if (!solicitudesResponse.ok) {
-        throw new Error(`Error al obtener solicitudes: ${solicitudesResponse.statusText}`);
-      }
-      
-      const solicitudesData = await solicitudesResponse.json();
+      // Obtener las solicitudes usando el helper
+      const solicitudesData = await fetchFromAPI('/solicitudes');
       
       // Obtener los usuarios
-      const usuariosResponse = await fetch('http://localhost:3000/usuarios', {
-        headers
-      });
-      
-      if (!usuariosResponse.ok) {
-        throw new Error(`Error al obtener usuarios: ${usuariosResponse.statusText}`);
-      }
-      
-      const usuariosData = await usuariosResponse.json();
+      const usuariosData = await fetchFromAPI('/usuarios');
       
       // Obtener los documentos
-      const documentosResponse = await fetch('http://localhost:3000/documentos', {
-        headers
-      });
-      
-      if (!documentosResponse.ok) {
-        throw new Error(`Error al obtener documentos: ${documentosResponse.statusText}`);
-      }
-      
-      const documentosData = await documentosResponse.json();
+      const documentosData = await fetchFromAPI('/documentos');
       
       // Agrupar las solicitudes por usuario
       const solicitudesPorUsuario = agruparSolicitudesPorUsuario(solicitudesData, usuariosData);
@@ -269,8 +235,8 @@ const UserRequests = () => {
       setFilteredUsers(usuariosConSolicitudesSemanaActual);
       
     } catch (error) {
-      console.error('Error al recargar datos:', error);
-      setError('Error al cargar los datos. Por favor, intenta de nuevo.');
+      console.error('Error al cargar datos:', error);
+      setError(error.message || 'Error al cargar los datos');
     } finally {
       setIsLoading(false);
     }
@@ -348,7 +314,7 @@ const UserRequests = () => {
       return;
     }
     
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+    const baseUrl = BACKEND_URL;
     const fullPath = `${baseUrl}/${filePath}`;
     
     console.log('Intentando abrir PDF:', fullPath);
