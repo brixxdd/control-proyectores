@@ -31,13 +31,13 @@ const Toast = ({ open, handleClose, severity, message }) => {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in">
-      <div className={`flex items-center p-4 rounded-lg border ${severityStyles[severity]} shadow-lg max-w-md`}>
+    <div className="fixed top-4 right-4 left-4 sm:left-auto z-50 animate-slide-in">
+      <div className={`flex items-center p-3 sm:p-4 rounded-lg border ${severityStyles[severity]} shadow-lg w-full sm:w-auto sm:min-w-[320px] sm:max-w-md`}>
         <div className="flex-shrink-0">
           {iconMap[severity]}
         </div>
         <div className="ml-3 flex-1">
-          <p className="text-sm font-medium">{message}</p>
+          <p className="text-xs sm:text-sm font-medium break-words">{message}</p>
         </div>
         <button
           onClick={handleClose}
@@ -70,36 +70,37 @@ const Modal = ({ isOpen, onClose, title, message, icon, confirmButtonText }) => 
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex min-h-screen items-center justify-center px-3 sm:px-4 py-4 text-center">
         <div 
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity duration-300" 
           onClick={onClose} 
         />
         
         <div className={`
-          inline-block rounded-lg bg-white text-left align-bottom shadow-xl 
-          sm:my-8 sm:w-full sm:max-w-lg sm:align-middle
+          inline-block rounded-lg bg-white text-left shadow-xl 
+          w-full max-w-[95vw] sm:max-w-lg mx-auto
+          dark:bg-gray-800 dark:text-white
           ${modalStyles.enter}
           animate-modal-slide-up
         `}>
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                 <div className="mb-4 transform transition-all duration-500 hover:scale-110">
                   {iconMap[icon]}
                 </div>
-                <h3 className="text-lg font-medium leading-6 text-gray-900 text-center mb-2">
+                <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white text-center mb-2">
                   {title}
                 </h3>
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500 text-center">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-300 text-center">
                     {message}
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+          <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
             <button
               type="button"
               className="inline-flex w-full justify-center rounded-md border border-transparent 

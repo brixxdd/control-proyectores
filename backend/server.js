@@ -176,7 +176,19 @@ app.post('/login', async (req, res) => {
 
     const { email, name, picture } = payload;
 
-    if (email !== 'proyectoresunach@gmail.com' && !email.endsWith('@unach.mx')) {
+    // Lista de correos administrativos
+    const ADMIN_EMAILS = [
+      'proyectoresunach@gmail.com',
+      'fanny.cordova@unach.mx',
+      'nidia.guzman@unach.mx',
+      'deysi.gamboa@unach.mx',
+      'diocelyne.arrevillaga@unach.mx',
+      'karol.carrazco@unach.mx',
+      'karen.portillo@unach.mx',
+      'pedro.escobar@unach.mx'
+    ];
+
+    if (!email.endsWith('@unach.mx') && !ADMIN_EMAILS.includes(email)) {
       return res.status(401).json({ 
         message: 'Solo se permiten correos institucionales (@unach.mx) o administradores autorizados' 
       });
@@ -189,7 +201,7 @@ app.post('/login', async (req, res) => {
         nombre: name,
         email: email,
         picture: picture,
-        isAdmin: email === 'proyectoresunach@gmail.com'
+        isAdmin: ADMIN_EMAILS.includes(email)
       });
       await usuario.save();
       pvez = true
