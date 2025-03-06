@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
 import { useAuth } from '../hooks/useAuth';
 
 const GradeGroupModal = ({ isOpen, onClose }) => {
-  const { updateUserData, checkAuth } = useAuth();
+  const { updateUserData, checkAuth, isAdmin } = useAuth();
   const [grade, setGrade] = useState('');
   const [group, setGroup] = useState('');
   const [shift, setShift] = useState('Matutino');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
   const [errors, setErrors] = useState({ grade: '', group: '' });
+
+  // Si el usuario es administrador, no mostrar el modal
+  useEffect(() => {
+    if (isAdmin && isOpen) {
+      console.log("Usuario administrador - Cerrando modal de grado/grupo");
+      onClose();
+    }
+  }, [isAdmin, isOpen, onClose]);
+  
+  // Si el usuario es administrador, no renderizar el modal
+  if (isAdmin) {
+    return null;
+  }
 
   // Función para validar el grado (solo números del 1-9)
   const validateGrade = (value) => {
