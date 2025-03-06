@@ -78,7 +78,7 @@ export const useAuth = () => {
       sessionStorage.setItem('currentUser', JSON.stringify(authResponse.user));
       sessionStorage.setItem('jwtToken', authResponse.token);
       
-      const isAdmin = decoded.email === AUTH_CONSTANTS.ADMIN_EMAIL;
+      const isAdmin = AUTH_CONSTANTS.ADMIN_EMAILS.includes(decoded.email);
       setAuthState({
         isAuthenticated: true,
         isAdmin,
@@ -143,9 +143,13 @@ export const useAuth = () => {
       const response = await authService.checkSession();
       
       if (response.authenticated && response.user) {
+        // Verificar que los datos del usuario estén completos
+        console.log("Datos del usuario recibidos del servidor:", response.user);
+        
+        // Asegurarse de que todos los campos del usuario estén presentes
         setAuthState({
           isAuthenticated: true,
-          isAdmin: authService.isAdmin(response.user.email),
+          isAdmin: response.user.email && AUTH_CONSTANTS.ADMIN_EMAILS.includes(response.user.email),
           user: response.user,
           userPicture: response.user.picture,
           isLoading: false
@@ -224,6 +228,27 @@ export const useAuth = () => {
     }
   }, [handleLoginSuccess, handleError]);
 
+  const updateUserData = useCallback((updatedData) => {
+    // Actualizar el estado local
+    setAuthState(prev => ({
+      ...prev,
+      user: {
+        ...prev.user,
+        ...updatedData
+      }
+    }));
+    
+    // También actualizar en sessionStorage para persistencia
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        ...updatedData
+      };
+      sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
+  }, []);
+
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -233,6 +258,7 @@ export const useAuth = () => {
     handleLoginSuccess,
     handleLogout,
     checkAuth,
-    handleGoogleLogin
+    handleGoogleLogin,
+    updateUserData
   };
 };

@@ -123,30 +123,26 @@ app.post('/logout', (req, res) => {
   return res.status(200).json({ message: 'Sesión cerrada correctamente' });
 });
 
-app.get('/check-session', async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ message: 'No se proporcionó token' });
-  }
-
+app.get('/check-session', verifyToken, async (req, res) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
+    // Buscar el usuario en la base de datos para obtener los datos más actualizados
+    const usuario = await User.findById(req.user.id);
+    
+    if (!usuario) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-    //console.log('Datos del usuario enviados:', user); // Agrega este log
+    
+    // Imprimir los datos del usuario para depuración
+    console.log('Datos del usuario enviados:', usuario);
+    
+    // Devolver todos los datos del usuario
     res.json({ 
-      user: { 
-        id: user._id, 
-        email: user.email, 
-        nombre: user.nombre, 
-        picture: user.picture 
-      } 
+      user: usuario,
+      message: 'Sesión válida' 
     });
   } catch (error) {
-    console.error('Error al verificar el token:', error);
-    res.status(401).json({ message: 'Token inválido o expirado' });
+    console.error('Error al verificar sesión:', error);
+    res.status(500).json({ message: 'Error al verificar la sesión' });
   }
 });
 
@@ -185,7 +181,10 @@ app.post('/login', async (req, res) => {
       'diocelyne.arrevillaga@unach.mx',
       'karol.carrazco@unach.mx',
       'karen.portillo@unach.mx',
-      'pedro.escobar@unach.mx'
+      'pedro.escobar@unach.mx',
+      'brianes666@gmail.com',
+      'brianfloresxxd@gmail.com',
+      'nuevo.correo@unach.mx'
     ];
 
     if (!email.endsWith('@unach.mx') && !ADMIN_EMAILS.includes(email)) {
@@ -216,7 +215,7 @@ app.post('/login', async (req, res) => {
       { 
         id: usuario._id,
         email: usuario.email,
-        isAdmin: email === 'proyectoresunach@gmail.com'
+        isAdmin: ADMIN_EMAILS.includes(email)
       }, 
       JWT_SECRET,
       { expiresIn: '15m' }
@@ -1064,6 +1063,31 @@ app.put('/api/notifications/mark-all-read', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error al marcar todas las notificaciones como leídas:', error);
     res.status(500).json({ message: 'Error al actualizar notificaciones' });
+  }
+});
+
+// Nuevo endpoint para obtener la lista de administradores
+app.get('/api/admin-emails', (req, res) => {
+  res.json({ adminEmails: ADMIN_EMAILS });
+});
+
+// Endpoint para obtener los datos más recientes del usuario
+app.get('/user-data', verifyToken, async (req, res) => {
+  try {
+    const usuario = await User.findById(req.user.id);
+    
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    console.log('Datos del usuario enviados desde /user-data:', usuario);
+    
+    res.json({ 
+      user: usuario
+    });
+  } catch (error) {
+    console.error('Error al obtener datos del usuario:', error);
+    res.status(500).json({ message: 'Error al obtener datos del usuario' });
   }
 });
   

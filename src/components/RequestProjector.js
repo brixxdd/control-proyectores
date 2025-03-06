@@ -451,6 +451,10 @@ const RequestProjector = () => {
           // Crear solicitud en el backend
           const response = await fetchFromAPI('/solicitar-proyector', {
             method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${jwtToken}`
+            },
             body: JSON.stringify({
               fechaInicio: startDateTime.toISOString(),
               fechaFin: endDateTime.toISOString(),
@@ -462,7 +466,7 @@ const RequestProjector = () => {
             })
           });
 
-          console.log('Solicitud creada:', response.data);
+          console.log('Solicitud creada:', response);
         } catch (error) {
           console.error('Error al procesar solicitud para la fecha', date, error);
         }

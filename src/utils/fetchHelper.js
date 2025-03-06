@@ -9,30 +9,36 @@ import { BACKEND_URL } from '../config/config';
 export const fetchFromAPI = async (endpoint, options = {}) => {
   const url = `${BACKEND_URL}${endpoint}`;
   
-  // Configurar headers por defecto
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers
-  };
-  
-  // Añadir token de autenticación si existe
-  const token = sessionStorage.getItem('jwtToken');
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  
-  const response = await fetch(url, {
-    ...options,
-    headers
-  });
-  
-  // Manejar errores HTTP
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      message: `Error HTTP: ${response.status} ${response.statusText}`
-    }));
+  try {
+    // Configurar headers por defecto
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    
+    // Añadir token de autenticación si existe
+    const token = sessionStorage.getItem('jwtToken');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    } else {
+      throw new Error('No token provided');
+    }
+    
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+    
+    // Si devuelve directamente el objeto JSON parseado
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Error en la solicitud');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error en fetchFromAPI:', error);
     throw error;
   }
-  
-  return response.json();
 }; 

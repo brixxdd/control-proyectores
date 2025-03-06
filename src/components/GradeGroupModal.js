@@ -2,23 +2,64 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
+import { useAuth } from '../hooks/useAuth';
 
 const GradeGroupModal = ({ isOpen, onClose }) => {
+  const { updateUserData, checkAuth } = useAuth();
   const [grade, setGrade] = useState('');
   const [group, setGroup] = useState('');
   const [shift, setShift] = useState('Matutino');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+  const [errors, setErrors] = useState({ grade: '', group: '' });
+
+  // Función para validar el grado (solo números del 1-9)
+  const validateGrade = (value) => {
+    if (!value) return 'El grado es obligatorio';
+    if (!/^[1-9]$/.test(value)) return 'El grado debe ser un número del 1 al 9';
+    return '';
+  };
+
+  // Función para validar el grupo (solo una letra A-Z)
+  const validateGroup = (value) => {
+    if (!value) return 'El grupo es obligatorio';
+    if (!/^[a-zA-Z]$/.test(value)) return 'El grupo debe ser una sola letra (A-Z)';
+    return '';
+  };
+
+  // Manejador para cambio de grado con validación
+  const handleGradeChange = (e) => {
+    const value = e.target.value;
+    setGrade(value);
+    setErrors(prev => ({ ...prev, grade: validateGrade(value) }));
+  };
+
+  // Manejador para cambio de grupo con validación y conversión a mayúscula
+  const handleGroupChange = (e) => {
+    const value = e.target.value.toUpperCase(); // Convertir a mayúscula
+    setGroup(value);
+    setErrors(prev => ({ ...prev, group: validateGroup(value) }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!grade || !group) {
+    // Validar todos los campos antes de enviar
+    const gradeError = validateGrade(grade);
+    const groupError = validateGroup(group);
+    
+    if (gradeError || groupError) {
+      setErrors({
+        grade: gradeError,
+        group: groupError
+      });
+      
       setAlert({
         show: true,
-        message: 'Todos los campos son obligatorios',
+        message: 'Por favor corrige los errores en el formulario',
         type: 'error'
       });
+      
       setTimeout(() => setAlert({ show: false, message: '', type: '' }), 3000);
       return;
     }
@@ -32,7 +73,8 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
         throw new Error('No hay token de autenticación');
       }
 
-      const response = await fetchFromAPI('/update-user', {
+      // Si fetchFromAPI ya devuelve el JSON parseado
+      const data = await fetchFromAPI('/update-user', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -40,41 +82,43 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
         },
         body: JSON.stringify({
           grado: grade,
-          grupo: group,
+          grupo: group.toUpperCase(),
           turno: shift
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-        const updatedUser = {
-          ...currentUser,
-          grado: grade,
-          grupo: group,
-          turno: shift
-        };
-        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        sessionStorage.removeItem('new');
-        
-        setAlert({
-          show: true,
-          message: 'Información actualizada correctamente',
-          type: 'success'
-        });
-        
-        setTimeout(() => {
-          setAlert({ show: false, message: '', type: '' });
-          window.location.reload();
-        }, 2000);
+      // Actualizar datos del usuario en sessionStorage
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      const updatedUser = {
+        ...currentUser,
+        grado: grade,
+        grupo: group.toUpperCase(),
+        turno: shift
+      };
+      
+      // Usar la función del contexto para actualizar los datos
+      if (updateUserData) {
+        updateUserData(updatedUser);
       } else {
-        const errorData = await response.json();
-        setAlert({
-          show: true,
-          message: errorData.message || 'Error al actualizar la información',
-          type: 'error'
-        });
+        // Fallback si no está disponible
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
       }
+      
+      sessionStorage.removeItem('new');
+      
+      setAlert({
+        show: true,
+        message: 'Información actualizada correctamente',
+        type: 'success'
+      });
+      
+      setTimeout(() => {
+        setAlert({ show: false, message: '', type: '' });
+        if (onClose) onClose(); // Cerrar el modal
+        
+        // Forzar una verificación de autenticación para actualizar el estado
+        checkAuth();
+      }, 2000);
     } catch (error) {
       setAlert({
         show: true,
@@ -147,7 +191,7 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
-            {/* Grado Input mejorado */}
+            {/* Grado Input mejorado con validación */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Grado Escolar
@@ -155,21 +199,24 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
               <input 
                 type="text" 
                 value={grade} 
-                onChange={(e) => setGrade(e.target.value)}
-                className="w-full px-4 py-3 
+                onChange={handleGradeChange}
+                className={`w-full px-4 py-3 
                            bg-gray-50 dark:bg-gray-700 
-                           border border-gray-200 dark:border-gray-600 
+                           border ${errors.grade ? 'border-red-500 dark:border-red-400' : 'border-gray-200 dark:border-gray-600'} 
                            text-gray-900 dark:text-white
                            rounded-xl focus:ring-2 focus:ring-blue-500 
                            focus:border-blue-500 dark:focus:border-blue-400
                            transition-all duration-200 
-                           hover:bg-gray-100 dark:hover:bg-gray-600"
-                placeholder="Ejemplo: Primer grado"
+                           hover:bg-gray-100 dark:hover:bg-gray-600`}
+                placeholder="Ingresa un número del 1 al 9"
                 required 
               />
+              {errors.grade && (
+                <p className="mt-1 text-sm text-red-500">{errors.grade}</p>
+              )}
             </div>
 
-            {/* Grupo Input mejorado */}
+            {/* Grupo Input mejorado con validación */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Grupo
@@ -177,18 +224,21 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
               <input 
                 type="text" 
                 value={group} 
-                onChange={(e) => setGroup(e.target.value)}
-                className="w-full px-4 py-3 
+                onChange={handleGroupChange}
+                className={`w-full px-4 py-3 
                            bg-gray-50 dark:bg-gray-700 
-                           border border-gray-200 dark:border-gray-600 
+                           border ${errors.group ? 'border-red-500 dark:border-red-400' : 'border-gray-200 dark:border-gray-600'} 
                            text-gray-900 dark:text-white
                            rounded-xl focus:ring-2 focus:ring-blue-500 
                            focus:border-blue-500 dark:focus:border-blue-400
                            transition-all duration-200 
-                           hover:bg-gray-100 dark:hover:bg-gray-600"
-                placeholder="Ejemplo: A"
+                           hover:bg-gray-100 dark:hover:bg-gray-600`}
+                placeholder="Ingresa una letra (A-Z)"
                 required 
               />
+              {errors.group && (
+                <p className="mt-1 text-sm text-red-500">{errors.group}</p>
+              )}
             </div>
 
             {/* Turno Select mejorado */}
@@ -218,14 +268,15 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
             <div className="flex justify-end pt-6">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || errors.grade || errors.group}
                 className={`w-full px-6 py-3 
                            text-sm font-medium text-white 
                            bg-gradient-to-r from-blue-600 to-purple-600 
                            rounded-xl hover:from-blue-700 hover:to-purple-700 
                            focus:outline-none focus:ring-2 focus:ring-blue-500 
                            transition-all duration-200
-                           ${loading ? 'opacity-50 cursor-not-allowed animate-pulse' : ''}`}
+                           ${(loading || errors.grade || errors.group) ? 'opacity-50 cursor-not-allowed' : ''}
+                           ${loading ? 'animate-pulse' : ''}`}
               >
                 {loading ? (
                   <span className="flex items-center justify-center">

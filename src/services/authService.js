@@ -2,6 +2,7 @@ import axios from 'axios';
 import { AUTH_CONFIG } from '../config/config';
 import { gapi } from 'gapi-script';
 import Swal from 'sweetalert2';
+import { AUTH_CONSTANTS } from '../constants/auth';
 
 class AuthService {
   constructor() {
@@ -84,6 +85,9 @@ class AuthService {
       }
       return config;
     });
+
+    // Cargar la lista de administradores al inicializar
+    this.loadAdminEmails();
   }
 
   setAuthHeader(token) {
@@ -140,8 +144,13 @@ class AuthService {
       this.setAuthHeader(token);
       console.log('check session - authServices')
       const response = await this.api.get('/check-session');
+      
+      // Verificar que los datos del usuario estén completos
+      console.log("Respuesta completa de check-session:", response.data);
+      
       return { ...response.data, authenticated: true };
     } catch (error) {
+      console.error("Error en checkSession:", error);
       return { authenticated: false, error };
     }
   }
@@ -167,7 +176,19 @@ class AuthService {
   }
 
   isAdmin(email) {
-    return email === AUTH_CONFIG.ADMIN_EMAIL;
+    // Intentar obtener la lista actualizada del sessionStorage
+    const storedAdminEmails = sessionStorage.getItem(AUTH_CONSTANTS.STORAGE_KEYS.ADMIN_EMAILS);
+    if (storedAdminEmails) {
+      try {
+        const adminEmails = JSON.parse(storedAdminEmails);
+        return adminEmails.includes(email);
+      } catch (e) {
+        console.error('Error al parsear la lista de administradores:', e);
+      }
+    }
+    
+    // Si no hay lista en sessionStorage, usar la constante
+    return AUTH_CONSTANTS.ADMIN_EMAILS.includes(email);
   }
 
   getStoredToken() {
@@ -229,6 +250,25 @@ class AuthService {
 
   getToken() {
     return sessionStorage.getItem('jwtToken');
+  }
+
+  // Método para cargar la lista de administradores
+  async loadAdminEmails() {
+    try {
+      const response = await this.api.get('/api/admin-emails');
+      if (response.data && response.data.adminEmails) {
+        // Guardar en sessionStorage
+        sessionStorage.setItem(
+          AUTH_CONSTANTS.STORAGE_KEYS.ADMIN_EMAILS, 
+          JSON.stringify(response.data.adminEmails)
+        );
+        // Actualizar la constante
+        AUTH_CONSTANTS.ADMIN_EMAILS = response.data.adminEmails;
+      }
+    } catch (error) {
+      console.error('Error al cargar la lista de administradores:', error);
+      // Si falla, se usa la lista predeterminada
+    }
   }
 }
 

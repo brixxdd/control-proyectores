@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { TimeZoneProvider } from './contexts/TimeZoneContext';
@@ -15,14 +15,14 @@ import SignIn from './components/SignIn';
 import GradeGroupModal from './components/GradeGroupModal';
 import WelcomeAlert from './components/WelcomeAlert';
 import { authService } from './services/authService';
-import { useCallback } from 'react';
+import useInactivityTimer from './hooks/useInactivityTimer';
 import { Toaster } from 'react-hot-toast';
 import Swal from 'sweetalert2';
+import { BACKEND_URL } from './config/config';
 
 import UserRequests from './components/UserRequests';
 import MySolicitudes from './components/MySolicitudes';
 import AdminProyectores from './components/AdminProyectores';
-import useInactivityTimer from "./hooks/useInactivityTimer";
 import NotificationsDropdown from './components/NotificationsDropdown';
 
 
@@ -33,7 +33,8 @@ const App = () => {
     isLoading, 
     user, 
     userPicture,
-    handleLogout 
+    handleLogout,
+    updateUserData
   } = useAuth();
 
   useInactivityTimer(handleLogout, 10 * 60 * 1000); // 10 minutos
@@ -53,6 +54,62 @@ const App = () => {
       throw error;
     }
   }, []);
+
+  React.useEffect(() => {
+    // Agregar logs para depuración
+    console.log("Estado de autenticación:", isAuthenticated);
+    console.log("Datos del usuario en el frontend:", user);
+    
+    // Si el usuario está autenticado pero los datos están incompletos en el frontend
+    if (isAuthenticated && user) {
+      // Verificar explícitamente si los valores son nulos, undefined o vacíos
+      const isGradoMissing = user.grado === null || user.grado === undefined || user.grado === "";
+      const isGrupoMissing = user.grupo === null || user.grupo === undefined || user.grupo === "";
+      
+      if (isGradoMissing || isGrupoMissing) {
+        console.log("Datos incompletos en el frontend, verificando en el servidor...");
+        
+        // Hacer una petición adicional para obtener los datos más recientes del usuario
+        const fetchUserData = async () => {
+          try {
+            const token = sessionStorage.getItem('jwtToken');
+            if (!token) return;
+            
+            const response = await fetch(`${BACKEND_URL}/user-data`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              console.log("Datos obtenidos directamente del servidor:", userData);
+              
+              // Si los datos en el servidor están completos, actualizar el estado
+              if (userData.user && userData.user.grado && userData.user.grupo) {
+                console.log("Actualizando datos del usuario con información del servidor");
+                updateUserData(userData.user);
+                setShowGradeGroupModal(false);
+              } else {
+                console.log("Los datos también están incompletos en el servidor");
+                setShowGradeGroupModal(true);
+              }
+            }
+          } catch (error) {
+            console.error("Error al obtener datos del usuario:", error);
+          }
+        };
+        
+        fetchUserData();
+      } else {
+        console.log("No se muestra el modal porque los datos están completos:", {
+          grado: user.grado,
+          grupo: user.grupo
+        });
+        setShowGradeGroupModal(false);
+      }
+    }
+  }, [isAuthenticated, user, updateUserData]);
 
   React.useEffect(() => {
     let timer;
@@ -93,6 +150,27 @@ const App = () => {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
+
+  // Agregar esta función para actualizar el contexto sin recargar
+  React.useEffect(() => {
+    // Función global para actualizar el contexto de autenticación
+    window.updateAuthContext = (updatedUser) => {
+      // Usar la función del contexto de autenticación para actualizar los datos
+      if (updateUserData) {
+        updateUserData(updatedUser);
+      }
+      
+      // Si el usuario ya tiene los datos completos, no mostrar el modal
+      if (updatedUser && updatedUser.grado && updatedUser.grupo) {
+        setShowGradeGroupModal(false);
+      }
+    };
+
+    return () => {
+      // Limpiar la función global al desmontar el componente
+      delete window.updateAuthContext;
+    };
+  }, [updateUserData]);
 
   // Mostrar loader mientras se verifica la autenticación
   if (isLoading) {
