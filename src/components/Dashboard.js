@@ -30,13 +30,13 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
   }, []);
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen">
-      <div className="container mx-auto px-4 py-8">
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen w-full">
+      <div className="w-full max-w-[2412px] mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">
           Panel de Control de Proyectores
         </h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
           <DashboardCard 
             icon={faClockRotateLeft}
             title="Mis Solicitudes"
@@ -57,7 +57,7 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
             Acciones Rápidas
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <ActionButton 
               to="/request-projector" 
               label="Solicitar Proyector"
