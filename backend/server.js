@@ -1,9 +1,9 @@
 require('dotenv').config();
-console.log('Variables de entorno:', {
-  MONGODB_URI: process.env.MONGODB_URI ? 'Presente' : 'Falta',
-  CLIENT_ID: process.env.CLIENT_ID ? 'Presente' : 'Falta',
-  JWT_SECRET: process.env.JWT_SECRET ? 'Presente' : 'Falta'
-});
+// console.log('Variables de entorno:', {
+//   MONGODB_URI: process.env.MONGODB_URI ? 'Presente' : 'Falta',
+//   CLIENT_ID: process.env.CLIENT_ID ? 'Presente' : 'Falta',
+//   JWT_SECRET: process.env.JWT_SECRET ? 'Presente' : 'Falta'
+// });
 
 const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
@@ -135,7 +135,7 @@ app.get('/check-session', async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
-    console.log('Datos del usuario enviados:', user); // Agrega este log
+    //console.log('Datos del usuario enviados:', user); // Agrega este log
     res.json({ 
       user: { 
         id: user._id, 
@@ -168,7 +168,7 @@ app.post('/login', async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    console.log('Google payload:', payload);
+    // console.log('Google payload:', payload);
 
     if (!payload) {
       return res.status(401).json({ message: 'Payload de Google inválido' });
@@ -326,7 +326,7 @@ app.get('/solicitudes', verifyToken, async (req, res) => {
 
     // Modificamos el populate para incluir los campos adicionales
     const solicitudes = await Solicitud.find().populate('usuarioId', 'nombre email grado grupo turno');
-    console.log('Solicitudes encontradas:', solicitudes.length);
+    //console.log('Solicitudes encontradas:', solicitudes.length);
     res.status(200).json(solicitudes);
   } catch (error) {
     console.error('Error al obtener solicitudes:', error);
@@ -340,16 +340,16 @@ app.post('/solicitar-proyector', verifyToken, async (req, res) => {
     const usuarioId = req.user.id;
     
     // Log para debugging
-    console.log('Datos recibidos:', {
-      fechaInicio,
-      fechaFin,
-      motivo,
-      eventId,
-      grado,
-      grupo,
-      turno,
-      usuarioId
-    });
+    // console.log('Datos recibidos:', {
+    //   fechaInicio,
+    //   fechaFin,
+    //   motivo,
+    //   eventId,
+    //   grado,
+    //   grupo,
+    //   turno,
+    //   usuarioId
+    // });
 
     // Validaciones mejoradas
     if (!fechaInicio || !fechaFin || !motivo || !eventId) {
@@ -491,7 +491,7 @@ app.put('/solicituds/:id', verifyToken, isAdmin, async (req, res) => {
       });
     }
 
-    console.log('Actualizando solicitud:', { id, estado });
+    //console.log('Actualizando solicitud:', { id, estado });
 
     const solicitudActualizada = await Solicitud.findByIdAndUpdate(
       id,
@@ -541,21 +541,21 @@ mongoose.connect(process.env.MONGODB_URI, {
 app.get('/mis-solicitudes', verifyToken, async (req, res) => {
   try {
     // Agregar más logs para debugging
-    console.log('Token recibido:', req.headers.authorization);
-    console.log('Usuario autenticado:', {
-      id: req.user.id,
-      email: req.user.email
-    });
+    //console.log('Token recibido:', req.headers.authorization);
+    //console.log('Usuario autenticado:', {
+    //  id: req.user.id,
+    //  email: req.user.email
+    //});
 
     const solicitudes = await Solicitud.find({ 
       usuarioId: req.user.id 
     });
     
     // Log para ver la consulta
-    console.log('Consulta MongoDB:', {
-      usuarioId: req.user.id,
-      encontradas: solicitudes.length
-    });
+    //console.log('Consulta MongoDB:', {
+    //  usuarioId: req.user.id,
+    //  encontradas: solicitudes.length
+    //});
 
     // Si no hay solicitudes, enviar array vacío pero con mensaje
     if (!solicitudes || solicitudes.length === 0) {
