@@ -154,26 +154,51 @@ const UserRequests = () => {
 
   // Función para agrupar solicitudes por usuario
   const agruparSolicitudesPorUsuario = (solicitudes, usuarios) => {
-    // Crear un mapa para almacenar las solicitudes por usuario
-    const solicitudesPorUsuario = {};
+    console.log("Agrupando solicitudes por usuario");
+    console.log("Solicitudes recibidas:", solicitudes.length);
+    console.log("Usuarios recibidos:", usuarios.length);
     
-    // Agrupar las solicitudes por usuario
+    // Crear un mapa para almacenar las solicitudes por usuario
+    const usuarioMap = {};
+    
+    // Procesar cada solicitud
     solicitudes.forEach(solicitud => {
-      const usuarioId = solicitud.usuarioId;
-      if (!solicitudesPorUsuario[usuarioId]) {
-        // Buscar los datos del usuario
-        const userData = usuarios.find(u => u._id === usuarioId);
-        solicitudesPorUsuario[usuarioId] = {
-          userData: userData || { _id: usuarioId, nombre: 'Usuario Desconocido', email: 'No disponible' },
-          solicitudes: [],
-          documentos: []
+      // Verificar si la solicitud tiene un usuarioId válido
+      if (!solicitud.usuarioId) {
+        console.warn("Solicitud sin usuarioId:", solicitud._id);
+        return;
+      }
+      
+      // Obtener el ID del usuario
+      const usuarioId = typeof solicitud.usuarioId === 'object' 
+        ? solicitud.usuarioId._id 
+        : solicitud.usuarioId;
+      
+      // Buscar el usuario correspondiente
+      const usuario = usuarios.find(u => u._id === usuarioId);
+      
+      if (!usuario) {
+        console.warn(`Usuario no encontrado para solicitud ${solicitud._id} (usuarioId: ${usuarioId})`);
+        return;
+      }
+      
+      // Inicializar el objeto del usuario si no existe
+      if (!usuarioMap[usuarioId]) {
+        usuarioMap[usuarioId] = {
+          userData: usuario,
+          solicitudes: []
         };
       }
-      solicitudesPorUsuario[usuarioId].solicitudes.push(solicitud);
+      
+      // Agregar la solicitud al usuario
+      usuarioMap[usuarioId].solicitudes.push(solicitud);
     });
     
-    // Convertir el objeto a un array
-    return Object.values(solicitudesPorUsuario);
+    // Convertir el mapa a un array
+    const resultado = Object.values(usuarioMap);
+    console.log("Usuarios con solicitudes:", resultado.length);
+    
+    return resultado;
   };
 
   // Función para ordenar solicitudes por fecha (más recientes primero)
@@ -191,17 +216,32 @@ const UserRequests = () => {
     setError(null);
     
     try {
+      console.log("Iniciando carga de datos para administrador");
+      
       // Obtener las solicitudes usando el helper
       const solicitudesData = await fetchFromAPI('/solicitudes');
+      console.log("Solicitudes obtenidas:", solicitudesData.length);
       
       // Obtener los usuarios
       const usuariosData = await fetchFromAPI('/usuarios');
+      console.log("Usuarios obtenidos:", usuariosData.length);
       
       // Obtener los documentos
       const documentosData = await fetchFromAPI('/documentos');
+      console.log("Documentos obtenidos:", documentosData.length);
+      
+      // Verificar si hay datos
+      if (!solicitudesData || solicitudesData.length === 0) {
+        console.log("No hay solicitudes disponibles");
+        setUsuariosSolicitudes([]);
+        setFilteredUsers([]);
+        setIsLoading(false);
+        return;
+      }
       
       // Agrupar las solicitudes por usuario
       const solicitudesPorUsuario = agruparSolicitudesPorUsuario(solicitudesData, usuariosData);
+      console.log("Solicitudes agrupadas por usuario:", solicitudesPorUsuario.length);
       
       // Agregar los documentos a cada usuario
       documentosData.forEach(documento => {
@@ -226,12 +266,15 @@ const UserRequests = () => {
       
       // Filtrar los usuarios que tienen solicitudes en la semana actual
       const solicitudesSemanaActual = obtenerSolicitudesSemanaActual(solicitudesData);
+      console.log("Solicitudes de la semana actual:", solicitudesSemanaActual.length);
+      
       const usuariosConSolicitudesSemanaActual = solicitudesPorUsuario.filter(usuario => {
         return usuario.solicitudes.some(solicitud => 
           solicitudesSemanaActual.some(s => s._id === solicitud._id)
         );
       });
       
+      console.log("Usuarios con solicitudes esta semana:", usuariosConSolicitudesSemanaActual.length);
       setFilteredUsers(usuariosConSolicitudesSemanaActual);
       
     } catch (error) {
@@ -448,58 +491,66 @@ const UserRequests = () => {
   }, [selectedUser, refreshDocuments]);
 
   // Función para recargar los datos
-  const refreshData = useCallback(async () => {
-    setIsLoading(true);
-    setRefreshStatus(null);
+  const refreshData = async () => {
     try {
-      const [solicitudesResponse, documentosResponse] = await Promise.all([
-        authService.api.get('/solicitudes'),
-        authService.api.get('/documentos')
-      ]);
-
-      const userMap = solicitudesResponse.data.reduce((acc, solicitud) => {
-        if (!solicitud.usuarioId) return acc;
-        
-        if (!acc[solicitud.usuarioId._id]) {
-          acc[solicitud.usuarioId._id] = {
-            userData: solicitud.usuarioId,
-            solicitudes: [],
-            documentos: []
-          };
-        }
-        // Filtrar las solicitudes por semana actual antes de agregarlas
-        const solicitudesFiltradas = obtenerSolicitudesSemanaActual([solicitud]);
-        if (solicitudesFiltradas.length > 0) {
-          acc[solicitud.usuarioId._id].solicitudes.push(...solicitudesFiltradas);
-        }
-        return acc;
-      }, {});
-
-      // Asignar documentos
-      documentosResponse.data.forEach(documento => {
-        if (documento.usuarioId && userMap[documento.usuarioId._id]) {
-          userMap[documento.usuarioId._id].documentos.push(documento);
-        }
-      });
-
-      // Ordenar usuarios por cantidad de solicitudes
-      const usuariosOrdenados = Object.values(userMap)
-        .map(user => ({
-          ...user,
-          solicitudes: obtenerSolicitudesSemanaActual(user.solicitudes)
-        }))
-        .sort((a, b) => b.solicitudes.length - a.solicitudes.length);
-
-      setUsers(usuariosOrdenados);
+      setRefreshStatus(null);
+      
+      // Verificar si el usuario es administrador
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      if (!currentUser || !currentUser.isAdmin) {
+        console.error('El usuario no tiene permisos de administrador');
+        setError('No tienes permisos para ver esta información');
+        setRefreshStatus('error');
+        return;
+      }
+      
+      console.log("Iniciando recarga de datos como administrador:", currentUser.email);
+      
+      // Obtener el token JWT
+      const token = sessionStorage.getItem('jwtToken');
+      if (!token) {
+        console.error('No hay token JWT disponible');
+        setError('Sesión no válida. Por favor, inicia sesión nuevamente.');
+        setRefreshStatus('error');
+        return;
+      }
+      
+      await fetchData();
       setRefreshStatus('success');
+      
+      setTimeout(() => {
+        setRefreshStatus(null);
+      }, 3000);
     } catch (error) {
       console.error('Error al recargar datos:', error);
+      
+      // Mostrar información detallada del error
+      if (error.response) {
+        console.error('Respuesta del servidor:', error.response.data);
+        setError(`Error ${error.response.status}: ${error.response.data.message || 'Error del servidor'}`);
+      } else if (error.request) {
+        console.error('No se recibió respuesta del servidor');
+        setError('No se pudo conectar con el servidor. Verifica tu conexión a internet.');
+      } else {
+        setError(`Error: ${error.message}`);
+      }
+      
       setRefreshStatus('error');
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => setRefreshStatus(null), 3000);
     }
-  }, []);
+  };
+
+  // Componente para mostrar errores
+  const ErrorMessage = ({ message }) => (
+    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-md">
+      <div className="flex items-center">
+        <AlertCircle className="h-5 w-5 mr-2" />
+        <p>{message}</p>
+      </div>
+      <p className="mt-2 text-sm">
+        Si el problema persiste, contacta al administrador del sistema.
+      </p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
@@ -578,6 +629,9 @@ const UserRequests = () => {
             </button>
           </div>
         </div>
+
+        {/* Mostrar mensaje de error si existe */}
+        {error && <ErrorMessage message={error} />}
 
         {/* Agregar indicador de semana actual */}
         <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">

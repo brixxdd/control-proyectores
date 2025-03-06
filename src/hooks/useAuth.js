@@ -62,10 +62,6 @@ export const useAuth = () => {
       const decoded = jwtDecode(response.credential);
       console.log('Google credential decoded:', decoded);
       
-      /*if (decoded.email !== AUTH_CONSTANTS.ADMIN_EMAIL && !decoded.email.endsWith('@unach.mx')) {
-        throw new Error('Solo se permiten correos institucionales (@unach.mx) o administradores autorizados');
-      }*/
-
       sessionStorage.setItem('googleAccessToken', response.credential);
       console.log('Token de Google guardado:', response.credential.substring(0, 20) + '...');
 
@@ -78,7 +74,9 @@ export const useAuth = () => {
       sessionStorage.setItem('currentUser', JSON.stringify(authResponse.user));
       sessionStorage.setItem('jwtToken', authResponse.token);
       
-      const isAdmin = AUTH_CONSTANTS.ADMIN_EMAILS.includes(decoded.email);
+      const isAdmin = authResponse.user.isAdmin || AUTH_CONSTANTS.ADMIN_EMAILS.includes(decoded.email);
+      console.log("¿Usuario es administrador?", isAdmin);
+      
       setAuthState({
         isAuthenticated: true,
         isAdmin,
@@ -103,7 +101,7 @@ export const useAuth = () => {
       handleError(error);
     }
   }, [navigate, handleError]);
-  //aqui inicio
+
   const initializeGapi = useCallback(async () => {
     try {
       await new Promise((resolve) => {
@@ -133,10 +131,6 @@ export const useAuth = () => {
       handleError(error);
     }
   }, [handleLoginSuccess, handleError]);
-
-  //aqui termino
-
-  
 
   const checkAuth = useCallback(async () => {
     try {

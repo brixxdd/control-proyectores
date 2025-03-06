@@ -59,9 +59,17 @@ const App = () => {
     // Agregar logs para depuración
     console.log("Estado de autenticación:", isAuthenticated);
     console.log("Datos del usuario en el frontend:", user);
+    console.log("¿Es administrador?", isAdmin);
     
     // Si el usuario está autenticado pero los datos están incompletos en el frontend
     if (isAuthenticated && user) {
+      // No mostrar el modal para administradores
+      if (isAdmin) {
+        console.log("Usuario administrador - No se muestra el modal de grado/grupo");
+        setShowGradeGroupModal(false);
+        return;
+      }
+      
       // Verificar explícitamente si los valores son nulos, undefined o vacíos
       const isGradoMissing = user.grado === null || user.grado === undefined || user.grado === "";
       const isGrupoMissing = user.grupo === null || user.grupo === undefined || user.grupo === "";
@@ -91,8 +99,14 @@ const App = () => {
                 updateUserData(userData.user);
                 setShowGradeGroupModal(false);
               } else {
-                console.log("Los datos también están incompletos en el servidor");
-                setShowGradeGroupModal(true);
+                // No mostrar el modal para administradores incluso si los datos están incompletos
+                if (userData.user && userData.user.isAdmin) {
+                  console.log("Usuario administrador (según servidor) - No se muestra el modal");
+                  setShowGradeGroupModal(false);
+                } else {
+                  console.log("Los datos también están incompletos en el servidor");
+                  setShowGradeGroupModal(true);
+                }
               }
             }
           } catch (error) {
@@ -109,7 +123,7 @@ const App = () => {
         setShowGradeGroupModal(false);
       }
     }
-  }, [isAuthenticated, user, updateUserData]);
+  }, [isAuthenticated, user, isAdmin, updateUserData]);
 
   React.useEffect(() => {
     let timer;

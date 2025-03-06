@@ -104,8 +104,34 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Lista de correos administrativos
+    const ADMIN_EMAILS = [
+      'proyectoresunach@gmail.com',
+      'fanny.cordova@unach.mx',
+      'nidia.guzman@unach.mx',
+      'deysi.gamboa@unach.mx',
+      'diocelyne.arrevillaga@unach.mx',
+      'karol.carrazco@unach.mx',
+      'karen.portillo@unach.mx',
+      'pedro.escobar@unach.mx',
+      'brianes666@gmail.com',
+      'brianfloresxxd@gmail.com',
+      'nuevo.correo@unach.mx'
+    ];
+    
+    // Asegurarse de que isAdmin esté correctamente establecido
+    if (!decoded.isAdmin && ADMIN_EMAILS.includes(decoded.email)) {
+      decoded.isAdmin = true;
+    }
+    
     req.user = decoded;
-    console.log(req.user)
+    console.log("Usuario verificado:", {
+      id: decoded.id,
+      email: decoded.email,
+      isAdmin: decoded.isAdmin
+    });
+    
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -330,18 +356,35 @@ app.use((err, req, res, next) => {
 
 app.get('/solicitudes', verifyToken, async (req, res) => {
   try {
-    // Verificar si el usuario es admin
-    if (req.user.email !== 'proyectoresunach@gmail.com') {
-      return res.status(403).json({ message: 'Acceso no autorizado' });
+    // Verificar si el usuario es administrador
+    if (!req.user.isAdmin) {
+      console.error(`Acceso denegado para ${req.user.email}. No es administrador.`);
+      return res.status(403).json({ 
+        message: 'Acceso denegado. Se requieren permisos de administrador.',
+        userInfo: {
+          email: req.user.email,
+          isAdmin: req.user.isAdmin
+        }
+      });
     }
-
-    // Modificamos el populate para incluir los campos adicionales
-    const solicitudes = await Solicitud.find().populate('usuarioId', 'nombre email grado grupo turno');
-    //console.log('Solicitudes encontradas:', solicitudes.length);
-    res.status(200).json(solicitudes);
+    
+    console.log(`Solicitud de solicitudes por admin: ${req.user.email}`);
+    
+    // Obtener todas las solicitudes con información de usuario
+    const solicitudes = await Solicitud.find()
+      .populate('usuarioId')
+      .populate('proyectorId')
+      .sort({ fechaInicio: -1 });
+    
+    console.log(`Solicitudes encontradas: ${solicitudes.length}`);
+    
+    res.json(solicitudes);
   } catch (error) {
     console.error('Error al obtener solicitudes:', error);
-    res.status(500).json({ message: 'Error al obtener las solicitudes', error });
+    res.status(500).json({ 
+      message: 'Error al obtener solicitudes',
+      error: error.message
+    });
   }
 });
 
