@@ -28,15 +28,15 @@ const Sidebar = ({ openGradeGroupModal }) => {
       {/* Botón hamburguesa para móvil */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-blue-600 text-white lg:hidden"
+        className="fixed top-4 left-4 z-50 p-2 rounded-full bg-blue-600/80 backdrop-blur-sm text-white lg:hidden hover:bg-blue-700/80 transition-colors"
       >
-        {isOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
+        <FaBars size={20} />
       </button>
 
       {/* Overlay para cerrar el sidebar en móvil */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -45,9 +45,9 @@ const Sidebar = ({ openGradeGroupModal }) => {
       <div className={`fixed top-0 left-0 h-screen 
                       bg-gradient-to-b from-[#214DC5] to-blue-900 
                       dark:from-gray-800 dark:to-gray-900
-                      text-white shadow-xl z-40 transition-all duration-300 
-                      ${isOpen ? 'w-64 translate-x-0' : '-translate-x-full w-64'} 
-                      lg:translate-x-0 lg:w-64`}>
+                      text-white shadow-xl z-40 transition-all duration-300 ease-in-out
+                      ${isOpen ? 'w-[85vw] sm:w-72 translate-x-0' : '-translate-x-full w-[85vw] sm:w-72'} 
+                      lg:translate-x-0 lg:w-72`}>
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 
@@ -57,7 +57,7 @@ const Sidebar = ({ openGradeGroupModal }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-400 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           <Link to="/" className={linkClasses} onClick={() => setIsOpen(false)}>
             <FaHome className={iconClasses} />
             <span className="font-medium">Dashboard</span>

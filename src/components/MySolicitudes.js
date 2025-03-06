@@ -165,16 +165,16 @@ const MySolicitudes = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+    <div className="w-full max-w-[2412px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">
         Mis Solicitudes de la Semana
       </h2>
       
       {/* Indicador mejorado de semana actual */}
-      <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+      <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900 rounded-lg shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-300" />
-          <h3 className="font-semibold text-blue-800 dark:text-blue-100">
+          <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-300" />
+          <h3 className="font-semibold text-sm sm:text-base text-blue-800 dark:text-blue-100">
             Semana Actual
           </h3>
         </div>
@@ -194,7 +194,7 @@ const MySolicitudes = () => {
           friday.setHours(23, 59, 59, 999);
           
           return (
-            <p className="text-blue-800 dark:text-blue-100">
+            <p className="text-sm sm:text-base text-blue-800 dark:text-blue-100">
               Del {monday.toLocaleDateString('es-MX', {
                 weekday: 'long',
                 day: 'numeric',
@@ -221,45 +221,84 @@ const MySolicitudes = () => {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Inicio</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Fin</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {solicitudes.map((solicitud) => (
-                <tr key={solicitud._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {solicitud._id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {solicitud.motivo}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {formatDateLocal(solicitud.fechaInicio)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {formatDateLocal(solicitud.fechaFin)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      solicitud.estado === 'aprobado' ? 'bg-green-100 text-green-800' :
-                      solicitud.estado === 'rechazado' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+          {/* Vista móvil */}
+          <div className="block sm:hidden">
+            {solicitudes.map((solicitud) => (
+              <div key={solicitud._id} className="p-4 border-b dark:border-gray-700 last:border-b-0">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">ID</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 font-mono text-right">{solicitud._id}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Motivo</span>
+                    <span className="text-sm text-gray-900 dark:text-white text-right flex-1">{solicitud.motivo}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Inicio</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 text-right">{formatDateLocal(solicitud.fechaInicio)}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-4">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Fin</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 text-right">{formatDateLocal(solicitud.fechaFin)}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-4 pt-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Estado</span>
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                      solicitud.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                      solicitud.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>
                       {solicitud.estado}
                     </span>
-                  </td>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Vista tablet/desktop */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo</th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Inicio</th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha Fin</th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {solicitudes.map((solicitud) => (
+                  <tr key={solicitud._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
+                      {solicitud._id}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {solicitud.motivo}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatDateLocal(solicitud.fechaInicio)}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatDateLocal(solicitud.fechaFin)}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                        solicitud.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                        solicitud.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
+                        {solicitud.estado}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
