@@ -165,13 +165,13 @@ const MySolicitudes = () => {
   }
 
   return (
-    <div className="w-full max-w-[2412px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">
+    <div className="w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 overflow-x-hidden">
+      <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 md:mb-6 text-gray-900 dark:text-white">
         Mis Solicitudes de la Semana
       </h2>
       
       {/* Indicador mejorado de semana actual */}
-      <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900 rounded-lg shadow-sm">
+      <div className="mb-3 sm:mb-4 md:mb-6 p-2 sm:p-3 md:p-4 bg-blue-50 dark:bg-blue-900 rounded-lg shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-300" />
           <h3 className="font-semibold text-sm sm:text-base text-blue-800 dark:text-blue-100">
@@ -223,7 +223,7 @@ const MySolicitudes = () => {
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
           {/* Vista móvil */}
-          <div className="block sm:hidden">
+          <div className="block md:hidden">
             {solicitudes.map((solicitud) => (
               <div key={solicitud._id} className="p-4 border-b dark:border-gray-700 last:border-b-0">
                 <div className="space-y-3">
@@ -259,8 +259,8 @@ const MySolicitudes = () => {
           </div>
 
           {/* Vista tablet/desktop */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
