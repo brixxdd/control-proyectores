@@ -9,7 +9,8 @@ const ADMIN_EMAILS = [
   'diocelyne.arrevillaga@unach.mx',
   'karol.carrazco@unach.mx',
   'karen.portillo@unach.mx',
-  'pedro.escobar@unach.mx'
+  'pedro.escobar@unach.mx',
+  'brianfloresxxd@gmail.com'
 ];
 
 const verifyToken = (req, res, next) => {
