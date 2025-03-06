@@ -97,10 +97,10 @@ const App = () => {
   // Mostrar loader mientras se verifica la autenticación
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
+      <div className="min-h-screen min-w-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="text-center max-w-full">
+          <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando...</p>
         </div>
       </div>
     );
@@ -109,7 +109,7 @@ const App = () => {
   return (
     <TimeZoneProvider>
       <>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+        <div className="min-h-screen min-w-screen bg-gray-50 dark:bg-gray-900 flex flex-col sm:flex-row overflow-x-hidden">
           {isAuthenticated && (
             <>
               {isAdmin ? (
@@ -125,14 +125,16 @@ const App = () => {
           )}
 
           {/* Contenido principal */}
-          <main className={`flex-1 transition-all duration-300
-                           ${isAuthenticated ? 'lg:ml-64' : ''}`}>
-            <div className="p-4 mt-16 lg:mt-0">
+          <main className={`flex-1 transition-all duration-300 w-full max-w-[100vw] overflow-x-hidden
+                           ${isAuthenticated ? 'sm:ml-64' : ''}`}>
+            <div className="p-2 sm:p-4 mt-14 sm:mt-0 max-w-full overflow-x-hidden">
+              <div className="max-w-screen mx-auto">
               {/* Header del usuario */}
               {isAuthenticated && user && (
-                <div className="flex justify-between items-center mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 bg-white dark:bg-gray-800 p-2.5 sm:p-4 rounded-lg shadow-md">
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:gap-4">
                   {/* Temporizador y Notificaciones en la izquierda */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4 w-full sm:w-auto">
                     <div className={`
                       px-4 py-2 rounded-full font-medium text-sm
                       flex items-center gap-2
@@ -156,16 +158,16 @@ const App = () => {
                           d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
                         />
                       </svg>
-                      <span>Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
+                      <span className="text-xs sm:text-sm">Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
                     </div>
                     {/* Componente de Notificaciones */}
                     <NotificationsDropdown />
                   </div>
 
                   {/* Información del usuario en la derecha */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4 w-full sm:w-auto">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full 
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 dark:bg-gray-700 rounded-full 
                                         flex items-center justify-center overflow-hidden">
                         {userPicture && (
                           <img 
@@ -176,16 +178,16 @@ const App = () => {
                           />
                         )}
                       </div>
-                      <span className="text-gray-900 dark:text-white font-medium">
+                      <span className="text-sm sm:text-base text-gray-900 dark:text-white font-medium">
                         {user.nombre}
                       </span>
                     </div>
                     <button 
                       onClick={handleLogout} 
-                      className="px-4 py-2 bg-red-500 text-white rounded-full
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 text-white rounded-full
                                hover:bg-red-600 transition-all duration-200 ease-in-out
-                               shadow-sm hover:shadow-md
-                               flex items-center gap-2"
+                               shadow-sm hover:shadow-md text-xs sm:text-sm
+                               flex items-center gap-1.5 sm:gap-2"
                     >
                       <svg 
                         className="w-4 h-4" 
