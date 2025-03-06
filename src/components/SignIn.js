@@ -22,7 +22,9 @@ const SignIn = () => {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 dark:from-gray-900 dark:to-gray-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 dark:from-gray-900 dark:to-gray-950 dark:bg-none p-4 relative overflow-hidden">
+      {/* Fondo oscuro con patrón sutil */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-5 dark:opacity-10"></div>
       {/* Círculos animados de fondo */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
@@ -59,8 +61,8 @@ const SignIn = () => {
         transition={{ duration: 0.5 }}
         className="relative w-full max-w-md"
       >
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl 
-                      border border-white/20 dark:border-gray-700/50 p-8 space-y-8">
+        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl 
+                      border border-white/20 dark:border-gray-700/30 p-6 sm:p-8 space-y-6 sm:space-y-8 w-full max-w-[90vw] sm:max-w-md mx-auto">
           {/* Logo animado */}
           <motion.div
             initial={{ scale: 0 }}
@@ -79,11 +81,11 @@ const SignIn = () => {
 
           {/* Título con gradiente */}
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 
+            <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 
                          dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
               Bienvenido
             </h2>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
               Inicia sesión con tu cuenta de Google
             </p>
           </div>

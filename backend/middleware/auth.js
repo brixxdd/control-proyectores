@@ -1,5 +1,16 @@
 const jwt = require('jsonwebtoken');
-const ADMIN_EMAIL = 'proyectoresunach@gmail.com'; // Mismo email que en tus constantes
+
+// Lista de correos administrativos autorizados
+const ADMIN_EMAILS = [
+  'proyectoresunach@gmail.com',
+  'fanny.cordova@unach.mx',
+  'nidia.guzman@unach.mx',
+  'deysi.gamboa@unach.mx',
+  'diocelyne.arrevillaga@unach.mx',
+  'karol.carrazco@unach.mx',
+  'karen.portillo@unach.mx',
+  'pedro.escobar@unach.mx'
+];
 
 const verifyToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -24,7 +35,7 @@ const verifyToken = (req, res, next) => {
 };
 
 const isAdmin = (req, res, next) => {
-  if (req.user.email !== ADMIN_EMAIL) {
+  if (!ADMIN_EMAILS.includes(req.user.email)) {
     return res.status(403).json({ message: 'Acceso no autorizado' });
   }
   next();
