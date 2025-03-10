@@ -218,17 +218,33 @@ const UserRequests = () => {
     try {
       console.log("Iniciando carga de datos para administrador");
       
+      // Verificar la autenticación antes de hacer las solicitudes
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+      const token = sessionStorage.getItem('jwtToken');
+      
+      if (!currentUser || !currentUser._id || !token) {
+        throw new Error('Sesión no válida. Por favor, inicia sesión nuevamente.');
+      }
+      
       // Obtener las solicitudes usando el helper
       const solicitudesData = await fetchFromAPI('/solicitudes');
-      console.log("Solicitudes obtenidas:", solicitudesData.length);
+      console.log("Solicitudes obtenidas:", solicitudesData?.length || 0);
       
       // Obtener los usuarios
       const usuariosData = await fetchFromAPI('/usuarios');
-      console.log("Usuarios obtenidos:", usuariosData.length);
+      console.log("Usuarios obtenidos:", usuariosData?.length || 0);
       
-      // Obtener los documentos
-      const documentosData = await fetchFromAPI('/documentos');
-      console.log("Documentos obtenidos:", documentosData.length);
+      // Intentar obtener los documentos, pero manejar el caso de que la ruta no exista
+      let documentosData = [];
+      try {
+        documentosData = await fetchFromAPI('/documentos');
+        console.log("Documentos obtenidos:", documentosData?.length || 0);
+      } catch (docError) {
+        console.warn("No se pudieron obtener los documentos:", docError.message);
+        console.log("Continuando sin datos de documentos");
+        // Continuar sin datos de documentos
+        documentosData = [];
+      }
       
       // Verificar si hay datos
       if (!solicitudesData || solicitudesData.length === 0) {
@@ -243,17 +259,29 @@ const UserRequests = () => {
       const solicitudesPorUsuario = agruparSolicitudesPorUsuario(solicitudesData, usuariosData);
       console.log("Solicitudes agrupadas por usuario:", solicitudesPorUsuario.length);
       
-      // Agregar los documentos a cada usuario
-      documentosData.forEach(documento => {
-        const usuarioId = documento.usuarioId;
-        const usuario = solicitudesPorUsuario.find(u => u.userData._id === usuarioId);
-        if (usuario) {
-          if (!usuario.documentos) {
-            usuario.documentos = [];
+      // Agregar los documentos a cada usuario solo si hay documentos
+      if (documentosData && documentosData.length > 0) {
+        documentosData.forEach(documento => {
+          if (!documento || !documento.usuarioId) return;
+          
+          const usuarioId = documento.usuarioId;
+          const usuario = solicitudesPorUsuario.find(u => 
+            u.userData && u.userData._id === usuarioId
+          );
+          
+          if (usuario) {
+            if (!usuario.documentos) {
+              usuario.documentos = [];
+            }
+            usuario.documentos.push(documento);
           }
-          usuario.documentos.push(documento);
-        }
-      });
+        });
+      } else {
+        // Si no hay documentos, asegurarse de que cada usuario tenga un array de documentos vacío
+        solicitudesPorUsuario.forEach(usuario => {
+          usuario.documentos = [];
+        });
+      }
       
       // Ordenar las solicitudes por fecha (más recientes primero)
       const solicitudesOrdenadas = ordenarSolicitudesPorFecha(solicitudesData);
@@ -285,24 +313,44 @@ const UserRequests = () => {
     }
   };
 
-  const handleUserClick = (user) => {
-    // Filtrar y ordenar las solicitudes antes de mostrar el modal
-    const solicitudesFiltradas = obtenerSolicitudesSemanaActual(user.solicitudes);
-    
-    // Ordenar las solicitudes por fecha (más antiguas primero)
-    const solicitudesOrdenadas = [...solicitudesFiltradas].sort((a, b) => {
-      const fechaA = new Date(a.fechaInicio);
-      const fechaB = new Date(b.fechaInicio);
-      return fechaA - fechaB; // Orden ascendente (más antiguas primero)
-    });
-    
-    // Asegurarse de que documentos exista, incluso si está vacío
-    setSelectedUser({
-      ...user,
-      solicitudes: solicitudesOrdenadas,
-      documentos: user.documentos || [] // Inicializar documentos como array vacío si no existe
-    });
+  const handleUserClick = async (user) => {
+    setSelectedUser(user);
     setShowModal(true);
+    setActiveTab('solicitudes');
+    
+    // Si el usuario no tiene documentos, intentar cargarlos directamente
+    if (!user.documentos || user.documentos.length === 0) {
+      try {
+        console.log("Intentando cargar documentos para el usuario:", user.userData._id);
+        const response = await authService.api.get(`/documentos/usuario/${user.userData._id}`);
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log("Documentos obtenidos directamente:", response.data.length);
+          
+          // Actualizar el usuario seleccionado con los documentos
+          setSelectedUser(prevUser => ({
+            ...prevUser,
+            documentos: response.data
+          }));
+          
+          // También actualizar en la lista de usuarios con solicitudes
+          setUsuariosSolicitudes(prevUsers => {
+            return prevUsers.map(u => {
+              if (u.userData._id === user.userData._id) {
+                return {
+                  ...u,
+                  documentos: response.data
+                };
+              }
+              return u;
+            });
+          });
+        }
+      } catch (error) {
+        console.log("No se encontraron documentos adicionales para el usuario:", error.message);
+        // No mostrar error al usuario, simplemente continuar sin documentos
+      }
+    }
   };
 
   const handleStatusChange = async (solicitud, newStatus) => {
@@ -349,25 +397,47 @@ const UserRequests = () => {
     }
   };
 
-  const handleViewPdf = (filePath) => {
-    if (!filePath) {
-      setAlert({
-        show: true,
-        message: 'No hay documento disponible',
-        type: 'warning'
-      });
+  const handleViewPdf = (document) => {
+    console.log("Documento completo a visualizar:", document);
+    
+    // Priorizar fileUrl, luego filePath
+    let url = document.fileUrl || document.filePath || '';
+    
+    console.log("URL original del documento:", url);
+    
+    if (!url) {
+      alert('No se encontró una URL válida para este documento');
       return;
     }
     
-    const baseUrl = BACKEND_URL;
-    const fullPath = `${baseUrl}/${filePath}`;
+    // Verificar si la URL es válida
+    try {
+      new URL(url); // Esto lanzará un error si la URL no es válida
+    } catch (error) {
+      console.error("URL no válida:", url, error);
+      alert('La URL del documento no es válida');
+      return;
+    }
     
-    console.log('Intentando abrir PDF:', fullPath);
+    console.log("Abriendo PDF en nueva pestaña:", url);
     
-    setPdfPreviewModal({
-      show: true,
-      url: fullPath
-    });
+    // Abrir en una nueva pestaña
+    const newWindow = window.open(url, '_blank');
+    
+    // Verificar si la ventana se abrió correctamente
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      console.error("No se pudo abrir una nueva pestaña. Posible bloqueo de popups.");
+      alert('No se pudo abrir el documento. Por favor, permite las ventanas emergentes para este sitio.');
+      
+      // Alternativa: crear un enlace temporal y hacer clic en él
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.download = document.fileName || 'documento.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const updateDocumentList = (newDocument) => {
@@ -434,13 +504,9 @@ const UserRequests = () => {
     }
   };
 
-  const handleViewError = (error) => {
-    console.error('Error al cargar PDF:', error);
-    setAlert({
-      show: true,
-      message: 'Error al cargar el PDF',
-      type: 'error'
-    });
+  const handleViewError = () => {
+    setIsLoading(false);
+    alert('No se pudo cargar el PDF. Intenta descargarlo directamente.');
   };
 
   // Función para recargar los documentos
@@ -498,7 +564,20 @@ const UserRequests = () => {
       setRefreshStatus(null);
       
       // Verificar si el usuario es administrador
-      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      let currentUser;
+      try {
+        const userString = sessionStorage.getItem('currentUser');
+        if (!userString) {
+          throw new Error('No hay información de usuario en la sesión');
+        }
+        currentUser = JSON.parse(userString);
+      } catch (parseError) {
+        console.error('Error al analizar datos de usuario:', parseError);
+        setError('Error en los datos de sesión. Por favor, inicia sesión nuevamente.');
+        setRefreshStatus('error');
+        return;
+      }
+      
       if (!currentUser || !currentUser.isAdmin) {
         console.error('El usuario no tiene permisos de administrador');
         setError('No tienes permisos para ver esta información');
@@ -553,6 +632,85 @@ const UserRequests = () => {
       </p>
     </div>
   );
+
+  // Modificar la función para renderizar la tabla de documentos
+  const renderDocumentosTab = () => {
+    if (!selectedUser || !selectedUser.documentos || selectedUser.documentos.length === 0) {
+      return (
+        <div className="p-4 text-center text-gray-500">
+          No hay documentos disponibles para este usuario
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Nombre del Archivo
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Fecha de Subida
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Estado
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Acciones
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+            {selectedUser.documentos.map((doc) => (
+              <tr key={doc._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                  {doc.fileName}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {formatDate(doc.createdAt)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                    ${doc.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                      doc.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
+                    {doc.estado}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleViewPdf(doc)}
+                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                      title="Ver documento"
+                    >
+                      <Eye className="h-5 w-5" />
+                    </button>
+                    
+                    {/* Agregar un botón de descarga directa como alternativa */}
+                    <a
+                      href={doc.fileUrl || doc.filePath}
+                      download={doc.fileName || "documento.pdf"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                      title="Descargar documento"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
@@ -834,79 +992,7 @@ const UserRequests = () => {
                       </tbody>
                     </table>
                   ) : (
-                    <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Nombre del Archivo
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Fecha de Subida
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Estado
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Acciones
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {selectedUser.documentos && selectedUser.documentos.length > 0 ? (
-                          selectedUser.documentos.map((documento) => (
-                            <tr key={documento._id} 
-                                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150
-                                         text-gray-700 dark:text-gray-200">
-                              <td className="p-3 text-sm">
-                                {documento.filePath.split('/').pop()}
-                              </td>
-                              <td className="p-3 text-sm">
-                                {formatDate(documento.createdAt)}
-                              </td>
-                              <td className="p-3">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium
-                                  ${documento.estado === 'pendiente' 
-                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                                    : documento.estado === 'aprobado' 
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                  }`}>
-                                  {documento.estado}
-                                </span>
-                              </td>
-                              <td className="p-3">
-                                <div className="flex items-center space-x-2">
-                                  <button
-                                    onClick={() => handleViewPdf(documento.filePath)}
-                                    className="p-1 text-blue-600 dark:text-blue-400 
-                                             hover:bg-blue-50 dark:hover:bg-blue-900/30 
-                                             rounded-full transition-colors"
-                                    title="Ver PDF"
-                                  >
-                                    <Eye className="w-5 h-5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteDocument(documento._id, documento.usuarioId)}
-                                    className="p-1 text-red-600 dark:text-red-400 
-                                             hover:bg-red-50 dark:hover:bg-red-900/30 
-                                             rounded-full transition-colors"
-                                    title="Eliminar documento"
-                                  >
-                                    <Trash2 className="w-5 h-5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="4" className="p-4 text-center text-gray-500 dark:text-gray-400">
-                              No hay documentos disponibles para este usuario
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                    renderDocumentosTab()
                   )}
                 </div>
               </div>

@@ -26,6 +26,9 @@ const fileUpload = require('express-fileupload');
 const FileType = require('file-type');
 const proyectorRoutes = require('./routes/proyectorRoutes');
 const Notification = require('./models/Notification');
+const cleanupFiles = require('./utils/cleanupFiles');
+const cron = require('node-cron');
+const { uploadPdf, cleanupOldFiles, verificarUrlCloudinary } = require('./services/cloudinaryService');
 
 
 if (!process.env.CLIENT_ID || !process.env.JWT_SECRET) {
@@ -678,418 +681,96 @@ app.get('/api/mis-solicitudes', verifyToken, async (req, res) => {
   }
 });
 
-// Configuración de multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
-  },
-});
-
-const upload = multer({ storage });
-
-app.post('/upload-pdf', verifyToken, upload.single('file'), async (req, res) => {
+// Endpoint para subir PDFs
+app.post('/upload-pdf', verifyToken, async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No se subió ningún archivo' });
-    }
-
-    // Verificar si el usuario ya tiene un documento
-    const existingDoc = await Document.findOne({ 
-      usuarioId: req.body.usuarioId 
+    console.log("Iniciando proceso de subida de PDF");
+    // Verificar si el usuario ya ha subido un documento esta semana
+    const userId = req.user.id;
+    const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Domingo
+    
+    const existingDoc = await Document.findOne({
+      usuarioId: userId,
+      createdAt: { $gte: startOfWeek }
     });
-
+    
     if (existingDoc) {
-      // Si existe, eliminar el archivo anterior
-      if (fs.existsSync(existingDoc.filePath)) {
-        fs.unlinkSync(existingDoc.filePath);
+      return res.status(403).json({
+        message: 'Ya has subido un documento esta semana. Solo se permite un documento por usuario por semana.'
+      });
+    }
+    
+    // Proceder con la subida si no hay documentos esta semana
+    uploadPdf.single('file')(req, res, async (err) => {
+      if (err) {
+        console.error("Error en multer durante la subida:", err);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: 'El archivo excede el límite de 2MB' });
+        }
+        return res.status(400).json({ message: err.message });
       }
-      // Eliminar el registro de la base de datos
-      await Document.findByIdAndDelete(existingDoc._id);
-    }
-
-    // Crear nuevo nombre de archivo con el nombre del usuario
-    const nombreUsuario = req.body.nombre.replace(/\s+/g, '_').toLowerCase();
-    const extension = path.extname(req.file.originalname);
-    const nuevoNombre = `${nombreUsuario}-${Date.now()}${extension}`;
-    const nuevaRuta = path.join('uploads', nuevoNombre);
-
-    // Renombrar el archivo
-    fs.renameSync(req.file.path, nuevaRuta);
-
-    const documentoSubido = await Document.create({
-      filePath: nuevaRuta,
-      usuarioId: req.body.usuarioId,
-      email: req.body.email,
-      nombre: req.body.nombre,
-      grado: req.body.grado,
-      grupo: req.body.grupo,
-      turno: req.body.turno,
-      estado: 'pendiente'
-    });
-
-    await documentoSubido.populate('usuarioId');
-
-    res.status(200).json({ 
-      message: 'Archivo subido exitosamente', 
-      filePath: nuevaRuta,
-      documento: documentoSubido
-    });
-  } catch (error) {
-    console.error('Error al subir archivo:', error);
-    res.status(500).json({ message: 'Error al subir archivo' });
-  }
-});
-
-// Configuración para servir archivos estáticos desde la carpeta uploads
-// Esta línea debe ir ANTES de las rutas protegidas
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Configurar CORS específicamente para los archivos PDF
-app.use('/uploads', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-});
-
-// Ruta para obtener todos los documentos
-app.get('/documentos', verifyToken, async (req, res) => {
-  try {
-    const documentos = await Document.find()
-      .populate('usuarioId', 'nombre email grado grupo turno') // Popula la información del usuario
-      .sort({ createdAt: -1 }); // Ordena por fecha de creación, más recientes primero
-
-    res.json(documentos);
-  } catch (error) {
-    console.error('Error al obtener documentos:', error);
-    res.status(500).json({ message: 'Error al obtener documentos' });
-  }
-});
-
-// Ruta para actualizar el estado de un documento
-app.put('/documentos/:id', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado } = req.body;
-
-    const documento = await Document.findByIdAndUpdate(
-      id,
-      { estado },
-      { new: true }
-    ).populate('usuarioId', 'nombre email grado grupo turno');
-
-    if (!documento) {
-      return res.status(404).json({ message: 'Documento no encontrado' });
-    }
-
-    res.json(documento);
-  } catch (error) {
-    console.error('Error al actualizar documento:', error);
-    res.status(500).json({ message: 'Error al actualizar documento' });
-  }
-});
-
-// Ruta para obtener un documento específico
-app.get('/documentos/:id', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const documento = await Document.findById(id)
-      .populate('usuarioId', 'nombre email grado grupo turno');
-
-    if (!documento) {
-      return res.status(404).json({ message: 'Documento no encontrado' });
-    }
-
-    res.json(documento);
-  } catch (error) {
-    console.error('Error al obtener documento:', error);
-    res.status(500).json({ message: 'Error al obtener documento' });
-  }
-});
-
-app.get('/documentos/usuario/:usuarioId', verifyToken, async (req, res) => {
-  try {
-    const documento = await Document.findOne({ 
-      usuarioId: req.params.usuarioId 
-    });
-    
-    if (!documento) {
-      return res.status(404).json({ message: 'No se encontró ningún documento' });
-    }
-
-    res.json(documento);
-  } catch (error) {
-    console.error('Error al obtener documento:', error);
-    res.status(500).json({ message: 'Error al obtener documento' });
-  }
-});
-
-// Ruta para eliminar un documento
-app.delete('/documentos/:id', verifyToken, async (req, res) => {
-  try {
-    const documento = await Document.findById(req.params.id);
-    
-    if (!documento) {
-      return res.status(404).json({ message: 'Documento no encontrado' });
-    }
-
-    // Eliminar el archivo físico
-    const fs = require('fs');
-    if (fs.existsSync(documento.filePath)) {
-      fs.unlinkSync(documento.filePath);
-    }
-
-    // Eliminar el registro de la base de datos
-    await Document.findByIdAndDelete(req.params.id);
-
-    res.json({ message: 'Documento eliminado exitosamente' });
-  } catch (error) {
-    console.error('Error al eliminar documento:', error);
-    res.status(500).json({ message: 'Error al eliminar documento' });
-  }
-});
-
-// Configurar middleware de subida de archivos
-app.use(fileUpload({
-  createParentPath: true,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max
-  }
-}));
-
-// Función para validar archivo PDF usando metadatos
-const validatePDF = async (file) => {
-  try {
-    // Analizar los primeros bytes del archivo para determinar el tipo real
-    const fileTypeResult = await FileType.fromBuffer(file.data);
-    
-    // Verificar que sea realmente un PDF
-    if (!fileTypeResult || fileTypeResult.mime !== 'application/pdf') {
-      throw new Error('El archivo no es un PDF válido');
-    }
-
-    // Verificar la firma del archivo PDF (%PDF-) al inicio
-    const header = file.data.slice(0, 4).toString('ascii');
-    if (!header.startsWith('%PDF')) {
-      throw new Error('El archivo no tiene una firma PDF válida');
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error validando PDF:', error);
-    return false;
-  }
-};
-
-// Ruta para subir documentos
-app.post('/upload', verifyToken, async (req, res) => {
-  try {
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ message: 'No se subió ningún archivo' });
-    }
-
-    const file = req.files.file;
-    const userData = req.body;
-
-    // Validar que sea un PDF real
-    const isValidPDF = await validatePDF(file);
-    if (!isValidPDF) {
-      return res.status(400).json({ 
-        message: 'El archivo no es un PDF válido o podría ser malicioso' 
+      
+      if (!req.file) {
+        console.error("No se recibió ningún archivo en la solicitud");
+        return res.status(400).json({ message: 'No se ha proporcionado ningún archivo' });
+      }
+      
+      console.log("Archivo subido a Cloudinary. Detalles completos:", JSON.stringify(req.file, null, 2));
+      console.log("URL del archivo en Cloudinary:", req.file.path);
+      console.log("Nombre original del archivo:", req.file.originalname);
+      
+      // Asegurarse de que estamos usando la URL correcta de Cloudinary
+      const fileUrl = req.file.path;
+      
+      // Crear registro en la base de datos con la URL de Cloudinary
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 7);
+      
+      const newDocument = new Document({
+        fileName: req.file.originalname,
+        filePath: req.file.path,
+        fileUrl: fileUrl,
+        usuarioId: userId,
+        email: req.body.email,
+        nombre: req.body.nombre,
+        grado: req.body.grado,
+        grupo: req.body.grupo,
+        turno: req.body.turno,
+        estado: 'pendiente',
+        expirationDate: expirationDate
       });
-    }
-
-    // Generar nombre único para el archivo
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`;
-    const filePath = `uploads/${fileName}`;
-
-    // Mover archivo a la carpeta de uploads
-    await file.mv(filePath);
-
-    // Crear documento en la base de datos
-    const documento = new Document({
-      filePath,
-      usuarioId: userData.usuarioId,
-      email: userData.email,
-      nombre: userData.nombre,
-      grado: userData.grado,
-      grupo: userData.grupo,
-      turno: userData.turno
-    });
-
-    await documento.save();
-
-    // Devolver el documento creado
-    res.status(200).json({
-      message: 'Documento subido exitosamente',
-      documento: documento
-    });
-
-  } catch (error) {
-    console.error('Error al subir documento:', error);
-    res.status(500).json({ 
-      message: 'Error al subir el documento',
-      error: error.message 
-    });
-  }
-});
-
-// Asegurarse de que la carpeta uploads exista
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)){
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Ruta para obtener todos los documentos
-app.get('/documentos', verifyToken, async (req, res) => {
-  try {
-    const documentos = await Document.find()
-      .populate('usuarioId', 'nombre email grado grupo turno') // Popula la información del usuario
-      .sort({ createdAt: -1 }); // Ordena por fecha de creación, más recientes primero
-
-    res.json(documentos);
-  } catch (error) {
-    console.error('Error al obtener documentos:', error);
-    res.status(500).json({ message: 'Error al obtener documentos' });
-  }
-});
-
-// Ruta para actualizar el estado de un documento
-app.put('/documentos/:id', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado } = req.body;
-
-    const documento = await Document.findByIdAndUpdate(
-      id,
-      { estado },
-      { new: true }
-    ).populate('usuarioId', 'nombre email grado grupo turno');
-
-    if (!documento) {
-      return res.status(404).json({ message: 'Documento no encontrado' });
-    }
-
-    res.json(documento);
-  } catch (error) {
-    console.error('Error al actualizar documento:', error);
-    res.status(500).json({ message: 'Error al actualizar documento' });
-  }
-});
-
-// Ruta para obtener un documento específico
-app.get('/documentos/:id', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const documento = await Document.findById(id)
-      .populate('usuarioId', 'nombre email grado grupo turno');
-
-    if (!documento) {
-      return res.status(404).json({ message: 'Documento no encontrado' });
-    }
-
-    res.json(documento);
-  } catch (error) {
-    console.error('Error al obtener documento:', error);
-    res.status(500).json({ message: 'Error al obtener documento' });
-  }
-});
-
-app.get('/documentos/usuario/:usuarioId', verifyToken, async (req, res) => {
-  try {
-    const documento = await Document.findOne({ 
-      usuarioId: req.params.usuarioId 
-    });
-    
-    if (!documento) {
-      return res.status(404).json({ message: 'No se encontró ningún documento' });
-    }
-
-    res.json(documento);
-  } catch (error) {
-    console.error('Error al obtener documento:', error);
-    res.status(500).json({ message: 'Error al obtener documento' });
-  }
-});
-
-// Ruta para eliminar un documento
-app.delete('/documentos/:id', verifyToken, async (req, res) => {
-  try {
-    const documento = await Document.findById(req.params.id);
-    
-    if (!documento) {
-      return res.status(404).json({ message: 'Documento no encontrado' });
-    }
-
-    // Eliminar el archivo físico
-    const fs = require('fs');
-    if (fs.existsSync(documento.filePath)) {
-      fs.unlinkSync(documento.filePath);
-    }
-
-    // Eliminar el registro de la base de datos
-    await Document.findByIdAndDelete(req.params.id);
-
-    res.json({ message: 'Documento eliminado exitosamente' });
-  } catch (error) {
-    console.error('Error al eliminar documento:', error);
-    res.status(500).json({ message: 'Error al eliminar documento' });
-  }
-});
-
-// Ruta para subir documentos
-app.post('/upload', verifyToken, async (req, res) => {
-  try {
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ message: 'No se subió ningún archivo' });
-    }
-
-    const file = req.files.file;
-    const userData = req.body;
-
-    // Validar que sea un PDF real
-    const isValidPDF = await validatePDF(file);
-    if (!isValidPDF) {
-      return res.status(400).json({ 
-        message: 'El archivo no es un PDF válido o podría ser malicioso' 
+      
+      const savedDocument = await newDocument.save();
+      console.log("Documento guardado en la base de datos:", JSON.stringify(savedDocument, null, 2));
+      
+      // Crear notificación para administradores
+      const admins = await User.find({ isAdmin: true });
+      
+      for (const admin of admins) {
+        const notification = new Notification({
+          tipo: 'documento',
+          mensaje: `${req.body.nombre} ha subido un nuevo documento para revisión`,
+          destinatario: admin._id,
+          remitente: userId,
+          leida: false,
+          enlace: `/admin/documentos`,
+          entidadId: savedDocument._id,
+          entidadTipo: 'Document'
+        });
+        
+        await notification.save();
+      }
+      
+      res.status(201).json({ 
+        message: 'Documento subido correctamente',
+        document: savedDocument
       });
-    }
-
-    // Generar nombre único para el archivo
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`;
-    const filePath = `uploads/${fileName}`;
-
-    // Mover archivo a la carpeta de uploads
-    await file.mv(filePath);
-
-    // Crear documento en la base de datos
-    const documento = new Document({
-      filePath,
-      usuarioId: userData.usuarioId,
-      email: userData.email,
-      nombre: userData.nombre,
-      grado: userData.grado,
-      grupo: userData.grupo,
-      turno: userData.turno
     });
-
-    await documento.save();
-
-    // Devolver el documento creado
-    res.status(200).json({
-      message: 'Documento subido exitosamente',
-      documento: documento
-    });
-
   } catch (error) {
-    console.error('Error al subir documento:', error);
-    res.status(500).json({ 
-      message: 'Error al subir el documento',
-      error: error.message 
-    });
+    console.error("Error general en la subida de PDF:", error);
+    res.status(500).json({ message: 'Error al procesar la solicitud', error: error.message });
   }
 });
 
@@ -1219,6 +900,118 @@ app.put('/api/notifications/read-all', verifyToken, async (req, res) => {
       message: 'Error al marcar todas las notificaciones como leídas', 
       error: error.message 
     });
+  }
+});
+
+// Programar limpieza semanal (cada domingo a las 00:00)
+cron.schedule('0 0 * * 0', async () => {
+  console.log('Ejecutando limpieza programada de archivos...');
+  try {
+    // Limpiar archivos en Cloudinary
+    const deletedCount = await cleanupOldFiles();
+    
+    // Limpiar registros en la base de datos
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const result = await Document.deleteMany({
+      createdAt: { $lt: oneWeekAgo }
+    });
+    
+    console.log(`Limpieza de base de datos completada. ${result.deletedCount} registros eliminados.`);
+  } catch (err) {
+    console.error('Error en limpieza programada:', err);
+  }
+});
+
+// Endpoint para obtener documentos por usuario
+app.get('/documentos/usuario/:id', verifyToken, async (req, res) => {
+  try {
+    console.log("Buscando documentos para el usuario:", req.params.id);
+    const documentos = await Document.find({ usuarioId: req.params.id });
+    console.log("Documentos encontrados:", documentos.length);
+    
+    if (documentos.length === 0) {
+      return res.status(404).json({ message: 'No se encontraron documentos para este usuario' });
+    }
+    
+    res.json(documentos);
+  } catch (error) {
+    console.error('Error al obtener documentos del usuario:', error);
+    res.status(500).json({ message: 'Error al obtener documentos del usuario' });
+  }
+});
+
+// Agregar un endpoint para verificar un documento específico
+app.get('/verificar-documento/:id', verifyToken, async (req, res) => {
+  try {
+    const documento = await Document.findById(req.params.id);
+    if (!documento) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
+    }
+    
+    console.log("Documento encontrado:", JSON.stringify(documento, null, 2));
+    
+    // Verificar si la URL es accesible
+    const fileUrl = documento.fileUrl || documento.filePath;
+    
+    res.json({
+      documento,
+      urlVerificada: fileUrl,
+      mensaje: 'Usa esta URL para acceder al documento'
+    });
+  } catch (error) {
+    console.error('Error al verificar documento:', error);
+    res.status(500).json({ message: 'Error al verificar documento' });
+  }
+});
+
+// Endpoint para diagnosticar problemas con documentos
+app.get('/api/diagnostico-documentos', verifyToken, async (req, res) => {
+  try {
+    // Verificar si el usuario es administrador
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+    
+    // Obtener todos los documentos
+    const documentos = await Document.find().sort({ createdAt: -1 }).limit(10);
+    
+    // Verificar cada documento
+    const resultados = [];
+    
+    for (const doc of documentos) {
+      const url = doc.fileUrl || doc.filePath;
+      
+      let verificacion;
+      try {
+        // Intentar verificar la URL en Cloudinary
+        verificacion = await verificarUrlCloudinary(url);
+      } catch (error) {
+        verificacion = { valido: false, error: error.message };
+      }
+      
+      resultados.push({
+        _id: doc._id,
+        fileName: doc.fileName,
+        fileUrl: doc.fileUrl,
+        filePath: doc.filePath,
+        createdAt: doc.createdAt,
+        verificacion
+      });
+    }
+    
+    res.json({
+      mensaje: 'Diagnóstico completado',
+      documentos: resultados,
+      configuracion: {
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+        apiKey: '***' + process.env.CLOUDINARY_API_KEY.slice(-4) // Solo mostrar los últimos 4 dígitos por seguridad
+      }
+    });
+  } catch (error) {
+    console.error('Error en diagnóstico de documentos:', error);
+    res.status(500).json({ message: 'Error en diagnóstico', error: error.message });
   }
 });
   

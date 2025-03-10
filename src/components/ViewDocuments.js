@@ -75,18 +75,16 @@ function ViewDocuments() {
     }
   };
 
-  const handleViewDocument = (document) => {
-    if (!document || !document._id) {
-      console.error('Documento inválido o sin ID');
+  const handleViewDocument = (doc) => {
+    if (!doc || !doc.fileUrl) {
+      console.error('Documento inválido o sin URL');
       return;
     }
     
-    const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
-    const viewUrl = `${baseUrl}/view-document/${document._id}`;
+    console.log('Abriendo documento:', doc.fileUrl);
     
-    console.log('Abriendo documento:', viewUrl);
-    
-    window.open(viewUrl, '_blank');
+    // Abrir directamente la URL de Cloudinary
+    window.open(doc.fileUrl, '_blank');
   };
 
   if (loading) {
