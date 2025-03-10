@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FiFile, FiSearch, FiDownload, FiFilter, FiLoader } from 'react-icons/fi';
+import { authService } from '../services/authService';
 
 function ViewDocuments() {
   const [documents, setDocuments] = useState([]);
@@ -12,12 +13,23 @@ function ViewDocuments() {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:3002/documents');
+        const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+        
+        // Usar el token para la autenticación
+        const token = sessionStorage.getItem('jwtToken');
+        const response = await fetch(`${baseUrl}/documentos`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
         if (!response.ok) throw new Error('Error al cargar documentos');
         const data = await response.json();
+        console.log('Documentos cargados:', data);
         setDocuments(data);
         setError(null);
       } catch (err) {
+        console.error('Error al cargar documentos:', err);
         setError('No se pudieron cargar los documentos. Por favor, intenta más tarde.');
       } finally {
         setLoading(false);
@@ -28,10 +40,13 @@ function ViewDocuments() {
   }, []);
 
   const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase());
+    // Usar el nombre del archivo desde filePath
+    const fileName = doc.filePath ? doc.filePath.split('/').pop() : '';
+    const matchesSearch = fileName.toLowerCase().includes(searchTerm.toLowerCase());
+    
     if (filterDate === 'all') return matchesSearch;
     
-    const docDate = new Date(doc.uploaded);
+    const docDate = new Date(doc.createdAt);
     const today = new Date();
     const diffDays = Math.floor((today - docDate) / (1000 * 60 * 60 * 24));
     
@@ -42,7 +57,10 @@ function ViewDocuments() {
     }
   });
 
-  const getFileIcon = (fileName) => {
+  const getFileIcon = (filePath) => {
+    if (!filePath) return <FiFile className="w-8 h-8 text-gray-500" />;
+    
+    const fileName = filePath.split('/').pop();
     const extension = fileName.split('.').pop().toLowerCase();
     const iconClasses = "w-8 h-8";
     
@@ -55,6 +73,20 @@ function ViewDocuments() {
       default:
         return <FiFile className={`${iconClasses} text-gray-500`} />;
     }
+  };
+
+  const handleViewDocument = (document) => {
+    if (!document || !document._id) {
+      console.error('Documento inválido o sin ID');
+      return;
+    }
+    
+    const baseUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+    const viewUrl = `${baseUrl}/view-document/${document._id}`;
+    
+    console.log('Abriendo documento:', viewUrl);
+    
+    window.open(viewUrl, '_blank');
   };
 
   if (loading) {
@@ -122,27 +154,37 @@ function ViewDocuments() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredDocuments.map(doc => (
               <div
-                key={doc.id}
+                key={doc._id}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg 
                          border border-gray-200 dark:border-gray-700 
                          hover:shadow-lg dark:hover:shadow-gray-700/50 
                          transition-shadow duration-200"
               >
                 <div className="flex items-start gap-4">
-                  {getFileIcon(doc.name)}
+                  {getFileIcon(doc.filePath)}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                      {doc.name}
+                      {doc.filePath ? doc.filePath.split('/').pop() : 'Documento sin nombre'}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Subido el: {new Date(doc.uploaded).toLocaleDateString()}
+                      Subido el: {new Date(doc.createdAt).toLocaleDateString()}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Usuario: {doc.nombre || 'Desconocido'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Estado: <span className={`font-medium ${
+                        doc.estado === 'aprobado' ? 'text-green-500' : 
+                        doc.estado === 'rechazado' ? 'text-red-500' : 'text-yellow-500'
+                      }`}>{doc.estado || 'pendiente'}</span>
                     </p>
                   </div>
                   <button 
                     className="p-2 text-gray-500 dark:text-gray-400 
                              hover:text-blue-500 dark:hover:text-blue-400 
                              transition-colors"
-                    title="Descargar documento"
+                    title="Ver documento"
+                    onClick={() => handleViewDocument(doc)}
                   >
                     <FiDownload className="w-5 h-5" />
                   </button>
