@@ -23,19 +23,39 @@ const AdminProyectores = () => {
 
   const cargarProyectores = async () => {
     try {
+      console.log("Intentando cargar proyectores...");
       const response = await authService.api.get('/api/proyectores');
+      console.log("Respuesta recibida:", response.data);
+      
       const proyectoresOrdenados = response.data.sort((a, b) => {
         if (a.grado === b.grado) {
           return a.grupo.localeCompare(b.grupo);
         }
         return a.grado - b.grado;
       });
+      
       setProyectores(proyectoresOrdenados);
       setError(null);
     } catch (error) {
       console.error('Error al cargar proyectores:', error);
-      setError('Error al cargar los proyectores');
-      toast.error('Error al cargar los proyectores');
+      
+      // Mostrar información más detallada sobre el error
+      if (error.response) {
+        // El servidor respondió con un código de estado fuera del rango 2xx
+        console.error('Respuesta del servidor:', error.response.data);
+        console.error('Código de estado:', error.response.status);
+        setError(`Error ${error.response.status}: ${error.response.data.message || 'Error al cargar los proyectores'}`);
+      } else if (error.request) {
+        // La solicitud se realizó pero no se recibió respuesta
+        console.error('No se recibió respuesta del servidor');
+        setError('No se pudo conectar con el servidor. Verifica tu conexión a internet.');
+      } else {
+        // Algo ocurrió al configurar la solicitud
+        console.error('Error de configuración:', error.message);
+        setError(`Error: ${error.message}`);
+      }
+      
+      toast.error('Error al cargar los proyectores. Intenta de nuevo más tarde.');
     } finally {
       setLoading(false);
     }
