@@ -30,6 +30,20 @@ const cleanupFiles = require('./utils/cleanupFiles');
 const cron = require('node-cron');
 const { uploadPdf, cleanupOldFiles, verificarUrlCloudinary } = require('./services/cloudinaryService');
 
+// Lista de correos administrativos - MOVER ESTA DEFINICIÓN AL NIVEL SUPERIOR
+const ADMIN_EMAILS = [
+  'proyectoresunach@gmail.com',
+  'fanny.cordova@unach.mx',
+  'nidia.guzman@unach.mx',
+  'deysi.gamboa@unach.mx',
+  'diocelyne.arrevillaga@unach.mx',
+  'karol.carrazco@unach.mx',
+  'karen.portillo@unach.mx',
+  'pedro.escobar@unach.mx',
+  'brianes666@gmail.com',
+  'brianfloresxxd@gmail.com',
+  'nuevo.correo@unach.mx'
+];
 
 if (!process.env.CLIENT_ID || !process.env.JWT_SECRET) {
   console.error('Error: Variables de entorno no configuradas correctamente');
@@ -774,9 +788,15 @@ app.post('/upload-pdf', verifyToken, async (req, res) => {
   }
 });
 
-// Ruta para obtener la lista de administradores
+// Endpoint para obtener la lista de correos de administradores
 app.get('/api/admin-emails', (req, res) => {
-  res.json({ adminEmails: ADMIN_EMAILS });
+  try {
+    console.log("Petición recibida para obtener correos de administradores");
+    res.json({ adminEmails: ADMIN_EMAILS });
+  } catch (error) {
+    console.error('Error al obtener correos de administradores:', error);
+    res.status(500).json({ message: 'Error al obtener correos de administradores', error: error.message });
+  }
 });
 
 // Endpoint para obtener los datos más recientes del usuario
