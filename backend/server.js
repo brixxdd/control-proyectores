@@ -808,21 +808,15 @@ app.get('/view-document/:id', async (req, res) => {
       return res.status(404).json({ message: 'Documento no encontrado' });
     }
     
-    // Construir la ruta completa al archivo
-    const filePath = path.join(__dirname, documento.filePath);
+    // Usar la URL de Cloudinary directamente
+    const fileUrl = documento.fileUrl || documento.filePath;
     
-    // Verificar si el archivo existe
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Archivo no encontrado en el servidor' });
+    if (!fileUrl) {
+      return res.status(404).json({ message: 'URL del documento no encontrada' });
     }
     
-    // Configurar headers para PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${path.basename(documento.filePath)}"`);
-    
-    // Enviar el archivo
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    // Redirigir al usuario a la URL de Cloudinary
+    return res.redirect(fileUrl);
     
   } catch (error) {
     console.error('Error al obtener documento:', error);

@@ -34,16 +34,11 @@ const uploadPdf = multer({
       resource_type: 'raw', // Importante para PDFs
       format: 'pdf',
       public_id: (req, file) => {
-        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-        const filename = `pdf_${req.user.id}_${new Date().toISOString().replace(/:/g, '-')}`;
-        console.log("Generando public_id para Cloudinary:", filename);
-        return filename;
-      },
-      // Asegurarse de que la URL sea accesible públicamente
-      use_filename: true,
-      unique_filename: true,
-    },
-    allowedFormats: ['pdf'],
+        const userId = req.user?.id || 'anonymous';
+        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        return `pdf_${userId}_${timestamp}`;
+      }
+    }
   }),
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
   fileFilter: (req, file, cb) => {
