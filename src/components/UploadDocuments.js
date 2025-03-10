@@ -1,5 +1,5 @@
 import React, { useState, useCallback ,useEffect} from 'react';
-import { FiUploadCloud, FiFile, FiX, FiCheck } from 'react-icons/fi';
+import { FiUploadCloud, FiFile, FiX, FiCheck, FiAlertTriangle, FiInfo } from 'react-icons/fi';
 import { authService } from '../services/authService';
 function UploadDocuments() {
   const [file, setFile] = useState(null);
@@ -7,6 +7,8 @@ function UploadDocuments() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isFirstUpload, setIsFirstUpload] = useState(true);
+  const [weeklyQuotaUsed, setWeeklyQuotaUsed] = useState(false);
+  const [nextAvailableDate, setNextAvailableDate] = useState('');
 
   useEffect(() => {
     console.log('Token en sessionStorage:', sessionStorage.getItem('jwtToken'));
@@ -25,8 +27,28 @@ function UploadDocuments() {
         const response = await authService.api.get(`/documentos/usuario/${currentUser._id}`);
         
         if (response.data) {
-          setStatusMessage('Ya tienes un documento subido. Si subes otro, reemplazará al anterior.');
-          setUploadStatus('warning');
+          // Verificar si el documento es de esta semana
+          const docDate = new Date(response.data.createdAt);
+          const today = new Date();
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - today.getDay()); // Domingo
+          startOfWeek.setHours(0, 0, 0, 0);
+          
+          if (docDate >= startOfWeek) {
+            setWeeklyQuotaUsed(true);
+            
+            // Calcular próximo domingo
+            const nextSunday = new Date(startOfWeek);
+            nextSunday.setDate(nextSunday.getDate() + 7);
+            setNextAvailableDate(nextSunday.toLocaleDateString());
+            
+            setStatusMessage(`Ya has subido un documento esta semana. Podrás subir otro a partir del ${nextSunday.toLocaleDateString()}.`);
+            setUploadStatus('warning');
+          } else {
+            setStatusMessage('Ya tienes un documento subido. Si subes otro, reemplazará al anterior.');
+            setUploadStatus('info');
+          }
+          
           setIsFirstUpload(false);
         }
       } catch (error) {
@@ -63,33 +85,54 @@ function UploadDocuments() {
       setFile(droppedFile);
       setUploadStatus(null);
     } else {
-      setStatusMessage('Tipo de archivo no permitido. Por favor, sube PDF o Word.');
+      setStatusMessage('Tipo de archivo no permitido. Por favor, sube PDF.');
       setUploadStatus('error');
     }
   }, []);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
-    if (isValidFileType(selectedFile)) {
-      setFile(selectedFile);
-      setUploadStatus(null);
-    } else {
-      setStatusMessage('Tipo de archivo no permitido. Por favor, sube PDF o Word.');
+    
+    if (!selectedFile) return;
+    
+    if (!isValidFileType(selectedFile)) {
+      setStatusMessage('Solo se permiten archivos PDF.');
       setUploadStatus('error');
+      return;
     }
+    
+    if (!isValidFileSize(selectedFile)) {
+      setStatusMessage('El archivo excede el límite de 2MB.');
+      setUploadStatus('error');
+      return;
+    }
+    
+    setFile(selectedFile);
+    setUploadStatus(null);
   };
 
   const isValidFileType = (file) => {
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    return file && allowedTypes.includes(file.type);
+    // Solo permitir PDFs
+    return file && file.type === 'application/pdf';
+  };
+  
+  const isValidFileSize = (file) => {
+    // Verificar que el archivo no exceda 2MB
+    return file && file.size <= 2 * 1024 * 1024;
   };
 
   const handleFileUpload = async () => {
     if (!file) return;
+    
+    if (weeklyQuotaUsed) {
+      setStatusMessage(`Ya has subido un documento esta semana. Podrás subir otro a partir del ${nextAvailableDate}.`);
+      setUploadStatus('warning');
+      return;
+    }
+
+    // Mostrar estado de carga
+    setUploadStatus('loading');
+    setStatusMessage('Subiendo documento...');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -107,9 +150,9 @@ function UploadDocuments() {
       formData.append('usuarioId', currentUser._id);
       formData.append('nombre', currentUser.nombre);
       formData.append('email', currentUser.email);
-      formData.append('grado', currentUser.grado);
-      formData.append('grupo', currentUser.grupo);
-      formData.append('turno', currentUser.turno);
+      formData.append('grado', currentUser.grado || '');
+      formData.append('grupo', currentUser.grupo || '');
+      formData.append('turno', currentUser.turno || '');
 
       const response = await authService.api.post('/upload-pdf', formData, {
         headers: {
@@ -118,8 +161,17 @@ function UploadDocuments() {
       });
       
       setUploadStatus('success');
-      setStatusMessage('Documento subido exitosamente');
+      setStatusMessage('Documento subido exitosamente. Se eliminará automáticamente después de una semana.');
       setFile(null);
+      setWeeklyQuotaUsed(true);
+      
+      // Calcular próximo domingo
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Domingo
+      const nextSunday = new Date(startOfWeek);
+      nextSunday.setDate(nextSunday.getDate() + 7);
+      setNextAvailableDate(nextSunday.toLocaleDateString());
       
     } catch (error) {
       setUploadStatus('error');
@@ -134,6 +186,22 @@ function UploadDocuments() {
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-8">
           Subir Documentos
         </h2>
+        
+        {/* Información sobre restricciones */}
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+          <div className="flex items-start">
+            <FiInfo className="h-5 w-5 text-blue-500 mt-0.5 mr-3" />
+            <div>
+              <h3 className="font-medium text-blue-700 dark:text-blue-300">Restricciones de subida</h3>
+              <ul className="mt-2 text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                <li>• Solo se permite un documento por usuario por semana</li>
+                <li>• Solo se aceptan archivos PDF</li>
+                <li>• Tamaño máximo: 2MB</li>
+                <li>• Los documentos se eliminarán automáticamente después de una semana</li>
+              </ul>
+            </div>
+          </div>
+        </div>
         
         {uploadStatus && (
           <div className={`mb-6 p-4 rounded-lg flex items-center gap-3
@@ -157,9 +225,9 @@ function UploadDocuments() {
               {uploadStatus === 'success' ? (
                 <FiCheck className="h-5 w-5" />
               ) : uploadStatus === 'warning' ? (
-                <FiFile className="h-5 w-5" />
+                <FiAlertTriangle className="h-5 w-5" />
               ) : uploadStatus === 'info' ? (
-                <FiUploadCloud className="h-5 w-5" />
+                <FiInfo className="h-5 w-5" />
               ) : (
                 <FiX className="h-5 w-5" />
               )}
@@ -188,7 +256,7 @@ function UploadDocuments() {
             <input
               type="file"
               onChange={handleFileChange}
-              accept=".pdf,.doc,.docx"
+              accept=".pdf"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
             
@@ -204,7 +272,7 @@ function UploadDocuments() {
                   o haz clic para seleccionar
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500">
-                  PDF o Word (máximo 10MB)
+                  PDF (máximo 2MB)
                 </p>
               </div>
             </div>
