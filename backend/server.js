@@ -1008,4 +1008,91 @@ app.get('/api/diagnostico-documentos', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Error en diagnóstico', error: error.message });
   }
 });
+
+// Rutas para proyectores
+app.get('/api/proyectores', verifyToken, async (req, res) => {
+  try {
+    console.log("Solicitud recibida para obtener proyectores");
+    const proyectores = await Proyector.find();
+    console.log(`Se encontraron ${proyectores.length} proyectores`);
+    res.json(proyectores);
+  } catch (error) {
+    console.error('Error al obtener proyectores:', error);
+    res.status(500).json({ message: 'Error al obtener proyectores', error: error.message });
+  }
+});
+
+app.post('/api/proyectores', verifyToken, async (req, res) => {
+  try {
+    // Verificar si el usuario es administrador
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+
+    const { grado, grupo, turno, estado } = req.body;
+    
+    // Generar código automáticamente
+    const codigo = `PRY-${grado}${grupo}-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    const nuevoProyector = new Proyector({
+      codigo,
+      grado,
+      grupo,
+      turno,
+      estado
+    });
+    
+    const proyectorGuardado = await nuevoProyector.save();
+    res.status(201).json(proyectorGuardado);
+  } catch (error) {
+    console.error('Error al crear proyector:', error);
+    res.status(500).json({ message: 'Error al crear proyector', error: error.message });
+  }
+});
+
+app.put('/api/proyectores/:id', verifyToken, async (req, res) => {
+  try {
+    // Verificar si el usuario es administrador
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+    
+    const { grado, grupo, turno, estado } = req.body;
+    
+    const proyectorActualizado = await Proyector.findByIdAndUpdate(
+      req.params.id,
+      { grado, grupo, turno, estado },
+      { new: true }
+    );
+    
+    if (!proyectorActualizado) {
+      return res.status(404).json({ message: 'Proyector no encontrado' });
+    }
+    
+    res.json(proyectorActualizado);
+  } catch (error) {
+    console.error('Error al actualizar proyector:', error);
+    res.status(500).json({ message: 'Error al actualizar proyector', error: error.message });
+  }
+});
+
+app.delete('/api/proyectores/:id', verifyToken, async (req, res) => {
+  try {
+    // Verificar si el usuario es administrador
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+    
+    const proyectorEliminado = await Proyector.findByIdAndDelete(req.params.id);
+    
+    if (!proyectorEliminado) {
+      return res.status(404).json({ message: 'Proyector no encontrado' });
+    }
+    
+    res.json({ message: 'Proyector eliminado correctamente' });
+  } catch (error) {
+    console.error('Error al eliminar proyector:', error);
+    res.status(500).json({ message: 'Error al eliminar proyector', error: error.message });
+  }
+});
   
