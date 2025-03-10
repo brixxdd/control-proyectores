@@ -2,30 +2,17 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
-// Configurar Cloudinary con tus credenciales
-// Estas credenciales las encontrarás en el Dashboard de Cloudinary
+// Configurar Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configurar almacenamiento para PDFs
-const pdfStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'pdfs',
-    resource_type: 'raw',
-    format: 'pdf',
-    public_id: (req, file) => {
-      const userId = req.user?.id || 'anonymous';
-      const timestamp = new Date().toISOString().replace(/:/g, '-');
-      return `pdf_${userId}_${timestamp}`;
-    }
-  }
-});
+// Verificar la configuración
+console.log("Cloudinary configurado con cloud_name:", process.env.CLOUDINARY_CLOUD_NAME);
 
-// Configurar multer con Cloudinary
+// Configurar almacenamiento para PDFs
 const uploadPdf = multer({
   storage: new CloudinaryStorage({
     cloudinary: cloudinary,
@@ -34,21 +21,39 @@ const uploadPdf = multer({
       resource_type: 'raw', // Importante para PDFs
       format: 'pdf',
       public_id: (req, file) => {
-        const userId = req.user?.id || 'anonymous';
-        const timestamp = new Date().toISOString().replace(/:/g, '-');
-        return `pdf_${userId}_${timestamp}`;
+        try {
+          const userId = req.user?.id || 'anonymous';
+          const timestamp = new Date().toISOString().replace(/:/g, '-');
+          const filename = `pdf_${userId}_${timestamp}`;
+          console.log("Generando public_id para Cloudinary:", filename);
+          return filename;
+        } catch (error) {
+          console.error("Error al generar public_id:", error);
+          return `pdf_error_${Date.now()}`;
+        }
       }
     }
   }),
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
   fileFilter: (req, file, cb) => {
-    console.log("Verificando tipo de archivo:", file.mimetype);
     if (file.mimetype !== 'application/pdf') {
       return cb(new Error('Solo se permiten archivos PDF'), false);
     }
     cb(null, true);
   }
 });
+
+// Función para verificar la conexión con Cloudinary
+const verificarConexionCloudinary = async () => {
+  try {
+    const result = await cloudinary.api.ping();
+    console.log("Conexión con Cloudinary verificada:", result);
+    return { status: 'success', message: 'Conexión exitosa con Cloudinary' };
+  } catch (error) {
+    console.error("Error al conectar con Cloudinary:", error);
+    return { status: 'error', message: error.message };
+  }
+};
 
 // Función para limpiar archivos antiguos
 async function cleanupOldFiles() {
@@ -123,5 +128,6 @@ module.exports = {
   uploadPdf,
   cleanupOldFiles,
   cloudinary,
-  verificarUrlCloudinary
+  verificarUrlCloudinary,
+  verificarConexionCloudinary
 }; 
