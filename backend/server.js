@@ -744,7 +744,16 @@ app.post('/upload-pdf', verifyToken, upload.single('file'), async (req, res) => 
   }
 });
 
+// Configuración para servir archivos estáticos desde la carpeta uploads
+// Esta línea debe ir ANTES de las rutas protegidas
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Configurar CORS específicamente para los archivos PDF
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
 
 // Ruta para obtener todos los documentos
 app.get('/documentos', verifyToken, async (req, res) => {
@@ -934,182 +943,157 @@ if (!fs.existsSync(uploadsDir)){
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Configurar headers de seguridad para la carpeta uploads
-app.use('/uploads', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self' blob: data:; object-src 'self' blob: data:; frame-ancestors 'self';");
-  next();
-}, express.static(path.join(__dirname, 'uploads')));
-
-// Ruta específica para PDFs con headers adicionales
-app.get('/view-pdf/:filename', (req, res) => {
+// Ruta para obtener todos los documentos
+app.get('/documentos', verifyToken, async (req, res) => {
   try {
-    const filename = req.params.filename;
-    const filePath = path.join(__dirname, 'uploads', filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).send('PDF no encontrado');
-    }
+    const documentos = await Document.find()
+      .populate('usuarioId', 'nombre email grado grupo turno') // Popula la información del usuario
+      .sort({ createdAt: -1 }); // Ordena por fecha de creación, más recientes primero
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename=' + filename);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Content-Security-Policy', "default-src 'self' blob: data:; object-src 'self' blob: data:; frame-ancestors 'self';");
-
-    const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
+    res.json(documentos);
   } catch (error) {
-    console.error('Error al servir PDF:', error);
-    res.status(500).send('Error al servir el PDF');
+    console.error('Error al obtener documentos:', error);
+    res.status(500).json({ message: 'Error al obtener documentos' });
   }
 });
 
-// Usar las rutas de proyectores
-app.use('/api/proyectores', proyectorRoutes);
-
-app.put('/api/solicitudes/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado, proyectorId } = req.body;
-    
-    const solicitudActualizada = await Solicitud.findByIdAndUpdate(
-      id,
-      { 
-        estado,
-        proyectorId 
-      },
-      { new: true }
-    );
-
-    if (!solicitudActualizada) {
-      return res.status(404).json({ message: 'Solicitud no encontrada' });
-    }
-
-    res.json(solicitudActualizada);
-  } catch (error) {
-    console.error('Error al actualizar solicitud:', error);
-    res.status(500).json({ message: 'Error al actualizar la solicitud' });
-  }
-});
-
-// Ruta para actualizar el estado del proyector
-app.put('/api/proyectores/:id', async (req, res) => {
+// Ruta para actualizar el estado de un documento
+app.put('/documentos/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { estado } = req.body;
-    
-    const proyectorActualizado = await Proyector.findByIdAndUpdate(
+
+    const documento = await Document.findByIdAndUpdate(
       id,
       { estado },
       { new: true }
-    );
+    ).populate('usuarioId', 'nombre email grado grupo turno');
 
-    if (!proyectorActualizado) {
-      return res.status(404).json({ message: 'Proyector no encontrado' });
+    if (!documento) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
     }
 
-    res.json(proyectorActualizado);
+    res.json(documento);
   } catch (error) {
-    console.error('Error al actualizar proyector:', error);
-    res.status(500).json({ message: 'Error al actualizar el proyector' });
+    console.error('Error al actualizar documento:', error);
+    res.status(500).json({ message: 'Error al actualizar documento' });
   }
 });
 
-// Ruta para eliminar proyector
-app.delete('/api/proyectores/:id', async (req, res) => {
+// Ruta para obtener un documento específico
+app.get('/documentos/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const proyector = await Proyector.findByIdAndDelete(id);
-    
-    if (!proyector) {
-      return res.status(404).json({ message: 'Proyector no encontrado' });
+    const documento = await Document.findById(id)
+      .populate('usuarioId', 'nombre email grado grupo turno');
+
+    if (!documento) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
     }
-    
-    res.json({ message: 'Proyector eliminado exitosamente' });
+
+    res.json(documento);
   } catch (error) {
-    console.error('Error al eliminar proyector:', error);
-    res.status(500).json({ message: 'Error al eliminar el proyector' });
+    console.error('Error al obtener documento:', error);
+    res.status(500).json({ message: 'Error al obtener documento' });
   }
 });
 
-app.get('/api/proyectores', async (req, res) => {
+app.get('/documentos/usuario/:usuarioId', verifyToken, async (req, res) => {
   try {
-    const { estado } = req.query;
-    const query = estado ? { estado } : {};
-    const proyectores = await Proyector.find(query);
-    res.json(proyectores);
+    const documento = await Document.findOne({ 
+      usuarioId: req.params.usuarioId 
+    });
+    
+    if (!documento) {
+      return res.status(404).json({ message: 'No se encontró ningún documento' });
+    }
+
+    res.json(documento);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener proyectores', error });
+    console.error('Error al obtener documento:', error);
+    res.status(500).json({ message: 'Error al obtener documento' });
   }
 });
 
-// Ruta para crear notificación
-app.post('/api/notifications', verifyToken, isAdmin, async (req, res) => {
+// Ruta para eliminar un documento
+app.delete('/documentos/:id', verifyToken, async (req, res) => {
   try {
-    const { usuarioId, mensaje, tipo } = req.body;
+    const documento = await Document.findById(req.params.id);
     
-    const notification = new Notification({
-      usuarioId,
-      mensaje,
-      tipo
+    if (!documento) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
+    }
+
+    // Eliminar el archivo físico
+    const fs = require('fs');
+    if (fs.existsSync(documento.filePath)) {
+      fs.unlinkSync(documento.filePath);
+    }
+
+    // Eliminar el registro de la base de datos
+    await Document.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Documento eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar documento:', error);
+    res.status(500).json({ message: 'Error al eliminar documento' });
+  }
+});
+
+// Ruta para subir documentos
+app.post('/upload', verifyToken, async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ message: 'No se subió ningún archivo' });
+    }
+
+    const file = req.files.file;
+    const userData = req.body;
+
+    // Validar que sea un PDF real
+    const isValidPDF = await validatePDF(file);
+    if (!isValidPDF) {
+      return res.status(400).json({ 
+        message: 'El archivo no es un PDF válido o podría ser malicioso' 
+      });
+    }
+
+    // Generar nombre único para el archivo
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`;
+    const filePath = `uploads/${fileName}`;
+
+    // Mover archivo a la carpeta de uploads
+    await file.mv(filePath);
+
+    // Crear documento en la base de datos
+    const documento = new Document({
+      filePath,
+      usuarioId: userData.usuarioId,
+      email: userData.email,
+      nombre: userData.nombre,
+      grado: userData.grado,
+      grupo: userData.grupo,
+      turno: userData.turno
     });
 
-    await notification.save();
-    res.status(201).json(notification);
+    await documento.save();
+
+    // Devolver el documento creado
+    res.status(200).json({
+      message: 'Documento subido exitosamente',
+      documento: documento
+    });
+
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear notificación' });
+    console.error('Error al subir documento:', error);
+    res.status(500).json({ 
+      message: 'Error al subir el documento',
+      error: error.message 
+    });
   }
 });
 
-// Ruta para obtener notificaciones del usuario
-app.get('/api/notifications', verifyToken, async (req, res) => {
-  try {
-    const notifications = await Notification.find({ 
-      usuarioId: req.user.id,
-      leida: false 
-    }).sort({ createdAt: -1 });
-    
-    res.json(notifications);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener notificaciones' });
-  }
-});
-
-// Ruta para marcar notificación como leída
-app.put('/api/notifications/:id', verifyToken, async (req, res) => {
-  try {
-    const notification = await Notification.findByIdAndUpdate(
-      req.params.id,
-      { leida: true },
-      { new: true }
-    );
-    res.json(notification);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar notificación' });
-  }
-});
-
-// Ruta para marcar todas las notificaciones como leídas
-app.put('/api/notifications/mark-all-read', verifyToken, async (req, res) => {
-  try {
-    await Notification.updateMany(
-      { 
-        usuarioId: req.user.id,
-        leida: false 
-      },
-      { leida: true }
-    );
-    
-    res.json({ message: 'Todas las notificaciones marcadas como leídas' });
-  } catch (error) {
-    console.error('Error al marcar todas las notificaciones como leídas:', error);
-    res.status(500).json({ message: 'Error al actualizar notificaciones' });
-  }
-});
-
-// Nuevo endpoint para obtener la lista de administradores
+// Ruta para obtener la lista de administradores
 app.get('/api/admin-emails', (req, res) => {
   res.json({ adminEmails: ADMIN_EMAILS });
 });
@@ -1131,6 +1115,110 @@ app.get('/user-data', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error al obtener datos del usuario:', error);
     res.status(500).json({ message: 'Error al obtener datos del usuario' });
+  }
+});
+
+// Endpoint para ver documentos sin token (solo para visualización)
+app.get('/view-document/:id', async (req, res) => {
+  try {
+    const documento = await Document.findById(req.params.id);
+    
+    if (!documento) {
+      return res.status(404).json({ message: 'Documento no encontrado' });
+    }
+    
+    // Construir la ruta completa al archivo
+    const filePath = path.join(__dirname, documento.filePath);
+    
+    // Verificar si el archivo existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Archivo no encontrado en el servidor' });
+    }
+    
+    // Configurar headers para PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${path.basename(documento.filePath)}"`);
+    
+    // Enviar el archivo
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+    
+  } catch (error) {
+    console.error('Error al obtener documento:', error);
+    res.status(500).json({ message: 'Error al obtener documento', error: error.message });
+  }
+});
+
+// Endpoint para obtener notificaciones
+app.get('/api/notifications', verifyToken, async (req, res) => {
+  try {
+    // Obtener el ID del usuario del token
+    const userId = req.user.id;
+    
+    // Buscar notificaciones para este usuario
+    const notifications = await Notification.find({ 
+      destinatario: userId 
+    })
+    .sort({ createdAt: -1 }) // Ordenar por fecha, más recientes primero
+    .limit(10); // Limitar a 10 notificaciones
+    
+    res.json(notifications);
+  } catch (error) {
+    console.error('Error al obtener notificaciones:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener notificaciones', 
+      error: error.message 
+    });
+  }
+});
+
+// Endpoint para marcar notificaciones como leídas
+app.put('/api/notifications/:id/read', verifyToken, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    
+    // Actualizar la notificación
+    const notification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { leida: true },
+      { new: true } // Devolver el documento actualizado
+    );
+    
+    if (!notification) {
+      return res.status(404).json({ message: 'Notificación no encontrada' });
+    }
+    
+    res.json(notification);
+  } catch (error) {
+    console.error('Error al marcar notificación como leída:', error);
+    res.status(500).json({ 
+      message: 'Error al marcar notificación como leída', 
+      error: error.message 
+    });
+  }
+});
+
+// Endpoint para marcar todas las notificaciones como leídas
+app.put('/api/notifications/read-all', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Actualizar todas las notificaciones del usuario
+    const result = await Notification.updateMany(
+      { destinatario: userId, leida: false },
+      { leida: true }
+    );
+    
+    res.json({ 
+      message: 'Todas las notificaciones marcadas como leídas',
+      count: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Error al marcar todas las notificaciones como leídas:', error);
+    res.status(500).json({ 
+      message: 'Error al marcar todas las notificaciones como leídas', 
+      error: error.message 
+    });
   }
 });
   

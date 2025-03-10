@@ -296,9 +296,11 @@ const UserRequests = () => {
       return fechaA - fechaB; // Orden ascendente (más antiguas primero)
     });
     
+    // Asegurarse de que documentos exista, incluso si está vacío
     setSelectedUser({
       ...user,
-      solicitudes: solicitudesOrdenadas
+      solicitudes: solicitudesOrdenadas,
+      documentos: user.documentos || [] // Inicializar documentos como array vacío si no existe
     });
     setShowModal(true);
   };
@@ -850,51 +852,59 @@ const UserRequests = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {selectedUser.documentos.map((documento) => (
-                          <tr key={documento._id} 
-                              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150
-                                       text-gray-700 dark:text-gray-200">
-                            <td className="p-3 text-sm">
-                              {documento.filePath.split('/').pop()}
-                            </td>
-                            <td className="p-3 text-sm">
-                              {formatDate(documento.createdAt)}
-                            </td>
-                            <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium
-                                ${documento.estado === 'pendiente' 
-                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                                  : documento.estado === 'aprobado' 
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                }`}>
-                                {documento.estado}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => handleViewPdf(documento.filePath)}
-                                  className="p-1 text-blue-600 dark:text-blue-400 
-                                           hover:bg-blue-50 dark:hover:bg-blue-900/30 
-                                           rounded-full transition-colors"
-                                  title="Ver PDF"
-                                >
-                                  <Eye className="w-5 h-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteDocument(documento._id, documento.usuarioId)}
-                                  className="p-1 text-red-600 dark:text-red-400 
-                                           hover:bg-red-50 dark:hover:bg-red-900/30 
-                                           rounded-full transition-colors"
-                                  title="Eliminar documento"
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </div>
+                        {selectedUser.documentos && selectedUser.documentos.length > 0 ? (
+                          selectedUser.documentos.map((documento) => (
+                            <tr key={documento._id} 
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150
+                                         text-gray-700 dark:text-gray-200">
+                              <td className="p-3 text-sm">
+                                {documento.filePath.split('/').pop()}
+                              </td>
+                              <td className="p-3 text-sm">
+                                {formatDate(documento.createdAt)}
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium
+                                  ${documento.estado === 'pendiente' 
+                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                                    : documento.estado === 'aprobado' 
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                  }`}>
+                                  {documento.estado}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    onClick={() => handleViewPdf(documento.filePath)}
+                                    className="p-1 text-blue-600 dark:text-blue-400 
+                                             hover:bg-blue-50 dark:hover:bg-blue-900/30 
+                                             rounded-full transition-colors"
+                                    title="Ver PDF"
+                                  >
+                                    <Eye className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDocument(documento._id, documento.usuarioId)}
+                                    className="p-1 text-red-600 dark:text-red-400 
+                                             hover:bg-red-50 dark:hover:bg-red-900/30 
+                                             rounded-full transition-colors"
+                                    title="Eliminar documento"
+                                  >
+                                    <Trash2 className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="p-4 text-center text-gray-500 dark:text-gray-400">
+                              No hay documentos disponibles para este usuario
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   )}
