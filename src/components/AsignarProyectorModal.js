@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { X, Search } from 'lucide-react';
+import { alertaExito } from './Alert';
 
 const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
   const [proyectoresDisponibles, setProyectoresDisponibles] = useState([]);
@@ -29,22 +30,31 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
   const handleAsignarProyector = async (proyector) => {
     try {
       // Actualizar estado de la solicitud a aprobado
-      await authService.api.put(`/api/solicitudes/${solicitud._id}`, {
+      await authService.api.put(`/solicituds/${solicitud._id}`, {
         estado: 'aprobado',
         proyectorId: proyector._id
       });
 
       // Actualizar estado del proyector a "en uso"
       await authService.api.put(`/api/proyectores/${proyector._id}`, {
-        estado: 'en uso'
+        estado: 'en uso',
+        asignadoA: solicitud.usuarioId._id
       });
 
-      // Enviar notificación al usuario DESPUÉS de asignar el proyector
-      await authService.api.post('/api/notifications', {
-        usuarioId: solicitud.usuarioId._id,
-        mensaje: `Tu solicitud de proyector ha sido aprobada para la fecha ${new Date(solicitud.fechaInicio).toLocaleDateString()}. Proyector asignado: ${proyector.codigo}`,
-        tipo: 'success'
-      });
+      // Enviar notificación al usuario
+      try {
+        await authService.api.post('/api/notifications', {
+          usuarioId: solicitud.usuarioId._id,
+          mensaje: `Tu solicitud de proyector ha sido aprobada para la fecha ${new Date(solicitud.fechaInicio).toLocaleDateString()}. Proyector asignado: ${proyector.codigo}`,
+          tipo: 'success'
+        });
+      } catch (notifError) {
+        console.error('Error al crear notificación:', notifError);
+        // Continuamos con el proceso aunque falle la notificación
+      }
+
+      // Mostrar alerta de éxito usando el componente personalizado
+      alertaExito('Proyector actualizado exitosamente');
 
       onAsignar(proyector);
       onClose();
