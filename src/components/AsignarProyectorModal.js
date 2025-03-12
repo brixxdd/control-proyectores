@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { X, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { alertaExito } from './Alert';
 
 const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
@@ -53,9 +54,8 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
         // Continuamos con el proceso aunque falle la notificación
       }
 
-      // Mostrar alerta de éxito usando el componente personalizado
-      alertaExito('Proyector actualizado exitosamente');
-
+      toast.success('Proyector asignado correctamente');
+      
       onAsignar(proyector);
       onClose();
     } catch (error) {
