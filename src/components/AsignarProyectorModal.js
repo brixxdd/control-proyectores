@@ -37,34 +37,44 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
 
       // Actualizar estado del proyector a "en uso"
       await authService.api.put(`/api/proyectores/${proyector._id}`, {
-        estado: 'en uso',
-        asignadoA: solicitud.usuarioId._id
+        estado: 'en uso'
       });
 
-      // Enviar notificación al usuario
-      try {
-        // Corregir los campos para que coincidan con el modelo de Notification
-        await authService.api.post('/api/notifications', {
-          tipo: 'asignacion',
-          mensaje: `Tu solicitud de proyector ha sido aprobada para la fecha ${new Date(solicitud.fechaInicio).toLocaleDateString()}. Proyector asignado: ${proyector.codigo}`,
-          destinatario: solicitud.usuarioId._id,
-          leida: false,
-          enlace: '/mis-solicitudes',
-          entidadId: solicitud._id,
-          entidadTipo: 'Solicitud'
-        });
-      } catch (notifError) {
-        console.error('Error al crear notificación:', notifError);
-        // Continuamos con el proceso aunque falle la notificación
-      }
+      // Enviar notificación al usuario DESPUÉS de asignar el proyector
+      await authService.api.post('/api/notifications', {
+        usuarioId: solicitud.usuarioId._id,
+        mensaje: `Tu solicitud de proyector ha sido aprobada para la fecha ${new Date(solicitud.fechaInicio).toLocaleDateString()}. Proyector asignado: ${proyector.codigo}`,
+        tipo: 'success'
+      });
 
-      toast.success('Proyector asignado correctamente');
-      
+      // Mostrar toast de éxito con información detallada
+      toast.success(
+        `¡Proyector ${proyector.codigo} asignado correctamente!`,
+        {
+          duration: 5000, // 5 segundos
+          icon: '🎯',
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+        }
+      );
+
       onAsignar(proyector);
       onClose();
     } catch (error) {
       console.error('Error al asignar proyector:', error);
       setError('Error al asignar el proyector. Por favor, intenta de nuevo.');
+      
+      // Mostrar toast de error
+      toast.error(
+        `Error al asignar proyector: ${error.response?.data?.message || error.message}`,
+        {
+          duration: 5000,
+          icon: '❌',
+        }
+      );
     }
   };
 
