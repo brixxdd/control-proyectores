@@ -223,76 +223,62 @@ const App = () => {
               {/* Header del usuario */}
               {isAuthenticated && user && (
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 bg-white dark:bg-gray-800 p-2.5 sm:p-4 rounded-lg shadow-md">
-                  <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:gap-4">
-                    {/* Temporizador y Notificaciones en la izquierda */}
-                    <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4 w-full sm:w-auto">
-                      <div className={`
-                        px-4 py-2 rounded-full font-medium text-sm
-                        flex items-center gap-2
-                        ${tokenTimeLeft <= 120 
-                          ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300' 
-                          : tokenTimeLeft <= 300 
-                            ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                            : 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300'
-                        }
-                      `}>
-                        <svg 
-                          className="w-4 h-4" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-                          />
-                        </svg>
-                        <span className="text-xs sm:text-sm">Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
-                      </div>
-                      {/* Componente de Notificaciones */}
-                      <NotificationsDropdown />
+                  {/* Contenedor izquierdo - Timer de sesión */}
+                  <div className="w-full sm:w-auto flex items-center">
+                    <div className={`
+                      px-4 py-2 rounded-full font-medium text-sm
+                      flex items-center gap-2
+                      ${tokenTimeLeft <= 120 
+                        ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300' 
+                        : tokenTimeLeft <= 300 
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                          : 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300'
+                      }
+                    `}>
+                      <svg 
+                        className="w-4 h-4" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                        />
+                      </svg>
+                      <span className="text-xs sm:text-sm">Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
                     </div>
+                  </div>
 
-                    {/* Información del usuario en la derecha */}
-                    <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4 w-full sm:w-auto">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 dark:bg-gray-700 rounded-full 
-                                          flex items-center justify-center overflow-hidden">
+                  {/* Contenedor derecho - Usuario, Notificaciones y Cerrar Sesión */}
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-between sm:justify-end gap-2 sm:gap-4">
+                    <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
+                      {/* Información del usuario */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
                           {userPicture && (
                             <img 
                               src={userPicture}
                               alt="Perfil" 
                               className="w-full h-full object-cover"
-                              onError={(e) => e.target.style.display = 'none'}
                             />
                           )}
                         </div>
-                        <span className="text-sm sm:text-base text-gray-900 dark:text-white font-medium">
+                        <span className="text-gray-700 dark:text-gray-200 text-sm font-medium truncate max-w-[150px]">
                           {user.nombre}
                         </span>
                       </div>
+
+                      {/* Notificaciones */}
+                      <NotificationsDropdown />
+
+                      {/* Botón de cerrar sesión */}
                       <button 
                         onClick={handleLogout} 
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 text-white rounded-full
-                                 hover:bg-red-600 transition-all duration-200 ease-in-out
-                                 shadow-sm hover:shadow-md text-xs sm:text-sm
-                                 flex items-center gap-1.5 sm:gap-2"
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
                       >
-                        <svg 
-                          className="w-4 h-4" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
-                          />
-                        </svg>
                         Cerrar Sesión
                       </button>
                     </div>
