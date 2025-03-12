@@ -844,20 +844,6 @@ app.get('/view-document/:id', async (req, res) => {
   }
 });
 
-// Ruta para obtener notificaciones del usuario
-app.get('/api/notifications', verifyToken, async (req, res) => {
-  try {
-    const notifications = await Notification.find({ 
-      usuarioId: req.user.id,
-      leida: false 
-    }).sort({ createdAt: -1 });
-    
-    res.json(notifications);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener notificaciones' });
-  }
-});
-
 // Ruta para crear notificación
 app.post('/api/notifications', verifyToken, isAdmin, async (req, res) => {
   try {
@@ -873,6 +859,20 @@ app.post('/api/notifications', verifyToken, isAdmin, async (req, res) => {
     res.status(201).json(notification);
   } catch (error) {
     res.status(500).json({ message: 'Error al crear notificación' });
+  }
+});
+
+// Ruta para obtener notificaciones del usuario
+app.get('/api/notifications', verifyToken, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ 
+      usuarioId: req.user.id,
+      leida: false 
+    }).sort({ createdAt: -1 });
+    
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener notificaciones' });
   }
 });
 
@@ -907,6 +907,7 @@ app.put('/api/notifications/mark-all-read', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Error al actualizar notificaciones' });
   }
 });
+  
 
 // Programar limpieza semanal (cada domingo a las 00:00)
 cron.schedule('0 0 * * 0', async () => {
