@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { authService } from '../services/authService';
 
@@ -6,6 +6,7 @@ const NotificationsDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const dropdownRef = useRef(null);
 
   const fetchNotifications = async () => {
     try {
@@ -21,6 +22,20 @@ const NotificationsDropdown = () => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000); // Actualizar cada 30 segundos
     return () => clearInterval(interval);
+  }, []);
+
+  // Cerrar el dropdown cuando se hace clic fuera de él
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const handleMarkAsRead = async (id) => {
@@ -51,12 +66,13 @@ const NotificationsDropdown = () => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 dark:text-gray-300 
                    hover:text-gray-800 dark:hover:text-white 
                    focus:outline-none"
+        aria-label="Notificaciones"
       >
         <Bell className="h-6 w-6" />
         {unreadCount > 0 && (
@@ -70,35 +86,35 @@ const NotificationsDropdown = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 
                        rounded-lg shadow-xl z-50 border border-gray-200 
-                       dark:border-gray-700">
-          <div className="p-4 max-h-96 overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Notificaciones
-              </h3>
-              {notifications.length > 0 && (
-                <button
-                  onClick={handleMarkAllAsRead}
-                  className="text-xs text-blue-600 hover:text-blue-800 
-                           dark:text-blue-400 dark:hover:text-blue-300
-                           transition-colors"
-                >
-                  Marcar todas como leídas
-                </button>
-              )}
-            </div>
-            
+                       dark:border-gray-700 max-h-[80vh] sm:max-h-[70vh] flex flex-col">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-lg">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Notificaciones
+            </h3>
+            {notifications.length > 0 && (
+              <button
+                onClick={handleMarkAllAsRead}
+                className="text-xs text-blue-600 hover:text-blue-800 
+                         dark:text-blue-400 dark:hover:text-blue-300
+                         transition-colors"
+              >
+                Marcar todas como leídas
+              </button>
+            )}
+          </div>
+          
+          <div className="overflow-y-auto flex-1 p-4 space-y-2">
             {notifications.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">
                 No hay notificaciones nuevas
               </p>
             ) : (
               notifications.map(notification => (
                 <div
                   key={notification._id}
-                  className={`p-3 mb-2 rounded-lg ${
+                  className={`p-3 rounded-lg ${
                     notification.tipo === 'success' 
                       ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
                       : notification.tipo === 'error'
