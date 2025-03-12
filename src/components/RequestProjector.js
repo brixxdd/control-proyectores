@@ -483,27 +483,78 @@ const RequestProjector = () => {
   };
 
   const handleDeleteEvents = async (eventIds) => {
-    const savedToken = localStorage.getItem('accessToken');
-    if (!savedToken) {
-      console.error("El token no está disponible");
-      return;
-    }
-
-    for (const eventId of eventIds) {
-      try {
-        await axios.delete(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
-          headers: {
-            Authorization: `Bearer ${savedToken}`,
-          },
-        });
-        console.log(`Evento ${eventId} eliminado`);
-      } catch (error) {
-        console.error(`Error al eliminar el evento ${eventId}:`, error);
+    try {
+      // Intentar obtener el token de diferentes fuentes
+      let accessToken = sessionStorage.getItem('googleAccessToken') || 
+                        sessionStorage.getItem('accessRequest') || 
+                        localStorage.getItem('accessToken');
+      
+      if (!accessToken) {
+        console.error("El token no está disponible");
+        
+        // Intentar renovar el token si gapi está disponible
+        if (gapi && gapi.auth2) {
+          try {
+            const auth2 = gapi.auth2.getAuthInstance();
+            await auth2.signIn();
+            const currentUser = auth2.currentUser.get();
+            accessToken = currentUser.getAuthResponse().access_token;
+            sessionStorage.setItem('googleAccessToken', accessToken);
+            console.log("Token renovado exitosamente");
+          } catch (signInError) {
+            console.error('Error al renovar el token:', signInError);
+            alertaError('No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.');
+            return;
+          }
+        } else {
+          alertaError('No hay sesión activa. Por favor, inicia sesión nuevamente.');
+          return;
+        }
       }
-    }
 
-    fetchEvents();
-    setShowModal(false);
+      // Eliminar cada evento
+      for (const eventId of eventIds) {
+        try {
+          await gapi.client.calendar.events.delete({
+            calendarId: 'primary',
+            eventId: eventId
+          });
+          console.log(`Evento ${eventId} eliminado`);
+        } catch (error) {
+          console.error(`Error al eliminar el evento ${eventId}:`, error);
+          
+          // Si hay un error de autenticación, intentar renovar el token
+          if (error.status === 401 && gapi && gapi.auth2) {
+            try {
+              const auth2 = gapi.auth2.getAuthInstance();
+              await auth2.signIn();
+              const currentUser = auth2.currentUser.get();
+              const newToken = currentUser.getAuthResponse().access_token;
+              sessionStorage.setItem('googleAccessToken', newToken);
+              gapi.client.setToken({
+                access_token: newToken
+              });
+              
+              // Reintentar la eliminación
+              await gapi.client.calendar.events.delete({
+                calendarId: 'primary',
+                eventId: eventId
+              });
+              console.log(`Evento ${eventId} eliminado después de renovar token`);
+            } catch (signInError) {
+              console.error('Error al renovar la sesión:', signInError);
+            }
+          }
+        }
+      }
+
+      fetchEvents();
+      setShowModal(false);
+      alertaExito('Eventos eliminados correctamente');
+    } catch (error) {
+      console.error('Error general al eliminar eventos:', error);
+      alertaError('Hubo un error al eliminar los eventos. Por favor, intenta de nuevo.');
+    }
   };
 
   const toggleEventSelection = (id) => {

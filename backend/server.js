@@ -844,76 +844,67 @@ app.get('/view-document/:id', async (req, res) => {
   }
 });
 
-// Endpoint para obtener notificaciones
+// Ruta para obtener notificaciones del usuario
 app.get('/api/notifications', verifyToken, async (req, res) => {
   try {
-    // Obtener el ID del usuario del token
-    const userId = req.user.id;
-    
-    // Buscar notificaciones para este usuario
     const notifications = await Notification.find({ 
-      destinatario: userId 
-    })
-    .sort({ createdAt: -1 }) // Ordenar por fecha, más recientes primero
-    .limit(10); // Limitar a 10 notificaciones
+      usuarioId: req.user.id,
+      leida: false 
+    }).sort({ createdAt: -1 });
     
     res.json(notifications);
   } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
-    res.status(500).json({ 
-      message: 'Error al obtener notificaciones', 
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener notificaciones' });
   }
 });
 
-// Endpoint para marcar notificaciones como leídas
-app.put('/api/notifications/:id/read', verifyToken, async (req, res) => {
+// Ruta para crear notificación
+app.post('/api/notifications', verifyToken, isAdmin, async (req, res) => {
   try {
-    const notificationId = req.params.id;
+    const { usuarioId, mensaje, tipo } = req.body;
     
-    // Actualizar la notificación
+    const notification = new Notification({
+      usuarioId,
+      mensaje,
+      tipo
+    });
+
+    await notification.save();
+    res.status(201).json(notification);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al crear notificación' });
+  }
+});
+
+// Ruta para marcar notificación como leída
+app.put('/api/notifications/:id', verifyToken, async (req, res) => {
+  try {
     const notification = await Notification.findByIdAndUpdate(
-      notificationId,
+      req.params.id,
       { leida: true },
-      { new: true } // Devolver el documento actualizado
+      { new: true }
     );
-    
-    if (!notification) {
-      return res.status(404).json({ message: 'Notificación no encontrada' });
-    }
-    
     res.json(notification);
   } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
-    res.status(500).json({ 
-      message: 'Error al marcar notificación como leída', 
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al actualizar notificación' });
   }
 });
 
-// Endpoint para marcar todas las notificaciones como leídas
-app.put('/api/notifications/read-all', verifyToken, async (req, res) => {
+// Ruta para marcar todas las notificaciones como leídas
+app.put('/api/notifications/mark-all-read', verifyToken, async (req, res) => {
   try {
-    const userId = req.user.id;
-    
-    // Actualizar todas las notificaciones del usuario
-    const result = await Notification.updateMany(
-      { destinatario: userId, leida: false },
+    await Notification.updateMany(
+      { 
+        usuarioId: req.user.id,
+        leida: false 
+      },
       { leida: true }
     );
     
-    res.json({ 
-      message: 'Todas las notificaciones marcadas como leídas',
-      count: result.modifiedCount
-    });
+    res.json({ message: 'Todas las notificaciones marcadas como leídas' });
   } catch (error) {
     console.error('Error al marcar todas las notificaciones como leídas:', error);
-    res.status(500).json({ 
-      message: 'Error al marcar todas las notificaciones como leídas', 
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al actualizar notificaciones' });
   }
 });
 

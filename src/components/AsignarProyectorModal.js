@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { alertaExito } from './Alert';
 
 const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
   const [proyectoresDisponibles, setProyectoresDisponibles] = useState([]);
@@ -44,10 +43,15 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
 
       // Enviar notificación al usuario
       try {
+        // Corregir los campos para que coincidan con el modelo de Notification
         await authService.api.post('/api/notifications', {
-          usuarioId: solicitud.usuarioId._id,
+          tipo: 'asignacion',
           mensaje: `Tu solicitud de proyector ha sido aprobada para la fecha ${new Date(solicitud.fechaInicio).toLocaleDateString()}. Proyector asignado: ${proyector.codigo}`,
-          tipo: 'success'
+          destinatario: solicitud.usuarioId._id,
+          leida: false,
+          enlace: '/mis-solicitudes',
+          entidadId: solicitud._id,
+          entidadTipo: 'Solicitud'
         });
       } catch (notifError) {
         console.error('Error al crear notificación:', notifError);
