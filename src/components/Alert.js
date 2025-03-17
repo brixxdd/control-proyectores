@@ -213,7 +213,8 @@ export const alertaError = (mensaje = 'Ha ocurrido un error') => {
     );
   };
 
-  React.render(<App />, modalRoot);
+  const root = ReactDOM.createRoot(modalRoot);
+  root.render(<App />);
 };
 
 export const alertaPersonalizada = (titulo, texto, icono) => {
@@ -244,7 +245,8 @@ export const alertaPersonalizada = (titulo, texto, icono) => {
     );
   };
 
-  React.render(<App />, modalRoot);
+  const root = ReactDOM.createRoot(modalRoot);
+  root.render(<App />);
 };
 
 // Componente principal para notificaciones tipo toast

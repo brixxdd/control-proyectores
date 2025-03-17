@@ -9,6 +9,7 @@ import { useTimeZone } from '../contexts/TimeZoneContext';
 import { alertaExito, alertaError } from './Alert';
 import { fetchFromAPI } from '../utils/fetchHelper';
 import { BACKEND_URL } from '../config/config';
+import { useLocation } from 'react-router-dom';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
@@ -35,6 +36,11 @@ const UserRequests = () => {
   const [documentos, setDocumentos] = useState([]);
   const [usuariosSolicitudes, setUsuariosSolicitudes] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
+
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const qrSolicitudId = queryParams.get('solicitudId');
+  const qrUsuarioId = queryParams.get('usuarioId');
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -83,6 +89,11 @@ const UserRequests = () => {
 
   useEffect(() => {
     refreshData();
+    
+    // Si hay parámetros de QR, buscar y seleccionar automáticamente
+    if (qrSolicitudId && qrUsuarioId) {
+      handleQrScan(qrSolicitudId, qrUsuarioId);
+    }
   }, []);
 
   useEffect(() => {
@@ -710,6 +721,39 @@ const UserRequests = () => {
         </table>
       </div>
     );
+  };
+
+  // Función para manejar el escaneo de QR
+  const handleQrScan = async (solicitudId, usuarioId) => {
+    try {
+      // Buscar el usuario y la solicitud
+      const userWithSolicitud = usuariosSolicitudes.find(user => 
+        user.userData._id === usuarioId && 
+        user.solicitudes.some(sol => sol._id === solicitudId)
+      );
+      
+      if (userWithSolicitud) {
+        // Encontrar la solicitud específica
+        const solicitud = userWithSolicitud.solicitudes.find(sol => sol._id === solicitudId);
+        
+        if (solicitud) {
+          // Seleccionar el usuario y abrir el modal de asignación
+          setSelectedUser(userWithSolicitud);
+          setSelectedSolicitud(solicitud);
+          setShowAsignarModal(true);
+          
+          // Notificar al administrador
+          alertaExito('Solicitud encontrada por código QR. Puede asignar un proyector ahora.');
+        } else {
+          alertaError('No se encontró la solicitud especificada en el código QR.');
+        }
+      } else {
+        alertaError('No se encontró el usuario o la solicitud especificada en el código QR.');
+      }
+    } catch (error) {
+      console.error('Error al procesar el código QR:', error);
+      alertaError('Error al procesar el código QR.');
+    }
   };
 
   return (
