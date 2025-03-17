@@ -1,6 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Camera } from 'lucide-react';
+import QRScanner from './QRScanner';
 
 const UserHeader = ({ user, userPicture, onLogout }) => {
+  const [showScanner, setShowScanner] = useState(false);
+
+  const handleScanSuccess = (qrData) => {
+    // Aquí puedes implementar la lógica para procesar los datos del QR
+    // Por ejemplo, redirigir a la página de asignación con los datos pre-cargados
+    console.log('Datos del QR escaneado:', qrData);
+    
+    // Ejemplo: Redirigir a la página de solicitudes con el ID de la solicitud
+    window.location.href = `/user-requests?solicitudId=${qrData.solicitudId}&usuarioId=${qrData.usuarioId}`;
+    
+    setShowScanner(false);
+  };
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 mb-4 
                     bg-gray-200 dark:bg-gray-800 p-3 rounded-lg shadow-sm
@@ -21,13 +36,36 @@ const UserHeader = ({ user, userPicture, onLogout }) => {
               {user.nombre}
             </span>
           </div>
-          <button 
-            onClick={onLogout} 
-            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 text-white text-sm sm:text-base rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Cerrar Sesión
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {/* Botón de escaneo QR (solo para administradores) */}
+            {user.rol === 'admin' && (
+              <button
+                onClick={() => setShowScanner(true)}
+                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                title="Escanear QR"
+              >
+                <Camera size={20} />
+              </button>
+            )}
+            
+            {/* Botón de cerrar sesión */}
+            <button 
+              onClick={onLogout} 
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-red-600 text-white text-sm sm:text-base rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
         </>
+      )}
+      
+      {/* Modal de escáner QR */}
+      {showScanner && (
+        <QRScanner 
+          onScanSuccess={handleScanSuccess} 
+          onClose={() => setShowScanner(false)} 
+        />
       )}
     </div>
   );

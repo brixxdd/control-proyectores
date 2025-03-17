@@ -1,5 +1,5 @@
 import { Temporal } from '@js-temporal/polyfill';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTv, faCalendarPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { gapi } from 'gapi-script';
@@ -13,6 +13,11 @@ import { useTimeZone } from '../contexts/TimeZoneContext';
 import { alertaExito, alertaError } from './Alert';
 import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
+// Importaciones para QR
+import { QRCodeCanvas } from 'qrcode.react';
+import html2canvas from 'html2canvas';
+import { saveAs } from 'file-saver';
+import { useAuth } from '../hooks/useAuth';
 
 const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
 const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
@@ -23,6 +28,7 @@ let hasLoggedWeekBounds = false;
 
 const RequestProjector = () => {
   const { currentTime, targetTimeZone } = useTimeZone();
+  const { user: currentUser } = useAuth(); // Obtener usuario actual para el QR
   const [token, setToken] = useState(null);
   const [selectedDates, setSelectedDates] = useState([]);
   const [events, setEvents] = useState([]);
@@ -30,6 +36,29 @@ const RequestProjector = () => {
   const [showTimeModal, setShowTimeModal] = useState(false); 
   const [timeSlots, setTimeSlots] = useState({});
   const [calendarValue, setCalendarValue] = useState(new Date()); // Valor para el componente Calendar
+  
+  // Estados para la funcionalidad QR
+  const [qrData, setQrData] = useState(null);
+  const [solicitudResponse, setSolicitudResponse] = useState(null);
+  const qrRef = useRef(null);
+
+  // Función para descargar el código QR como imagen
+  const downloadQR = async () => {
+    if (!qrRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(qrRef.current);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          saveAs(blob, 'solicitud-proyector-qr.png');
+          alertaExito('Código QR descargado correctamente');
+        }
+      });
+    } catch (error) {
+      console.error('Error al descargar el QR:', error);
+      alertaError('Error al descargar el código QR');
+    }
+  };
 
   // Función para convertir Date a Temporal.ZonedDateTime
   const dateToTemporal = (date) => {
@@ -407,6 +436,9 @@ const RequestProjector = () => {
         return;
       }
 
+      // Almacenar todas las solicitudes creadas
+      const solicitudesCreadas = [];
+
       for (const date of selectedDates) {
         const startTime = selectedTimeSlots[date]?.start;
         const endTime = selectedTimeSlots[date]?.end;
@@ -466,10 +498,46 @@ const RequestProjector = () => {
             })
           });
 
-          console.log('Solicitud creada:', response);
+          console.log('Respuesta completa del backend:', JSON.stringify(response));
+
+          // Extraer la solicitud de la respuesta
+          const solicitudData = response?.solicitud;
+          if (solicitudData && solicitudData._id) {
+            console.log('Solicitud extraída correctamente:', solicitudData);
+            solicitudesCreadas.push({
+              id: solicitudData._id,
+              fecha: date,
+              horaInicio: startTime,
+              horaFin: endTime
+            });
+          } else {
+            console.error('No se pudo extraer la solicitud de la respuesta:', response);
+          }
         } catch (error) {
           console.error('Error al procesar solicitud para la fecha', date, error);
         }
+      }
+
+      // Si se crearon solicitudes, generar el QR con la información
+      if (solicitudesCreadas.length > 0) {
+        // Guardar la primera solicitud como respuesta principal
+        setSolicitudResponse(solicitudesCreadas[0]);
+        
+        // Crear datos para el QR
+        const qrInfo = {
+          solicitudId: solicitudesCreadas[0].id,
+          usuarioId: currentUser._id || currentUser.id,
+          fechas: solicitudesCreadas.map(s => ({
+            fecha: s.fecha,
+            horaInicio: s.horaInicio,
+            horaFin: s.horaFin
+          }))
+        };
+        
+        // Convertir a string para el QR
+        const qrString = JSON.stringify(qrInfo);
+        setQrData(qrString);
+        console.log('QR generado con datos:', qrString);
       }
 
       setShowTimeModal(false);
@@ -579,20 +647,34 @@ const RequestProjector = () => {
             const zonedDate = new Date(Date.UTC(year, month - 1, day));
             
             return (
-              <span 
+              <div 
                 key={date}
-                className="px-3 py-1 bg-blue-100 dark:bg-blue-900 
+                className="flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 
                          text-blue-800 dark:text-blue-100 
                          rounded-full text-sm"
               >
-                {date}
-              </span>
+                <span className="mr-1">
+                  {date}
+                </span>
+                <button 
+                  onClick={() => handleDateChange(new Date(date))}
+                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  ×
+                </button>
+              </div>
             );
           })}
         </div>
       </div>
     )
   );
+
+  useEffect(() => {
+    if (qrData) {
+      console.log('QR data actualizado:', qrData);
+    }
+  }, [qrData]);
 
   return (
     <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
@@ -682,6 +764,32 @@ const RequestProjector = () => {
           handleConfirm={handleConfirmTimeSlots}
           className="max-w-lg mx-auto"
         />
+        
+        {/* Sección de código QR */}
+        {qrData && (
+          <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex flex-col items-center">
+            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
+              Código QR de tu solicitud
+            </h3>
+            <div ref={qrRef} className="p-4 bg-white rounded-lg">
+              <QRCodeCanvas 
+                value={qrData} 
+                size={200} 
+                level="H" 
+                includeMargin={true}
+              />
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 text-center">
+              Muestra este código al administrador para agilizar la asignación de tu proyector
+            </p>
+            <button
+              onClick={downloadQR}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Descargar QR
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

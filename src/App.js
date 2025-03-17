@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { TimeZoneProvider } from './contexts/TimeZoneContext';
@@ -19,6 +19,8 @@ import useInactivityTimer from './hooks/useInactivityTimer';
 import { Toaster } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import { BACKEND_URL } from './config/config';
+import { Camera } from 'lucide-react';
+import QRScanner from './components/QRScanner';
 
 import UserRequests from './components/UserRequests';
 import MySolicitudes from './components/MySolicitudes';
@@ -43,6 +45,7 @@ const App = () => {
   const [showWelcomeAlert, setShowWelcomeAlert] = React.useState(false);
   const [tokenTimeLeft, setTokenTimeLeft] = React.useState(15 * 60); // 15 minutos en segundos
   const [showWarning, setShowWarning] = React.useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   const handleProfileUpdate = useCallback(async (data) => {
     try {
@@ -186,6 +189,16 @@ const App = () => {
     };
   }, [updateUserData]);
 
+  // Función para manejar el escaneo exitoso
+  const handleScanSuccess = (qrData) => {
+    console.log('Datos del QR escaneado:', qrData);
+    
+    // Redirigir a la página de solicitudes con el ID de la solicitud
+    window.location.href = `/user-requests?solicitudId=${qrData.solicitudId}&usuarioId=${qrData.usuarioId}`;
+    
+    setShowScanner(false);
+  };
+
   // Mostrar loader mientras se verifica la autenticación
   if (isLoading) {
     return (
@@ -270,6 +283,17 @@ const App = () => {
                           {user.nombre}
                         </span>
                       </div>
+
+                      {/* Botón de escáner QR (solo para administradores) */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => setShowScanner(true)}
+                          className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                          title="Escanear QR"
+                        >
+                          <Camera size={20} />
+                        </button>
+                      )}
 
                       {/* Notificaciones */}
                       <NotificationsDropdown />
@@ -399,6 +423,14 @@ const App = () => {
                   isOpen={showGradeGroupModal}
                   onClose={() => setShowGradeGroupModal(false)}
                   onSubmit={handleProfileUpdate}
+                />
+              )}
+
+              {/* Modal de escáner QR */}
+              {showScanner && (
+                <QRScanner 
+                  onScanSuccess={handleScanSuccess} 
+                  onClose={() => setShowScanner(false)} 
                 />
               )}
             </div>
