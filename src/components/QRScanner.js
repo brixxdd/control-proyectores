@@ -16,14 +16,17 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
     // Limpiar al desmontar
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(err => console.error('Error al detener el escáner:', err));
+        try {
+          scannerRef.current.stop();
+        } catch (err) {
+          // Silenciar errores al detener
+        }
       }
     };
   }, []);
 
   const checkCameraPermission = async () => {
     try {
-      console.log("Solicitando permisos de cámara...");
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       stream.getTracks().forEach(track => track.stop());
       setCameraPermission('granted');
@@ -32,9 +35,9 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       // Iniciar el escáner después de verificar permisos
       setTimeout(() => {
         initializeScanner();
-      }, 500);
+      }, 1000);
     } catch (error) {
-      console.error('Error al acceder a la cámara:', error);
+      console.error("Error al verificar permisos de cámara:", error);
       setCameraPermission('denied');
       setCameraError(error.message || 'No se pudo acceder a la cámara');
       alertaError('No se pudo acceder a la cámara. Por favor, verifica los permisos.');
@@ -44,19 +47,16 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   const requestCameraPermission = () => {
     setCameraPermission(null);
     setCameraError(null);
-    
-    // Intentar solicitar permisos nuevamente
     checkCameraPermission();
   };
   
   const initializeScanner = async () => {
-    if (!containerRef.current) return;
-    
     try {
-      // Asegurarse de que el elemento existe
+      // Asegurarse de que el elemento existe y está en el DOM
       const qrReaderElement = document.getElementById("qr-reader");
       if (!qrReaderElement) {
-        console.error("Elemento qr-reader no encontrado");
+        console.error("Elemento qr-reader no encontrado en el DOM");
+        alertaError('Error al inicializar el escáner: elemento no encontrado');
         return;
       }
       
@@ -64,30 +64,51 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       qrReaderElement.style.width = "100%";
       qrReaderElement.style.height = "300px";
       
+      // Limpiar cualquier instancia previa
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+        } catch (err) {
+          // Ignorar errores al detener
+        }
+      }
+      
+      // Crear nueva instancia
+      console.log("Creando nueva instancia de Html5Qrcode");
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
       
-      console.log("Iniciando búsqueda de cámaras...");
+      // Obtener cámaras disponibles
+      console.log("Obteniendo cámaras disponibles...");
       const cameras = await Html5Qrcode.getCameras();
-      console.log("Cámaras encontradas:", cameras);
+      console.log("Cámaras disponibles:", cameras);
       
       if (cameras && cameras.length) {
         const cameraId = cameras[0].id;
         console.log("Usando cámara:", cameraId);
         
-        await html5QrCode.start(
-          cameraId, 
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 }
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
           },
+          aspectRatio: 1.0,
+          showTorchButtonIfSupported: true
+        };
+        
+        console.log("Iniciando escáner con configuración:", config);
+        await html5QrCode.start(
+          { deviceId: { exact: cameraId } },
+          config,
           (decodedText) => {
             console.log("QR detectado:", decodedText);
             handleScan(decodedText);
           },
           (errorMessage) => {
-            // Solo registrar errores significativos
-            if (!errorMessage.includes("No QR code found")) {
+            // Silenciar errores comunes
+            if (!errorMessage.includes("No QR code found") && 
+                !errorMessage.includes("No MultiFormat Readers")) {
               console.error("Error de escaneo:", errorMessage);
             }
           }
@@ -95,10 +116,12 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
         
         console.log("Escáner iniciado correctamente");
       } else {
+        console.error("No se detectaron cámaras");
         alertaError('No se detectaron cámaras en el dispositivo.');
       }
     } catch (err) {
-      console.error('Error al inicializar el escáner:', err);
+      console.error("Error al inicializar el escáner:", err);
+      setCameraError(err.message || 'Error desconocido');
       alertaError('Error al inicializar el escáner de QR.');
     }
   };
@@ -106,24 +129,41 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   const handleScan = (result) => {
     if (result && startScan) {
       try {
+        console.log("Procesando resultado del escaneo:", result);
         // Intentar parsear los datos del QR
-        const qrData = JSON.parse(result);
+        let qrData;
+        try {
+          qrData = JSON.parse(result);
+          console.log("Datos JSON parseados:", qrData);
+        } catch (e) {
+          console.log("No es JSON válido, usando formato simple");
+          // Si no es JSON válido, intentar con un formato más simple
+          qrData = { solicitudId: result };
+        }
         
-        // Verificar que tenga la estructura esperada
-        if (qrData.solicitudId && qrData.usuarioId && qrData.fechas) {
+        // Verificar que tenga al menos el ID de solicitud
+        if (qrData.solicitudId) {
+          console.log("ID de solicitud encontrado:", qrData.solicitudId);
           // Detener el escáner
           if (scannerRef.current) {
-            scannerRef.current.stop().catch(err => console.error('Error al detener el escáner:', err));
+            try {
+              scannerRef.current.stop();
+              console.log("Escáner detenido");
+            } catch (err) {
+              console.error("Error al detener el escáner:", err);
+            }
           }
           
           setStartScan(false);
+          console.log("Llamando a onScanSuccess con datos:", qrData);
           onScanSuccess(qrData);
           alertaExito('QR escaneado correctamente');
         } else {
+          console.error("QR inválido, no contiene solicitudId");
           alertaError('Código QR inválido. No contiene la información necesaria.');
         }
       } catch (error) {
-        console.error('Error al procesar el código QR:', error);
+        console.error("Error al procesar QR:", error);
         alertaError('Error al procesar el código QR. Formato inválido.');
       }
     }
