@@ -2,7 +2,9 @@ import React from 'react';
 
 const UserHeader = ({ user, userPicture, onLogout }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 bg-gray-200 dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 
+                    bg-gray-200 dark:bg-gray-800 p-3 rounded-lg shadow-sm
+                    w-full transition-all duration-300">
       {user && (
         <>
           <div className="flex items-center gap-2 min-w-0">

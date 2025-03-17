@@ -86,9 +86,11 @@ const NotificationsDropdown = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 
+        <div className="fixed sm:absolute right-0 left-0 sm:left-auto top-14 sm:top-auto sm:mt-2 
+                       w-full sm:w-96 bg-white dark:bg-gray-800 
                        rounded-lg shadow-xl z-50 border border-gray-200 
-                       dark:border-gray-700 max-h-[80vh] sm:max-h-[70vh] flex flex-col">
+                       dark:border-gray-700 max-h-[80vh] sm:max-h-[70vh] flex flex-col
+                       mx-auto sm:mx-0 sm:right-0">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-lg">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Notificaciones
@@ -145,4 +147,4 @@ const NotificationsDropdown = () => {
   );
 };
 
-export default NotificationsDropdown; 
+export default NotificationsDropdown;

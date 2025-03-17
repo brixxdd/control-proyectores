@@ -217,7 +217,7 @@ const App = () => {
 
         {/* Contenido principal */}
         <main className={`flex-1 transition-all duration-300 w-full max-w-[100vw] overflow-x-hidden
-                         ${isAuthenticated ? 'sm:ml-64' : ''}`}>
+                         ${isAuthenticated ? 'lg:ml-72' : ''}`}>
           <div className="p-2 sm:p-4 mt-14 sm:mt-0 max-w-full overflow-x-hidden">
             <div className="max-w-screen mx-auto">
               {/* Header del usuario */}
