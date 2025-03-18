@@ -126,46 +126,29 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
     }
   };
 
-  const handleScan = (result) => {
-    if (result && startScan) {
-      try {
-        console.log("Procesando resultado del escaneo:", result);
-        // Intentar parsear los datos del QR
-        let qrData;
-        try {
-          qrData = JSON.parse(result);
-          console.log("Datos JSON parseados:", qrData);
-        } catch (e) {
-          console.log("No es JSON válido, usando formato simple");
-          // Si no es JSON válido, intentar con un formato más simple
-          qrData = { solicitudId: result };
-        }
+  const handleScan = (decodedText) => {
+    try {
+      // Intentar parsear el texto como JSON
+      const qrData = JSON.parse(decodedText);
+      
+      // Verificar que tenga la estructura esperada
+      if (qrData && qrData.solicitudId) {
+        console.log("QR escaneado correctamente:", qrData);
+        setStartScan(false);
         
-        // Verificar que tenga al menos el ID de solicitud
-        if (qrData.solicitudId) {
-          console.log("ID de solicitud encontrado:", qrData.solicitudId);
-          // Detener el escáner
-          if (scannerRef.current) {
-            try {
-              scannerRef.current.stop();
-              console.log("Escáner detenido");
-            } catch (err) {
-              console.error("Error al detener el escáner:", err);
-            }
-          }
-          
-          setStartScan(false);
-          console.log("Llamando a onScanSuccess con datos:", qrData);
+        // Notificar éxito
+        alertaExito('Código QR escaneado correctamente');
+        
+        // Llamar al callback con los datos
+        setTimeout(() => {
           onScanSuccess(qrData);
-          alertaExito('QR escaneado correctamente');
-        } else {
-          console.error("QR inválido, no contiene solicitudId");
-          alertaError('Código QR inválido. No contiene la información necesaria.');
-        }
-      } catch (error) {
-        console.error("Error al procesar QR:", error);
-        alertaError('Error al procesar el código QR. Formato inválido.');
+        }, 1000);
+      } else {
+        alertaError('El código QR no contiene datos válidos de solicitud');
       }
+    } catch (error) {
+      console.error("Error al procesar el código QR:", error);
+      alertaError('Error al procesar el código QR. Formato inválido.');
     }
   };
 
