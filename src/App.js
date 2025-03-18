@@ -21,12 +21,12 @@ import Swal from 'sweetalert2';
 import { BACKEND_URL } from './config/config';
 import { Camera } from 'lucide-react';
 import QRScanner from './components/QRScanner';
-
 import UserRequests from './components/UserRequests';
 import MySolicitudes from './components/MySolicitudes';
 import AdminProyectores from './components/AdminProyectores';
 import NotificationsDropdown from './components/NotificationsDropdown';
-
+import AsignarProyectorDirecto from './components/AsignarProyectorDirecto';
+import { alertaExito, alertaError } from './components/Alert';
 
 const App = () => {
   const { 
@@ -193,10 +193,25 @@ const App = () => {
   const handleScanSuccess = (qrData) => {
     console.log('Datos del QR escaneado:', qrData);
     
-    // Redirigir a la página de solicitudes con el ID de la solicitud
-    window.location.href = `/user-requests?solicitudId=${qrData.solicitudId}&usuarioId=${qrData.usuarioId}`;
-    
-    setShowScanner(false);
+    // Verificar si qrData es un string (JSON) o ya es un objeto
+    let solicitudData;
+    try {
+      if (typeof qrData === 'string') {
+        solicitudData = JSON.parse(qrData);
+      } else {
+        solicitudData = qrData;
+      }
+      
+      // Cerrar el escáner antes de redirigir
+      setShowScanner(false);
+      
+      // Redirigir a la página de asignación directa con el ID de la solicitud
+      window.location.href = `/asignar-directo?solicitudId=${solicitudData.solicitudId}`;
+    } catch (error) {
+      console.error('Error al parsear datos del QR:', error);
+      alertaError('Formato de QR inválido');
+      setShowScanner(false);
+    }
   };
 
   // Mostrar loader mientras se verifica la autenticación
@@ -404,6 +419,14 @@ const App = () => {
                   element={
                     isAuthenticated && isAdmin 
                       ? <AdminProyectores /> 
+                      : <Navigate to="/signin" />
+                  } 
+                />
+                <Route 
+                  path="/asignar-directo" 
+                  element={
+                    isAuthenticated && isAdmin 
+                      ? <AsignarProyectorDirecto /> 
                       : <Navigate to="/signin" />
                   } 
                 />
