@@ -4,6 +4,7 @@ import { authService } from '../services/authService';
 import AsignarProyectorModal from './AsignarProyectorModal';
 import { alertaError, alertaExito } from './Alert';
 import { ArrowLeft } from 'lucide-react';
+import { alertService } from '../services/alertService';
 
 const AsignarProyectorDirecto = () => {
   const [solicitud, setSolicitud] = useState(null);
@@ -15,13 +16,17 @@ const AsignarProyectorDirecto = () => {
   
   // Usar un ref para controlar si ya se mostró una alerta
   const alertaShown = useRef(false);
+  // Ref para controlar si el componente está montado
+  const isMounted = useRef(true);
 
   useEffect(() => {
     // Limpiar el estado de alertas al montar el componente
     alertaShown.current = false;
+    alertService.clearRecentAlerts();
     
     const fetchSolicitud = async () => {
       try {
+        if (!isMounted.current) return;
         setLoading(true);
         setError(null);
         
@@ -37,48 +42,46 @@ const AsignarProyectorDirecto = () => {
         
         console.log("Buscando solicitud con ID:", solicitudId);
         
-        // Obtener la solicitud - Modificamos para usar el endpoint correcto
-        const response = await authService.api.get(`/solicitudes/id/${solicitudId}`);
-        
-        if (response.data) {
-          console.log("Solicitud encontrada:", response.data);
-          setSolicitud(response.data);
-          setShowModal(true); // Mostrar modal automáticamente
-        } else {
-          setError('No se encontró la solicitud especificada');
-        }
-      } catch (error) {
-        console.error("Error al obtener la solicitud:", error);
-        
-        // Intentar obtener la solicitud de otra manera si falla el primer intento
+        // Intentar obtener todas las solicitudes primero (más confiable)
         try {
-          // Obtener parámetros de la URL nuevamente para este bloque
-          const params = new URLSearchParams(location.search);
-          const solicitudId = params.get('solicitudId');
-          
-          // Intentar con un endpoint alternativo
           const allSolicitudesResponse = await authService.api.get('/solicitudes');
           const solicitudEncontrada = allSolicitudesResponse.data.find(
             sol => sol._id === solicitudId
           );
           
-          if (solicitudEncontrada) {
+          if (solicitudEncontrada && isMounted.current) {
             console.log("Solicitud encontrada en listado completo:", solicitudEncontrada);
             setSolicitud(solicitudEncontrada);
             setShowModal(true);
-          } else {
-            if (!alertaShown.current) {
-              setError('Error al obtener la solicitud. Verifique el código QR e intente nuevamente.');
-            }
+            setLoading(false);
+            return;
           }
-        } catch (secondError) {
-          console.error("Error en segundo intento:", secondError);
-          if (!alertaShown.current) {
+        } catch (listError) {
+          console.error("Error al obtener listado de solicitudes:", listError);
+          // Continuar con el siguiente método si este falla
+        }
+        
+        // Si no se encontró en el listado, intentar con el endpoint específico
+        try {
+          const response = await authService.api.get(`/solicitudes/id/${solicitudId}`);
+          
+          if (response.data && isMounted.current) {
+            console.log("Solicitud encontrada por ID específico:", response.data);
+            setSolicitud(response.data);
+            setShowModal(true);
+          } else if (isMounted.current) {
+            setError('No se encontró la solicitud especificada');
+          }
+        } catch (idError) {
+          console.error("Error al obtener la solicitud por ID:", idError);
+          if (isMounted.current && !alertaShown.current) {
             setError('Error al obtener la solicitud. Verifique el código QR e intente nuevamente.');
           }
         }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
     
@@ -86,6 +89,7 @@ const AsignarProyectorDirecto = () => {
     
     // Limpiar al desmontar
     return () => {
+      isMounted.current = false;
       alertaShown.current = true;
     };
   }, [location]);

@@ -27,6 +27,7 @@ import AdminProyectores from './components/AdminProyectores';
 import NotificationsDropdown from './components/NotificationsDropdown';
 import AsignarProyectorDirecto from './components/AsignarProyectorDirecto';
 import { alertaExito, alertaError } from './components/Alert';
+import { alertService } from './services/alertService';
 
 const App = () => {
   const { 
@@ -192,6 +193,9 @@ const App = () => {
   // Función para manejar el escaneo exitoso
   const handleScanSuccess = (qrData) => {
     console.log('Datos del QR escaneado:', qrData);
+    
+    // Limpiar alertas antes de procesar
+    alertService.clearRecentAlerts();
     
     // Verificar si qrData es un string (JSON) o ya es un objeto
     let solicitudData;

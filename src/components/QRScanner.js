@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { alertaError, alertaExito } from './Alert';
+import { alertService } from '../services/alertService';
 
 const QRScanner = ({ onScanSuccess, onClose }) => {
   const [startScan, setStartScan] = useState(true);
@@ -10,6 +11,9 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
+    // Limpiar alertas al montar el componente
+    alertService.clearRecentAlerts();
+    
     // Verificar permisos de cámara al montar
     checkCameraPermission();
     
@@ -127,16 +131,35 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   };
 
   const handleScan = (decodedText) => {
+    if (!decodedText) return;
+    
+    console.log("Texto decodificado del QR:", decodedText);
+    
     try {
       // Intentar parsear el texto como JSON
-      const qrData = JSON.parse(decodedText);
+      let qrData;
+      try {
+        qrData = JSON.parse(decodedText);
+      } catch (e) {
+        // Si no es JSON válido, usar el texto tal cual
+        qrData = { solicitudId: decodedText };
+      }
       
-      // Verificar que tenga la estructura esperada
-      if (qrData && qrData.solicitudId) {
+      // Verificar que tenga la estructura esperada o al menos un ID
+      if (qrData && (qrData.solicitudId || qrData.id)) {
+        const solicitudId = qrData.solicitudId || qrData.id;
         console.log("QR escaneado correctamente:", qrData);
-        setStartScan(false);
         
-        // Notificar éxito
+        // Detener el escáner
+        if (scannerRef.current) {
+          try {
+            scannerRef.current.stop();
+          } catch (err) {
+            // Silenciar errores al detener
+          }
+        }
+        
+        // Notificar éxito solo una vez
         alertaExito('Código QR escaneado correctamente');
         
         // Llamar al callback con los datos
