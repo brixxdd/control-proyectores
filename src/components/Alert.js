@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import ReactDOM from 'react-dom/client';
+import { alertService } from '../services/alertService';
 
 
 // Componente base para la notificación tipo toast
@@ -119,8 +120,16 @@ const Modal = ({ isOpen, onClose, title, message, icon, confirmButtonText }) => 
   );
 };
 
-// Funciones de alerta
+// Funciones de alerta modificadas
 export const alertaExito = (mensaje = '¡Éxito!') => {
+  // Crear un ID único basado en el mensaje
+  const alertId = `success-${mensaje}`;
+  
+  // Verificar si esta alerta ya se mostró recientemente
+  if (!alertService.canShowAlert(alertId)) {
+    return; // No mostrar la alerta si ya se mostró recientemente
+  }
+  
   const modalRoot = document.createElement('div');
   document.body.appendChild(modalRoot);
 
@@ -184,8 +193,15 @@ export const alertaEliminacion = (cantidadEliminados) => {
   root.render(<App />);
 };
 
-
 export const alertaError = (mensaje = 'Ha ocurrido un error') => {
+  // Crear un ID único basado en el mensaje
+  const alertId = `error-${mensaje}`;
+  
+  // Verificar si esta alerta ya se mostró recientemente
+  if (!alertService.canShowAlert(alertId)) {
+    return; // No mostrar la alerta si ya se mostró recientemente
+  }
+  
   const modalRoot = document.createElement('div');
   document.body.appendChild(modalRoot);
 
