@@ -19,6 +19,7 @@ import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import { useAuth } from '../hooks/useAuth';
 
+
 const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
 const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
@@ -45,62 +46,61 @@ const RequestProjector = () => {
   // Función mejorada para descargar QR que funcione en dispositivos móviles
   const downloadQR = () => {
     try {
-      if (!qrRef.current) {
-        console.error('No se pudo encontrar el elemento QR');
-        alertaError('No se pudo generar la imagen del QR');
+      console.log('Iniciando descarga de QR');
+      
+      // Ya que estás usando una API externa para mostrar el QR, úsala también para descargar
+      if (!qrData) {
+        console.error('No hay datos para generar QR');
+        alertaError('No hay datos para generar el código QR');
         return;
       }
       
-      // Usar html2canvas para capturar el QR
-      html2canvas(qrRef.current).then(canvas => {
-        // Crear un enlace para descargar
-        const link = document.createElement('a');
+      // URL del QR desde el servicio que ya estás usando
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`;
+      console.log('URL del QR generada', qrUrl);
+      
+      // Detectar si es dispositivo móvil
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      console.log(`Dispositivo detectado: ${isMobile ? 'móvil' : 'desktop'}`);
+      
+      if (isMobile) {
+        // En móviles, abrir el QR en una nueva ventana/pestaña
+        console.log('Abriendo QR en nueva ventana para dispositivo móvil');
+        const newWindow = window.open(qrUrl, '_blank');
         
-        // En dispositivos móviles, algunos navegadores no soportan el atributo download
-        // Intentamos ambos métodos
-        try {
-          // Método estándar
-          link.download = 'qr-solicitud-proyector.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-        } catch (e) {
-          console.error('Error en método estándar de descarga:', e);
-          
-          // Método alternativo para móviles
-          const image = canvas.toDataURL('image/png');
-          
-          // Abrir la imagen en una nueva ventana/pestaña
-          const newWindow = window.open('');
-          if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head>
-                  <title>QR Solicitud Proyector</title>
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <style>
-                    body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-                    img { max-width: 100%; }
-                    p { font-family: sans-serif; margin-top: 20px; }
-                    button { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; margin-top: 10px; }
-                  </style>
-                </head>
-                <body>
-                  <img src="${image}" alt="QR Code" />
-                  <p>Mantén presionada la imagen para guardarla en tu dispositivo</p>
-                </body>
-              </html>
-            `);
-          } else {
-            alertaError('No se pudo abrir la ventana para mostrar el QR. Verifica la configuración de tu navegador.');
-          }
+        if (!newWindow) {
+          console.error('No se pudo abrir ventana, posiblemente bloqueada por popup blocker');
+          alertaError('No se pudo abrir la ventana. Intenta desactivar el bloqueador de ventanas emergentes.');
+        } else {
+          console.log('Ventana abierta con éxito');
         }
-      }).catch(err => {
-        console.error('Error al generar la imagen del QR:', err);
-        alertaError('No se pudo generar la imagen del QR');
-      });
+      } else {
+        // En desktop, intenta descargar directamente
+        console.log('Iniciando descarga directa para desktop');
+        
+        // Método fetch para descargar la imagen
+        fetch(qrUrl)
+          .then(response => response.blob())
+          .then(blob => {
+            console.log('Imagen descargada como blob');
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'qr-solicitud-proyector.png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            console.log('Descarga completada');
+          })
+          .catch(err => {
+            console.error('Error al descargar la imagen', err);
+            alertaError('Error al descargar la imagen QR');
+          });
+      }
     } catch (error) {
-      console.error('Error al descargar el QR:', error);
-      alertaError('Error al descargar el QR');
+      console.error('Error general en downloadQR', error);
+      alertaError('Error al procesar el QR');
     }
   };
 
