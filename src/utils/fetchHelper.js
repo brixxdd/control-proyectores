@@ -12,18 +12,28 @@ export const fetchFromAPI = async (endpoint, options = {}) => {
       ? 'http://localhost:5000'
       : BACKEND_URL;
     
+    // Obtener el token de sessionStorage
+    const token = sessionStorage.getItem('jwtToken');
+    
     const url = `${baseURL}${endpoint}`;
     console.log('Realizando petición a:', url);
     
     const response = await fetch(url, {
       ...options,
       headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
         ...options.headers,
       }
     });
     
     if (!response.ok) {
       const errorText = await response.text();
+      // Si el token expiró o es inválido
+      if (response.status === 401) {
+        console.error('Error de autenticación - Token inválido o expirado');
+        // Opcionalmente, redirigir al login o refrescar el token
+      }
       throw new Error(`Error ${response.status}: ${errorText}`);
     }
     
