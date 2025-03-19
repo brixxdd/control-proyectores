@@ -28,6 +28,7 @@ import NotificationsDropdown from './components/NotificationsDropdown';
 import AsignarProyectorDirecto from './components/AsignarProyectorDirecto';
 import { alertaExito, alertaError } from './components/Alert';
 import { alertService } from './services/alertService';
+import QRHistory from './components/QRHistory';
 
 const App = () => {
   const { 
@@ -431,6 +432,14 @@ const App = () => {
                   element={
                     isAuthenticated && isAdmin 
                       ? <AsignarProyectorDirecto /> 
+                      : <Navigate to="/signin" />
+                  } 
+                />
+                <Route 
+                  path="/qr-history" 
+                  element={
+                    isAuthenticated 
+                      ? <QRHistory /> 
                       : <Navigate to="/signin" />
                   } 
                 />

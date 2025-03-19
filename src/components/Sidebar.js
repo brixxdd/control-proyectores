@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaHome, FaUserFriends, FaCog, FaTv, FaFileUpload, FaBars, FaTimes, FaHistory } from 'react-icons/fa';
+import { FaHome, FaUserFriends, FaCog, FaTv, FaFileUpload, FaBars, FaTimes, FaHistory, FaQrcode } from 'react-icons/fa';
 import ThemeToggle from './ThemeToggle';
 
 const Sidebar = ({ openGradeGroupModal }) => {
@@ -73,13 +73,14 @@ const Sidebar = ({ openGradeGroupModal }) => {
             <span className="font-medium">Subir Documentos</span>
           </Link>
           
-          <Link 
-            to="/mis-solicitudes" 
-            className={linkClasses}
-            onClick={() => setIsOpen(false)}
-          >
+          <Link to="/mis-solicitudes" className={linkClasses} onClick={() => setIsOpen(false)}>
             <FaHistory className={iconClasses} />
             <span className="font-medium">Mis Solicitudes</span>
+          </Link>
+          
+          <Link to="/qr-history" className={linkClasses} onClick={() => setIsOpen(false)}>
+            <FaQrcode className={iconClasses} />
+            <span className="font-medium">Mis Códigos QR</span>
           </Link>
         </nav>
 

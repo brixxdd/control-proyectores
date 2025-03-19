@@ -29,6 +29,7 @@ const Notification = require('./models/Notification');
 const cleanupFiles = require('./utils/cleanupFiles');
 const cron = require('node-cron');
 const { uploadPdf, cleanupOldFiles, verificarUrlCloudinary } = require('./services/cloudinaryService');
+const qrCodeRoutes = require('./routes/qrCodeRoutes');
 
 // Lista de correos administrativos - MOVER ESTA DEFINICIÓN AL NIVEL SUPERIOR
 const ADMIN_EMAILS = [
@@ -1107,4 +1108,6 @@ app.delete('/api/proyectores/:id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar proyector', error: error.message });
   }
 });
+
+app.use('/qr-codes', qrCodeRoutes);
   

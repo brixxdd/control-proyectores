@@ -42,6 +42,7 @@ const RequestProjector = () => {
   const [qrData, setQrData] = useState(null);
   const [solicitudResponse, setSolicitudResponse] = useState(null);
   const qrRef = useRef(null);
+  const [shouldSaveQR, setShouldSaveQR] = useState(false);
 
   // Función mejorada para descargar QR que funcione en dispositivos móviles
   const downloadQR = () => {
@@ -607,6 +608,7 @@ const RequestProjector = () => {
       // Establecer los datos del QR con un pequeño retraso para asegurar que el estado se actualice
       setTimeout(() => {
         setQrData(qrString);
+        setShouldSaveQR(true);
       }, 100);
 
       setShowTimeModal(false);
@@ -740,24 +742,42 @@ const RequestProjector = () => {
   );
 
   useEffect(() => {
-    if (qrData) {
-      console.log('QR data actualizado:', qrData);
-      
-      // Forzar un re-renderizado después de que los datos del QR se actualicen
-      const timer = setTimeout(() => {
-        // Esto forzará un re-renderizado
-        setQrData(prevData => {
-          if (prevData) {
-            // Solo para forzar la actualización, devolvemos el mismo valor
-            return prevData;
-          }
-          return prevData;
-        });
-      }, 500);
-      
-      return () => clearTimeout(timer);
+    if (qrData && shouldSaveQR) {
+      saveQRToDatabase(qrData);
     }
-  }, [qrData]);
+  }, [qrData, shouldSaveQR]);
+
+  const saveQRToDatabase = async (qrData) => {
+    try {
+      const token = sessionStorage.getItem('jwtToken');
+      if (!token) {
+        console.error('No hay token disponible');
+        return;
+      }
+      
+      // Guardar en sessionStorage para uso temporal
+      sessionStorage.setItem('lastGeneratedQR', qrData);
+      console.log('QR guardado en sessionStorage');
+      
+      const response = await fetchFromAPI('/qr-codes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          qrData: qrData
+        })
+      });
+      
+      if (response.success) {
+        console.log('QR guardado en la base de datos');
+        setShouldSaveQR(false); // Resetear el flag
+      }
+    } catch (error) {
+      console.error('Error al guardar el QR:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
