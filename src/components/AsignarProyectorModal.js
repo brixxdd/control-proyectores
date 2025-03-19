@@ -30,11 +30,17 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
 
   const handleAsignarProyector = async (proyector) => {
     try {
+      console.log('Intentando asignar proyector como:', sessionStorage.getItem('currentUser'));
+
       // Actualizar estado de la solicitud a aprobado
-      await authService.api.put(`/solicituds/${solicitud._id}`, {
+      const solicitudResponse = await authService.api.put(`/solicituds/${solicitud._id}`, {
         estado: 'aprobado',
         proyectorId: proyector._id
       });
+
+      if (solicitudResponse.status === 403) {
+        throw new Error('No tienes permisos para asignar proyectores');
+      }
 
       // Actualizar estado del proyector a "en uso"
       await authService.api.put(`/api/proyectores/${proyector._id}`, {
@@ -66,15 +72,10 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
       onClose();
     } catch (error) {
       console.error('Error al asignar proyector:', error);
-      setError('Error al asignar el proyector. Por favor, intenta de nuevo.');
-      
-      // Mostrar toast de error
       toast.error(
-        `Error al asignar proyector: ${error.response?.data?.message || error.message}`,
-        {
-          duration: 5000,
-          icon: '❌',
-        }
+        error.response?.status === 403 
+          ? 'No tienes permisos para realizar esta acción'
+          : `Error al asignar proyector: ${error.response?.data?.message || error.message}`
       );
     }
   };

@@ -519,8 +519,20 @@ app.post('/refresh-token', async (req, res) => {
 // Middleware para verificar si es admin
 const isAdmin = async (req, res, next) => {
   const userEmail = req.user.email;
+  const ADMIN_EMAILS = [
+    'proyectoresunach@gmail.com',
+    'fanny.cordova@unach.mx',
+    'nidia.guzman@unach.mx',
+    'deysi.gamboa@unach.mx',
+    'diocelyne.arrevillaga@unach.mx',
+    'karol.carrazco@unach.mx',
+    'karen.portillo@unach.mx',
+    'pedro.escobar@unach.mx',
+    'brianes666@gmail.com',
+    'brianfloresxxd@gmail.com'
+  ];
   
-  if (userEmail !== 'proyectoresunach@gmail.com') {
+  if (!ADMIN_EMAILS.includes(userEmail)) {
     console.log('Acceso denegado para:', userEmail);
     return res.status(403).json({ 
       message: 'Acceso denegado: Se requieren privilegios de administrador' 
@@ -553,7 +565,7 @@ app.get('/admin/solicitudes', verifyToken, isAdmin, async (req, res) => {
 app.put('/solicituds/:id', verifyToken, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado } = req.body;
+    const { estado, proyectorId } = req.body;
 
     // Validar que el estado sea uno de los permitidos
     const estadosPermitidos = ['pendiente', 'aprobado', 'rechazado'];
@@ -567,7 +579,7 @@ app.put('/solicituds/:id', verifyToken, isAdmin, async (req, res) => {
 
     const solicitudActualizada = await Solicitud.findByIdAndUpdate(
       id,
-      { estado },
+      { estado, proyectorId },
       { new: true }
     );
 
@@ -581,8 +593,8 @@ app.put('/solicituds/:id', verifyToken, isAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al actualizar estado:', error);
-    res.status(500).json({ message: 'Error al actualizar el estado' });
+    console.error('Error al actualizar solicitud:', error);
+    res.status(500).json({ message: 'Error al actualizar solicitud' });
   }
 });
 
@@ -1063,18 +1075,13 @@ app.post('/api/proyectores', verifyToken, async (req, res) => {
   }
 });
 
-app.put('/api/proyectores/:id', verifyToken, async (req, res) => {
+app.put('/api/proyectores/:id', verifyToken, isAdmin, async (req, res) => {
   try {
-    // Verificar si el usuario es administrador
-    if (!req.user.isAdmin) {
-      return res.status(403).json({ message: 'Acceso denegado' });
-    }
-    
-    const { grado, grupo, turno, estado } = req.body;
+    const { estado } = req.body;
     
     const proyectorActualizado = await Proyector.findByIdAndUpdate(
       req.params.id,
-      { grado, grupo, turno, estado },
+      { estado },
       { new: true }
     );
     
@@ -1085,7 +1092,7 @@ app.put('/api/proyectores/:id', verifyToken, async (req, res) => {
     res.json(proyectorActualizado);
   } catch (error) {
     console.error('Error al actualizar proyector:', error);
-    res.status(500).json({ message: 'Error al actualizar proyector', error: error.message });
+    res.status(500).json({ message: 'Error al actualizar proyector' });
   }
 });
 
