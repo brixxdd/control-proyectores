@@ -11,9 +11,12 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
 
   useEffect(() => {
     const cargarProyectoresDisponibles = async () => {
+      if (!show) return;
+      
       try {
         const response = await authService.api.get('/api/proyectores?estado=disponible');
         setProyectoresDisponibles(response.data);
+        setError(null);
       } catch (error) {
         console.error('Error al cargar proyectores:', error);
         setError('Error al cargar los proyectores disponibles');
@@ -22,9 +25,7 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
       }
     };
 
-    if (show) {
-      cargarProyectoresDisponibles();
-    }
+    cargarProyectoresDisponibles();
   }, [show]);
 
   const handleAsignarProyector = async (proyector) => {
