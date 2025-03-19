@@ -42,65 +42,21 @@ const RequestProjector = () => {
   const [solicitudResponse, setSolicitudResponse] = useState(null);
   const qrRef = useRef(null);
 
-  // Función mejorada para descargar QR que funcione en dispositivos móviles
-  const downloadQR = () => {
+  // Función para descargar el código QR como imagen
+  const downloadQR = async () => {
+    if (!qrRef.current) return;
+    
     try {
-      if (!qrRef.current) {
-        console.error('No se pudo encontrar el elemento QR');
-        alertaError('No se pudo generar la imagen del QR');
-        return;
-      }
-      
-      // Usar html2canvas para capturar el QR
-      html2canvas(qrRef.current).then(canvas => {
-        // Crear un enlace para descargar
-        const link = document.createElement('a');
-        
-        // En dispositivos móviles, algunos navegadores no soportan el atributo download
-        // Intentamos ambos métodos
-        try {
-          // Método estándar
-          link.download = 'qr-solicitud-proyector.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-        } catch (e) {
-          console.error('Error en método estándar de descarga:', e);
-          
-          // Método alternativo para móviles
-          const image = canvas.toDataURL('image/png');
-          
-          // Abrir la imagen en una nueva ventana/pestaña
-          const newWindow = window.open('');
-          if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head>
-                  <title>QR Solicitud Proyector</title>
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <style>
-                    body { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-                    img { max-width: 100%; }
-                    p { font-family: sans-serif; margin-top: 20px; }
-                    button { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; margin-top: 10px; }
-                  </style>
-                </head>
-                <body>
-                  <img src="${image}" alt="QR Code" />
-                  <p>Mantén presionada la imagen para guardarla en tu dispositivo</p>
-                </body>
-              </html>
-            `);
-          } else {
-            alertaError('No se pudo abrir la ventana para mostrar el QR. Verifica la configuración de tu navegador.');
-          }
+      const canvas = await html2canvas(qrRef.current);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          saveAs(blob, 'solicitud-proyector-qr.png');
+          alertaExito('Código QR descargado correctamente');
         }
-      }).catch(err => {
-        console.error('Error al generar la imagen del QR:', err);
-        alertaError('No se pudo generar la imagen del QR');
       });
     } catch (error) {
       console.error('Error al descargar el QR:', error);
-      alertaError('Error al descargar el QR');
+      alertaError('Error al descargar el código QR');
     }
   };
 
@@ -562,52 +518,27 @@ const RequestProjector = () => {
         }
       }
 
-      // Agregar un log más detallado para depuración
-      console.log('Respuesta del servidor:', solicitudesCreadas);
-      
-      // Verificar explícitamente la respuesta
-      if (!solicitudesCreadas || solicitudesCreadas.length === 0) {
-        console.error('No se recibieron solicitudes creadas del servidor');
-        alertaError('No se pudo generar el código QR. Intenta nuevamente.');
-        return;
-      }
-      
-      // Asegurarse de que la primera solicitud tenga un ID
-      if (!solicitudesCreadas[0].id && !solicitudesCreadas[0]._id) {
-        console.error('La solicitud no tiene un ID válido:', solicitudesCreadas[0]);
-        alertaError('Error en el formato de la solicitud. Intenta nuevamente.');
-        return;
-      }
-      
-      // Usar _id si id no está disponible (común en MongoDB)
-      const solicitudId = solicitudesCreadas[0].id || solicitudesCreadas[0]._id;
-      
-      // Crear datos para el QR con verificación adicional
-      const qrInfo = {
-        solicitudId: solicitudId,
-        usuarioId: currentUser._id || currentUser.id,
-        fechas: solicitudesCreadas.map(s => ({
-          fecha: s.fecha,
-          horaInicio: s.horaInicio,
-          horaFin: s.horaFin
-        }))
-      };
-      
-      // Verificar que los datos del QR sean válidos
-      if (!qrInfo.solicitudId || !qrInfo.usuarioId) {
-        console.error('Datos de QR incompletos:', qrInfo);
-        alertaError('No se pudo generar el código QR con los datos recibidos.');
-        return;
-      }
-      
-      // Convertir a string para el QR
-      const qrString = JSON.stringify(qrInfo);
-      console.log('QR generado con datos:', qrString);
-      
-      // Establecer los datos del QR con un pequeño retraso para asegurar que el estado se actualice
-      setTimeout(() => {
+      // Si se crearon solicitudes, generar el QR con la información
+      if (solicitudesCreadas.length > 0) {
+        // Guardar la primera solicitud como respuesta principal
+        setSolicitudResponse(solicitudesCreadas[0]);
+        
+        // Crear datos para el QR
+        const qrInfo = {
+          solicitudId: solicitudesCreadas[0].id,
+          usuarioId: currentUser._id || currentUser.id,
+          fechas: solicitudesCreadas.map(s => ({
+            fecha: s.fecha,
+            horaInicio: s.horaInicio,
+            horaFin: s.horaFin
+          }))
+        };
+        
+        // Convertir a string para el QR
+        const qrString = JSON.stringify(qrInfo);
         setQrData(qrString);
-      }, 100);
+        console.log('QR generado con datos:', qrString);
+      }
 
       setShowTimeModal(false);
       fetchEvents();
@@ -742,20 +673,6 @@ const RequestProjector = () => {
   useEffect(() => {
     if (qrData) {
       console.log('QR data actualizado:', qrData);
-      
-      // Forzar un re-renderizado después de que los datos del QR se actualicen
-      const timer = setTimeout(() => {
-        // Esto forzará un re-renderizado
-        setQrData(prevData => {
-          if (prevData) {
-            // Solo para forzar la actualización, devolvemos el mismo valor
-            return prevData;
-          }
-          return prevData;
-        });
-      }, 500);
-      
-      return () => clearTimeout(timer);
     }
   }, [qrData]);
 
@@ -855,26 +772,12 @@ const RequestProjector = () => {
               Código QR de tu solicitud
             </h3>
             <div ref={qrRef} className="p-4 bg-white rounded-lg">
-              {/* Agregar un fallback para dispositivos móviles */}
-              {typeof window !== 'undefined' && (
-                <QRCodeCanvas 
-                  value={qrData || '{"error":"No data"}'}  // Proporcionar un valor por defecto
-                  size={200} 
-                  level="H" 
-                  includeMargin={true}
-                  renderAs="canvas"  // Especificar explícitamente el tipo de renderizado
-                  imageSettings={{
-                    src: '',
-                    excavate: true,
-                    width: 0,
-                    height: 0
-                  }}
-                />
-              )}
-              {/* Agregar un texto alternativo para depuración */}
-              <p className="text-xs text-gray-500 mt-2">
-                ID: {JSON.parse(qrData || '{"solicitudId":"no-id"}').solicitudId}
-              </p>
+              <QRCodeCanvas 
+                value={qrData} 
+                size={200} 
+                level="H" 
+                includeMargin={true}
+              />
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 text-center">
               Muestra este código al administrador para agilizar la asignación de tu proyector
