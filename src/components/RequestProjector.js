@@ -854,37 +854,54 @@ const RequestProjector = () => {
             <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
               Código QR de tu solicitud
             </h3>
-            <div ref={qrRef} className="p-4 bg-white rounded-lg">
-              {/* Agregar un fallback para dispositivos móviles */}
-              {typeof window !== 'undefined' && (
-                <QRCodeCanvas 
-                  value={qrData || '{"error":"No data"}'}  // Proporcionar un valor por defecto
-                  size={200} 
-                  level="H" 
-                  includeMargin={true}
-                  renderAs="canvas"  // Especificar explícitamente el tipo de renderizado
-                  imageSettings={{
-                    src: '',
-                    excavate: true,
-                    width: 0,
-                    height: 0
-                  }}
-                />
-              )}
-              {/* Agregar un texto alternativo para depuración */}
-              <p className="text-xs text-gray-500 mt-2">
+            
+            {/* Contenedor del QR simplificado */}
+            <div className="p-4 bg-white rounded-lg">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=200x200&margin=10`} 
+                alt="QR Code"
+                className="w-[200px] h-[200px]"
+              />
+              
+              <p className="text-xs text-gray-500 mt-2 text-center">
                 ID: {JSON.parse(qrData || '{"solicitudId":"no-id"}').solicitudId}
               </p>
             </div>
+            
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 text-center">
               Muestra este código al administrador para agilizar la asignación de tu proyector
             </p>
-            <button
-              onClick={downloadQR}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Descargar QR
-            </button>
+            
+            {/* Botones para dispositivos móviles y desktop */}
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`}
+                download="mi-qr-proyector.png"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
+              >
+                Descargar QR
+              </a>
+              
+              {navigator.share && (
+                <button
+                  onClick={() => {
+                    navigator.share({
+                      title: 'Mi código QR de solicitud de proyector',
+                      text: 'Aquí está mi código QR para la solicitud de proyector',
+                      url: `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`
+                    }).catch(err => {
+                      console.error('Error al compartir:', err);
+                      console.error('RequestProjector', 'Error al compartir', err);
+                    });
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Compartir QR
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
