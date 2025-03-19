@@ -89,8 +89,8 @@ const QRHistory = () => {
         return;
       }
       
-      // URL del QR desde el servicio
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`;
+      // Usar la URL del backend para generar QR
+      const qrUrl = `${process.env.REACT_APP_BACKEND_URL}/generate-qr?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`;
       console.log('URL del QR generada', qrUrl);
       
       // Detectar si es dispositivo móvil
@@ -133,8 +133,8 @@ const QRHistory = () => {
           });
       }
     } catch (error) {
-      console.error('Error general en downloadQR', error);
-      alertaError('Error al procesar el QR');
+      console.error('Error al descargar QR:', error);
+      alertaError('Error al descargar el código QR');
     }
   };
 
