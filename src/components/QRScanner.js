@@ -7,6 +7,8 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   const [startScan, setStartScan] = useState(true);
   const [cameraPermission, setCameraPermission] = useState(null);
   const [cameraError, setCameraError] = useState(null);
+  const [cameras, setCameras] = useState([]);
+  const [selectedCamera, setSelectedCamera] = useState(null);
   const scannerRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -56,19 +58,16 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   
   const initializeScanner = async () => {
     try {
-      // Asegurarse de que el elemento existe y está en el DOM
       const qrReaderElement = document.getElementById("qr-reader");
       if (!qrReaderElement) {
-        console.error("Elemento qr-reader no encontrado en el DOM");
-        alertaError('Error al inicializar el escáner: elemento no encontrado');
+        console.error("Elemento qr-reader no encontrado");
+        alertaError('Error al inicializar el escáner');
         return;
       }
       
-      // Establecer dimensiones explícitas
       qrReaderElement.style.width = "100%";
       qrReaderElement.style.height = "300px";
       
-      // Limpiar cualquier instancia previa
       if (scannerRef.current) {
         try {
           await scannerRef.current.stop();
@@ -77,20 +76,29 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
         }
       }
       
-      // Crear nueva instancia
-      console.log("Creando nueva instancia de Html5Qrcode");
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
       
-      // Obtener cámaras disponibles
-      console.log("Obteniendo cámaras disponibles...");
-      const cameras = await Html5Qrcode.getCameras();
-      console.log("Cámaras disponibles:", cameras);
+      const availableCameras = await Html5Qrcode.getCameras();
+      console.log("Cámaras disponibles:", availableCameras);
+      setCameras(availableCameras);
+
+      // Intentar encontrar la cámara trasera
+      let cameraId = availableCameras[0]?.id; // Por defecto, primera cámara
+      const backCamera = availableCameras.find(camera => 
+        camera.label.toLowerCase().includes('back') || 
+        camera.label.toLowerCase().includes('trasera') ||
+        camera.label.toLowerCase().includes('environment')
+      );
       
-      if (cameras && cameras.length) {
-        const cameraId = cameras[0].id;
-        console.log("Usando cámara:", cameraId);
-        
+      if (backCamera) {
+        cameraId = backCamera.id;
+        console.log("Usando cámara trasera:", backCamera.label);
+      }
+      
+      setSelectedCamera(cameraId);
+
+      if (cameraId) {
         const config = {
           fps: 10,
           qrbox: { width: 250, height: 250 },
@@ -101,32 +109,34 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
           showTorchButtonIfSupported: true
         };
         
-        console.log("Iniciando escáner con configuración:", config);
         await html5QrCode.start(
-          { deviceId: { exact: cameraId } },
+          { facingMode: "environment" }, // Forzar cámara trasera
           config,
-          (decodedText) => {
-            console.log("QR detectado:", decodedText);
-            handleScan(decodedText);
-          },
+          handleScan,
           (errorMessage) => {
-            // Silenciar errores comunes
             if (!errorMessage.includes("No QR code found") && 
                 !errorMessage.includes("No MultiFormat Readers")) {
               console.error("Error de escaneo:", errorMessage);
             }
           }
         );
-        
-        console.log("Escáner iniciado correctamente");
-      } else {
-        console.error("No se detectaron cámaras");
-        alertaError('No se detectaron cámaras en el dispositivo.');
       }
     } catch (err) {
       console.error("Error al inicializar el escáner:", err);
-      setCameraError(err.message || 'Error desconocido');
+      setCameraError(err.message);
       alertaError('Error al inicializar el escáner de QR.');
+    }
+  };
+
+  const switchCamera = async () => {
+    if (cameras.length < 2) return;
+    
+    const currentIndex = cameras.findIndex(c => c.id === selectedCamera);
+    const nextIndex = (currentIndex + 1) % cameras.length;
+    
+    if (scannerRef.current) {
+      await scannerRef.current.stop();
+      await initializeScanner(cameras[nextIndex].id);
     }
   };
 
@@ -178,9 +188,19 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-w-md w-full">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
-          Escanear código QR
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+            Escanear código QR
+          </h2>
+          {cameras.length > 1 && (
+            <button
+              onClick={switchCamera}
+              className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm"
+            >
+              Cambiar cámara
+            </button>
+          )}
+        </div>
         
         {cameraPermission === 'granted' ? (
           <>
