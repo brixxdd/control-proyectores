@@ -65,8 +65,16 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
         return;
       }
       
-      qrReaderElement.style.width = "100%";
-      qrReaderElement.style.height = "300px";
+      // Ajustar dimensiones para iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        qrReaderElement.style.width = "100%";
+        qrReaderElement.style.maxWidth = "450px";
+        qrReaderElement.style.height = "350px"; // Altura específica para iOS
+      } else {
+        qrReaderElement.style.width = "100%";
+        qrReaderElement.style.height = "300px";
+      }
       
       if (scannerRef.current) {
         try {
@@ -78,49 +86,45 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       
       const html5QrCode = new Html5Qrcode("qr-reader");
       scannerRef.current = html5QrCode;
-      
-      const availableCameras = await Html5Qrcode.getCameras();
-      console.log("Cámaras disponibles:", availableCameras);
-      setCameras(availableCameras);
 
-      // Intentar encontrar la cámara trasera
-      let cameraId = availableCameras[0]?.id; // Por defecto, primera cámara
-      const backCamera = availableCameras.find(camera => 
-        camera.label.toLowerCase().includes('back') || 
-        camera.label.toLowerCase().includes('trasera') ||
-        camera.label.toLowerCase().includes('environment')
-      );
-      
-      if (backCamera) {
-        cameraId = backCamera.id;
-        console.log("Usando cámara trasera:", backCamera.label);
-      }
-      
-      setSelectedCamera(cameraId);
+      // Configuración específica para iOS
+      const config = {
+        fps: isIOS ? 2 : 10, // Menor FPS para iOS
+        qrbox: isIOS ? 
+          { width: 250, height: 250, border: "20px solid red" } : 
+          { width: 250, height: 250 },
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        aspectRatio: isIOS ? 1.777778 : 1.0, // 16:9 para iOS
+        showTorchButtonIfSupported: true,
+        defaultZoomLevel: isIOS ? 1.5 : 1, // Zoom para iOS
+        formatsToSupport: [ Html5QrCode.FORMATS.QR_CODE ]
+      };
 
-      if (cameraId) {
-        const config = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          },
-          aspectRatio: 1.0,
-          showTorchButtonIfSupported: true
-        };
-        
-        await html5QrCode.start(
-          { facingMode: "environment" }, // Forzar cámara trasera
-          config,
-          handleScan,
-          (errorMessage) => {
-            if (!errorMessage.includes("No QR code found") && 
-                !errorMessage.includes("No MultiFormat Readers")) {
-              console.error("Error de escaneo:", errorMessage);
-            }
+      // Configuración específica de la cámara para iOS
+      const cameraConfig = {
+        facingMode: "environment",
+        ...(isIOS && {
+          deviceId: undefined,
+          frameRate: { ideal: 30, min: 10 },
+          width: { ideal: 1280, min: 720 },
+          height: { ideal: 720, min: 480 }
+        })
+      };
+      
+      await html5QrCode.start(
+        cameraConfig,
+        config,
+        handleScan,
+        (errorMessage) => {
+          if (!errorMessage.includes("No QR code found") && 
+              !errorMessage.includes("No MultiFormat Readers")) {
+            console.error("Error de escaneo:", errorMessage);
           }
-        );
-      }
+        }
+      );
+
     } catch (err) {
       console.error("Error al inicializar el escáner:", err);
       setCameraError(err.message);
@@ -187,7 +191,9 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-w-md w-full">
+      <div className={`bg-white dark:bg-gray-800 rounded-lg p-4 w-full 
+                      ${/iPad|iPhone|iPod/.test(navigator.userAgent) ? 
+                      'max-w-[95vw] mx-auto' : 'max-w-md'}`}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white">
             Escanear código QR
@@ -206,7 +212,11 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
           <>
             {startScan ? (
               <div className="relative" ref={containerRef}>
-                <div id="qr-reader" className="w-full h-64 rounded-lg overflow-hidden bg-gray-200"></div>
+                <div id="qr-reader" 
+                     className={`rounded-lg overflow-hidden bg-gray-200
+                                ${/iPad|iPhone|iPod/.test(navigator.userAgent) ? 
+                                'mx-auto aspect-video' : 'w-full h-64'}`}>
+                </div>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-48 h-48 border-2 border-blue-500 rounded-lg"></div>
                 </div>
