@@ -25,18 +25,26 @@ const Sidebar = ({ openGradeGroupModal }) => {
 
   return (
     <>
-      {/* Botón hamburguesa para móvil */}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-full bg-blue-600/80 backdrop-blur-sm text-white lg:hidden hover:bg-blue-700/80 transition-colors"
-      >
-        <FaBars size={20} />
-      </button>
+      {/* Botón hamburguesa con gradiente y glow */}
+      {!isOpen && (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="fixed top-4 left-4 z-50 
+                    bg-gradient-to-r from-blue-600 to-purple-600
+                    p-3 rounded-xl lg:hidden
+                    shadow-[0_0_15px_rgba(59,130,246,0.5)]
+                    hover:shadow-[0_0_20px_rgba(147,51,234,0.5)]
+                    transition-all duration-300"
+        >
+          <FaBars className="text-white w-5 h-5" />
+        </button>
+      )}
 
-      {/* Overlay para cerrar el sidebar en móvil */}
+      {/* Overlay para cerrar el sidebar */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden 
+                    transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -45,7 +53,7 @@ const Sidebar = ({ openGradeGroupModal }) => {
       <div className={`fixed top-0 left-0 h-screen 
                       bg-gradient-to-b from-[#214DC5] to-blue-900 
                       dark:from-gray-800 dark:to-gray-900
-                      text-white shadow-xl z-40 transition-all duration-300 ease-in-out
+                      text-white shadow-xl z-40 transition-all duration-300
                       ${isOpen ? 'w-[85vw] sm:w-72 translate-x-0' : '-translate-x-full w-[85vw] sm:w-72'} 
                       lg:translate-x-0 lg:w-72`}>
         {/* Header */}
