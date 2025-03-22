@@ -3,11 +3,14 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { FaGoogle, FaProjectDiagram, FaTv, FaUserGraduate } from 'react-icons/fa';
-import { AUTH_CONSTANTS } from '../constants/auth';
+import { FaGoogle } from 'react-icons/fa';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const SignIn = () => {
   const { handleGoogleLogin, isAuthenticated, isAdmin } = useAuth();
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
 
   if (isAuthenticated) {
     return <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />;
@@ -17,7 +20,7 @@ const SignIn = () => {
     <div className="h-[100dvh] flex items-center justify-center relative overflow-hidden
                     bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 
                     dark:from-blue-900 dark:via-purple-900 dark:to-pink-900">
-      {/* Burbujas animadas de fondo */}
+      {/* Burbujas animadas de fondo originales */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
           animate={{
@@ -52,7 +55,7 @@ const SignIn = () => {
         />
       </div>
 
-      {/* Card principal ajustado */}
+      {/* Card principal con los nuevos temas */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -62,9 +65,8 @@ const SignIn = () => {
         <div className="backdrop-blur-xl bg-white/60 dark:bg-gray-900/50 
                       rounded-3xl shadow-2xl overflow-hidden
                       border border-white/20 dark:border-gray-700/30">
-          {/* Contenido interior con padding ajustado */}
           <div className="p-6 space-y-6">
-            {/* Logo más compacto */}
+            {/* Logo con el nuevo gradiente */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -76,23 +78,21 @@ const SignIn = () => {
               }}
               className="relative w-20 h-20 mx-auto"
             >
-              {/* Efecto de brillo/glow circular */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 to-purple-600 
-                            rounded-full opacity-70 blur-xl"></div>
+              <div className={`absolute inset-0 bg-gradient-to-tr ${themeStyles.gradient}
+                            rounded-full opacity-70 blur-xl`}></div>
               
-              {/* Círculo principal con gradiente */}
-              <div className="relative bg-gradient-to-tr from-blue-500 to-purple-600 
+              <div className={`relative bg-gradient-to-tr ${themeStyles.gradient}
                             rounded-full w-full h-full flex items-center justify-center
-                            shadow-lg shadow-purple-500/30">
+                            shadow-lg`}>
                 <FaGoogle className="text-white text-3xl transform hover:scale-110 
                                   transition-transform duration-300" />
               </div>
             </motion.div>
 
-            {/* Título con espaciado ajustado */}
+            {/* Título con el nuevo gradiente */}
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 
-                           dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              <h2 className={`text-2xl font-bold bg-gradient-to-r ${themeStyles.gradient}
+                           bg-clip-text text-transparent`}>
                 Bienvenido
               </h2>
               <p className="text-sm text-gray-600/90 dark:text-gray-300/90">
@@ -100,7 +100,7 @@ const SignIn = () => {
               </p>
             </div>
 
-            {/* Botón de Google */}
+            {/* Botón de Google con el nuevo tema */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -108,8 +108,8 @@ const SignIn = () => {
             >
               <button
                 onClick={handleGoogleLogin}
-                className="w-full group relative overflow-hidden rounded-xl 
-                         bg-gradient-to-r from-blue-500 to-purple-600 p-[2px]"
+                className={`w-full group relative overflow-hidden rounded-xl 
+                         bg-gradient-to-r ${themeStyles.gradient} p-[2px]`}
               >
                 <div className="relative bg-white dark:bg-gray-900 rounded-[10px] p-3
                               flex items-center justify-center space-x-3
@@ -123,7 +123,7 @@ const SignIn = () => {
               </button>
             </motion.div>
 
-            {/* Footer más compacto */}
+            {/* Footer */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

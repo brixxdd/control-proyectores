@@ -5,9 +5,11 @@ import { faTv, faClockRotateLeft, faFileUpload, faChalkboardTeacher } from '@for
 import useShowGradeGroupModal from '../hooks/useShowGradeGroupModal';
 import { authService } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
   const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
   const [forceUpdate, setForceUpdate] = useState(0);
 
   // Escuchar cambios de tema
@@ -26,17 +28,6 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
   useEffect(() => {
     setForceUpdate(prev => prev + 1);
   }, [currentTheme]);
-
-  // Mapeo de temas a gradientes
-  const themeGradients = {
-    default: 'from-blue-600 to-purple-600',
-    purple: 'from-purple-600 to-purple-900',
-    green: 'from-emerald-600 to-emerald-900',
-    ocean: 'from-cyan-600 to-blue-900',
-    sunset: 'from-orange-500 to-pink-800'
-  };
-
-  const currentGradient = themeGradients[currentTheme] || themeGradients.default;
 
   // Usar el custom hook
   useShowGradeGroupModal(isAuthenticated, isAdmin, setShowGradeGroupModal);
@@ -74,14 +65,14 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
             title="Mis Solicitudes"
             value={stats.misSolicitudes}
             description="Historial personal"
-            gradient={currentGradient}
+            themeStyles={themeStyles}
           />
           <DashboardCard 
             icon={faChalkboardTeacher}
             title="Solicitudes Activas"
             value={stats.solicitudesActivas}
             description="En curso"
-            gradient={currentGradient}
+            themeStyles={themeStyles}
           />
         </div>
         
@@ -139,9 +130,9 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
   );
 }
 
-function DashboardCard({ icon, title, value, description, gradient }) {
+function DashboardCard({ icon, title, value, description, themeStyles }) {
   return (
-    <div className={`bg-gradient-to-r ${gradient} rounded-lg shadow-md 
+    <div className={`bg-gradient-to-r ${themeStyles.gradient} rounded-lg shadow-md 
                     dark:shadow-gray-700/20 p-6 text-white`}>
       <div className="flex items-center justify-between">
         <div>
@@ -157,24 +148,17 @@ function DashboardCard({ icon, title, value, description, gradient }) {
 
 function ActionButton({ to, label, icon }) {
   const { currentTheme } = useTheme();
-  const themeGradients = {
-    default: 'from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700',
-    purple: 'from-purple-600 to-purple-900 hover:from-purple-700 hover:to-purple-900',
-    green: 'from-emerald-600 to-emerald-900 hover:from-emerald-700 hover:to-emerald-900',
-    ocean: 'from-cyan-600 to-blue-900 hover:from-cyan-700 hover:to-blue-900',
-    sunset: 'from-orange-500 to-pink-800 hover:from-orange-600 hover:to-pink-900'
-  };
-
-  const currentGradient = themeGradients[currentTheme] || themeGradients.default;
+  const themeStyles = getCurrentThemeStyles(currentTheme);
 
   return (
     <Link 
       to={to} 
       className={`flex items-center justify-center gap-2
-                 bg-gradient-to-r ${currentGradient}
+                 bg-gradient-to-r ${themeStyles.gradient}
                  text-white py-3 px-4 rounded-xl
                  transition duration-300 text-center
                  shadow-md hover:shadow-lg
+                 ${themeStyles.hover}
                  focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800`}
     >
       <FontAwesomeIcon icon={icon} />

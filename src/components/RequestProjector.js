@@ -18,6 +18,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 
 const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
@@ -43,6 +45,9 @@ const RequestProjector = () => {
   const [solicitudResponse, setSolicitudResponse] = useState(null);
   const qrRef = useRef(null);
   const [shouldSaveQR, setShouldSaveQR] = useState(false);
+
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
 
   // Función mejorada para descargar QR que funcione en dispositivos móviles
   const downloadQR = () => {
@@ -790,12 +795,12 @@ const RequestProjector = () => {
     <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
       {/* Contenedor principal */}
       <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
-        {/* Encabezado */}
+        {/* Encabezado con el gradiente del tema actual */}
         <div className="flex flex-col items-center mb-6 sm:mb-8">
-          <div className="bg-blue-100 dark:bg-blue-900 p-4 sm:p-6 rounded-full mb-4">
+          <div className={`bg-gradient-to-br ${themeStyles.gradient} p-4 sm:p-6 rounded-full mb-4`}>
             <FontAwesomeIcon 
               icon={faTv} 
-              className="text-blue-600 dark:text-blue-300 h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" 
+              className="text-white h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" 
             />
           </div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">
@@ -832,14 +837,14 @@ const RequestProjector = () => {
 
         <SelectedDatesComponent />
 
-        {/* Botones con estilos mejorados */}
+        {/* Botones con el gradiente del tema actual */}
         <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
           <button
             onClick={handleRequest}
-            className="flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
-                     bg-blue-600 dark:bg-blue-500 text-white rounded-lg
-                     hover:bg-blue-700 dark:hover:bg-blue-600 
-                     focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700"
+            className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
+                    bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg
+                    hover:opacity-90 transition-opacity duration-200
+                    focus:ring-4 focus:ring-opacity-50`}
           >
             <FontAwesomeIcon icon={faCalendarPlus} className="mr-2" />
             Solicitar Proyector
@@ -847,10 +852,10 @@ const RequestProjector = () => {
 
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
-                     bg-red-600 dark:bg-red-500 text-white rounded-lg
-                     hover:bg-red-700 dark:hover:bg-red-600 
-                     focus:ring-4 focus:ring-red-300 dark:focus:ring-red-700"
+            className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
+                    bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg
+                    hover:opacity-90 transition-opacity duration-200
+                    focus:ring-4 focus:ring-opacity-50`}
           >
             <FontAwesomeIcon icon={faTrash} className="mr-2" />
             Eliminar Eventos
@@ -877,7 +882,8 @@ const RequestProjector = () => {
         
         {/* Sección de código QR */}
         {qrData && (
-          <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex flex-col items-center">
+          <div className={`mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg 
+                        border-2 ${themeStyles.border} border-opacity-50`}>
             <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
               Código QR de tu solicitud
             </h3>

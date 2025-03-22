@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { X, Clock, Calendar, Copy } from 'lucide-react';
 import { alertaExito, alertaPersonalizada } from './Alert';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const TimeSelectionModal = ({ show, handleClose, selectedDates, handleConfirm }) => {
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
   const [timeSlots, setTimeSlots] = useState({});
   const [useSameTime, setUseSameTime] = useState(false);
   const [templateTime, setTemplateTime] = useState({ start: '', end: '' });
@@ -78,28 +82,23 @@ const TimeSelectionModal = ({ show, handleClose, selectedDates, handleConfirm })
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md transform overflow-hidden rounded-2xl 
-                      bg-white dark:bg-gray-800 shadow-2xl transition-all">
-          {/* Header */}
-          <div className="border-b border-gray-200 dark:border-gray-700 
-                        bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-6 w-6 text-white" />
-                <h3 className="text-xl font-semibold text-white">
-                  Selección de Horarios
-                </h3>
-              </div>
-              <button
-                onClick={handleClose}
-                className="rounded-full p-2 text-white hover:bg-blue-700/50 
-                         transition-colors duration-200"
-              >
-                <X className="h-5 w-5" />
-              </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/50 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl mx-auto p-4">
+        <div className="relative bg-white rounded-xl shadow-2xl dark:bg-gray-800 overflow-hidden">
+          {/* Header con el gradiente del tema */}
+          <div className={`flex items-center justify-between p-4 bg-gradient-to-r ${themeStyles.gradient}`}>
+            <div className="flex items-center space-x-2">
+              <Clock className="w-6 h-6 text-white" />
+              <h3 className="text-xl font-semibold text-white">
+                Selección de Horarios
+              </h3>
             </div>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
           </div>
 
           {/* Nuevo: Opción de mismo horario */}
@@ -257,11 +256,10 @@ const TimeSelectionModal = ({ show, handleClose, selectedDates, handleConfirm })
             <div className="flex flex-row-reverse gap-3">
               <button
                 onClick={onConfirm}
-                className="inline-flex justify-center items-center rounded-lg px-4 py-2.5
-                         bg-blue-600 dark:bg-blue-500 text-white font-medium
-                         hover:bg-blue-700 dark:hover:bg-blue-600 
-                         focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700
-                         transition-all duration-200 transform hover:scale-105"
+                className={`inline-flex justify-center items-center rounded-lg px-4 py-2.5
+                         bg-gradient-to-r ${themeStyles.gradient} text-white font-medium
+                         hover:opacity-90 focus:ring-4 focus:ring-opacity-50
+                         transition-all duration-200 transform hover:scale-105`}
               >
                 <Clock className="h-4 w-4 mr-2" />
                 Confirmar Horarios
