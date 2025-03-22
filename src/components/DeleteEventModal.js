@@ -160,25 +160,20 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
                     <div className="flex items-center justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700">
                         <button
                             onClick={handleClose}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300
-                                     bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
-                                     rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 
-                                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 
-                                     transition-colors"
+                            className={`px-4 py-2 rounded-md border ${themeStyles.borderColor || 'border-gray-300'} 
+                                     ${themeStyles.cancelButton || 'bg-white text-gray-700 hover:bg-gray-50'}`}
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handleMultipleDelete}
                             disabled={selectedEvents.length === 0}
-                            className={`px-4 py-2 text-sm font-medium text-white 
-                                     bg-gradient-to-r ${themeStyles.gradient} ${themeStyles.hover} rounded-lg
-                                     hover:opacity-90 focus:ring-4 focus:ring-opacity-50
-                                     disabled:opacity-50 disabled:cursor-not-allowed 
-                                     transition-all duration-200`}
+                            className={`px-4 py-2 rounded-md text-white 
+                                     ${selectedEvents.length > 0 
+                                       ? `bg-gradient-to-r ${themeStyles.deleteGradient || 'from-red-500 to-red-700'} ${themeStyles.deleteHover || 'hover:from-red-600 hover:to-red-800'}`
+                                       : 'bg-gray-400 cursor-not-allowed'}`}
                         >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Eliminar ({selectedEvents.length})</span>
+                            Eliminar Seleccionados
                         </button>
                     </div>
                 </div>
