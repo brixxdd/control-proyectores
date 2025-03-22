@@ -5,55 +5,91 @@ import toast from 'react-hot-toast';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [currentTheme, setCurrentTheme] = useState(() => {
-    return localStorage.getItem('appTheme') || 'default';
-  });
-
-  const updateTheme = async (newTheme) => {
-    try {
-      // Primero actualizamos localmente
-      setCurrentTheme(newTheme);
-      localStorage.setItem('appTheme', newTheme);
-      document.documentElement.setAttribute('data-theme', newTheme);
-      
-      // Disparamos el evento para actualizar otros componentes
-      window.dispatchEvent(new CustomEvent('themeChanged', { detail: newTheme }));
-      
-      // Luego actualizamos en el backend
-      await authService.api.put('/update-theme', { theme: newTheme });
-      
-    } catch (error) {
-      console.error('Error al actualizar el tema:', error);
-      toast.error('Error al guardar el tema');
-      // Revertir cambios si hay error
-      const previousTheme = localStorage.getItem('appTheme') || 'default';
-      setCurrentTheme(previousTheme);
-    }
-  };
+  const [currentTheme, setCurrentTheme] = useState('default');
+  const [darkMode, setDarkMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadUserTheme = async () => {
       try {
-        // Verificar si hay un token en sessionStorage
         const token = sessionStorage.getItem('jwtToken');
         if (token) {
+          // Si hay sesión, cargar desde el backend
           const response = await authService.api.get('/user-theme');
-          const serverTheme = response.data.theme;
-          if (serverTheme) {
-            setCurrentTheme(serverTheme);
-            localStorage.setItem('appTheme', serverTheme);
+          if (response.data) {
+            setCurrentTheme(response.data.theme || 'default');
+            setDarkMode(response.data.darkMode || false);
+          }
+        } else {
+          // Si no hay sesión, cargar último tema usado
+          const lastTheme = await authService.api.get('/last-theme');
+          if (lastTheme.data) {
+            setCurrentTheme(lastTheme.data.theme || 'default');
+            setDarkMode(lastTheme.data.darkMode || false);
           }
         }
+        
+        // Aplicar tema y modo oscuro inmediatamente
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        document.documentElement.classList.toggle('dark', darkMode);
       } catch (error) {
-        console.error('Error al cargar el tema del usuario:', error);
+        console.error('Error al cargar el tema:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadUserTheme();
-  }, []);
+  }, [currentTheme, darkMode]);
+
+  const changeTheme = async (newTheme) => {
+    try {
+      const token = sessionStorage.getItem('jwtToken');
+      if (token) {
+        await authService.api.put('/update-theme', { 
+          theme: newTheme,
+          darkMode // Incluir el modo oscuro en la actualización
+        });
+      }
+      
+      setCurrentTheme(newTheme);
+      document.documentElement.setAttribute('data-theme', newTheme);
+      toast.success('Tema actualizado correctamente');
+    } catch (error) {
+      console.error('Error al actualizar el tema:', error);
+      toast.error('Error al actualizar el tema');
+    }
+  };
+
+  const toggleDarkMode = async (isDark) => {
+    try {
+      setDarkMode(isDark);
+      document.documentElement.classList.toggle('dark', isDark);
+      
+      const token = sessionStorage.getItem('jwtToken');
+      if (token) {
+        await authService.api.put('/update-theme', {
+          theme: currentTheme,
+          darkMode: isDark
+        });
+      }
+    } catch (error) {
+      console.error('Error al cambiar modo oscuro:', error);
+      toast.error('Error al cambiar modo oscuro');
+    }
+  };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, setCurrentTheme: updateTheme }}>
+    <ThemeContext.Provider value={{ 
+      currentTheme, 
+      changeTheme,
+      darkMode,
+      toggleDarkMode 
+    }}>
       {children}
     </ThemeContext.Provider>
   );

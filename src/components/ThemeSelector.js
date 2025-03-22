@@ -48,15 +48,15 @@ const themes = [
 ];
 
 const ThemeSelector = () => {
-  const { currentTheme, setCurrentTheme } = useTheme();
+  const { currentTheme, changeTheme } = useTheme();
   const { updateUserData } = useAuth();
 
   const handleThemeChange = async (themeId) => {
     try {
-      // Primero actualizamos el tema localmente para cambio inmediato
-      setCurrentTheme(themeId);
+      // Actualizar el tema usando changeTheme
+      await changeTheme(themeId);
       
-      // Luego actualizamos en el backend
+      // Actualizar en el backend
       await updateUserData({ theme: themeId });
       
       toast.success('Tema actualizado correctamente');
