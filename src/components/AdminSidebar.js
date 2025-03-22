@@ -143,7 +143,7 @@ const AdminSidebar = () => {
         </nav>
 
         {/* Footer con controles de tema y efectos hover */}
-        <div className="p-4 border-t border-white/10 space-y-2">
+        <div className="p-4 border-t border-white/10 space-y-2 overflow-visible">
           <div className={`flex items-center justify-between p-2 rounded-lg bg-white/5 
                          hover:bg-white/10 transition-colors duration-300`}>
             <span className="font-medium text-white">Modo Oscuro</span>
@@ -173,12 +173,13 @@ const AdminSidebar = () => {
             )}
           </button>
           
-          {/* Selector de Temas con animación */}
+          {/* Selector de Temas con animación y scroll mejorado */}
           {showThemeSelector && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mt-2 p-2 rounded-lg bg-gradient-to-br from-black/20 to-white/5 backdrop-blur-sm`}
+              className={`mt-2 p-2 rounded-lg bg-gradient-to-br from-black/20 to-white/5 backdrop-blur-sm
+                        max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent`}
             >
               <ThemeSelector />
             </motion.div>
