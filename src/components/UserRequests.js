@@ -810,16 +810,8 @@ const UserRequests = () => {
                 </div>
               </div>
 
-              {/* Acciones */}
+              {/* Acciones - Sin el botón de ver detalles */}
               <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => handleViewDetails(solicitud)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full
-                            dark:text-blue-400 dark:hover:bg-blue-900/30"
-                  title="Ver detalles"
-                >
-                  <Eye className="h-5 w-5" />
-                </button>
                 {solicitud.estado === 'pendiente' && (
                   <>
                     <button
@@ -846,88 +838,59 @@ const UserRequests = () => {
         ))}
       </div>
 
-      {/* Vista desktop (tabla) - Se mantiene igual */}
+      {/* Vista desktop - También sin el botón de ver detalles */}
       <table className="hidden md:table w-full text-sm text-left">
         <thead className="text-xs uppercase bg-gray-50 dark:bg-gray-700">
           <tr>
-            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-              ID
-            </th>
-            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-              Motivo
-            </th>
-            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-              Fecha Inicio
-            </th>
-            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-              Fecha Fin
-            </th>
-            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-              Estado
-            </th>
-            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-              Acciones
-            </th>
+            <th className="p-4">ID</th>
+            <th className="p-4">Motivo</th>
+            <th className="p-4">Fecha Inicio</th>
+            <th className="p-4">Fecha Fin</th>
+            <th className="p-4">Estado</th>
+            <th className="p-4">Acciones</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
           {selectedUser.solicitudes.map((solicitud) => (
             <tr key={solicitud._id} 
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 
-                         transition-colors duration-150 ease-in-out">
-              <td className="p-3 text-sm dark:text-gray-200">{solicitud._id.slice(-4)}</td>
-              <td className="p-3 text-sm dark:text-gray-200">{solicitud.motivo}</td>
-              <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaInicio)}</td>
-              <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaFin)}</td>
-              <td className="p-3">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium
-                  ${solicitud.estado === 'pendiente' 
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                    : solicitud.estado === 'aprobado' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td className="p-4">{solicitud._id.slice(-4)}</td>
+              <td className="p-4">{solicitud.motivo}</td>
+              <td className="p-4">{formatDate(solicitud.fechaInicio)}</td>
+              <td className="p-4">{formatDate(solicitud.fechaFin)}</td>
+              <td className="p-4">
+                <span className={`px-2 py-1 text-xs rounded-full
+                  ${solicitud.estado === 'aprobado' 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                    : solicitud.estado === 'rechazado'
+                    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
                   }`}>
                   {solicitud.estado}
                 </span>
               </td>
-              <td className="p-3">
-                <div className="flex items-center space-x-2">
-                  {solicitud.estado === 'pendiente' ? (
+              <td className="p-4">
+                <div className="flex space-x-2">
+                  {solicitud.estado === 'pendiente' && (
                     <>
                       <button
-                        onClick={() => handleStatusChange(solicitud, 'aprobado')}
-                        className="p-1 text-green-600 hover:bg-green-50 rounded-full transition-colors"
-                        title="Aprobar solicitud"
+                        onClick={() => handleApprove(solicitud)}
+                        className="p-1 text-green-600 hover:bg-green-50 rounded
+                                  dark:text-green-400 dark:hover:bg-green-900/30"
+                        title="Aprobar"
                       >
-                        <Check className="w-5 h-5" />
+                        <Check className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleStatusChange(solicitud, 'rechazado')}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                        title="Rechazar solicitud"
+                        onClick={() => handleReject(solicitud)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded
+                                  dark:text-red-400 dark:hover:bg-red-900/30"
+                        title="Rechazar"
                       >
-                        <X className="w-5 h-5" />
+                        <X className="h-5 w-5" />
                       </button>
                     </>
-                  ) : (
-                    <button
-                      onClick={() => handleStatusChange(solicitud, 'pendiente')}
-                      className="p-1 text-yellow-600 hover:bg-yellow-50 rounded-full transition-colors"
-                      title="Marcar como pendiente"
-                    >
-                      <AlertCircle className="w-5 h-5" />
-                    </button>
                   )}
-                  <button
-                    onClick={() => {
-                      // Aquí puedes agregar la lógica para editar
-                      console.log('Editar solicitud:', solicitud._id);
-                    }}
-                    className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                    title="Editar solicitud"
-                  >
-                    <Edit className="w-5 h-5" />
-                  </button>
                 </div>
               </td>
             </tr>
@@ -943,23 +906,16 @@ const UserRequests = () => {
   };
 
   const handleApprove = async (solicitud) => {
-    try {
-      await handleStatusChange(solicitud, 'aprobado');
-      alertaExito('Solicitud aprobada exitosamente');
-      
-      // Enviar notificación al usuario
-      await authService.api.post('/api/notifications', {
-        usuarioId: solicitud.usuarioId._id,
-        mensaje: `Tu solicitud de proyector para la fecha ${formatDate(solicitud.fechaInicio)} ha sido aprobada`,
-        tipo: 'success'
-      });
-      
-      // Recargar datos
-      await fetchData();
-    } catch (error) {
-      console.error('Error al aprobar:', error);
-      alertaError('Error al aprobar la solicitud');
-    }
+    // En lugar de hacer el handleStatusChange aquí,
+    // solo abrimos el modal de asignación
+    setSelectedSolicitud(solicitud);
+    setShowAsignarModal(true);
+  };
+
+  const handleAsignacionExitosa = async (proyector) => {
+    // La alerta y actualización se manejan después de asignar el proyector
+    alertaExito('Solicitud aprobada exitosamente');
+    await fetchData(); // Recargar los datos
   };
 
   const handleReject = async (solicitud) => {
@@ -1269,10 +1225,7 @@ const UserRequests = () => {
         show={showAsignarModal}
         onClose={() => setShowAsignarModal(false)}
         solicitud={selectedSolicitud}
-        onAsignar={(proyector) => {
-          fetchSolicitudes();
-          setShowAsignarModal(false);
-        }}
+        onAsignar={handleAsignacionExitosa}
         className="z-50"
       />
     </div>
