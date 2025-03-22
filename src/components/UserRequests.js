@@ -10,6 +10,11 @@ import { alertaExito, alertaError } from './Alert';
 import { fetchFromAPI } from '../utils/fetchHelper';
 import { BACKEND_URL } from '../config/config';
 import { useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck, faTimes, faEdit, faSearch, faFilter, faSort, faEye } from '@fortawesome/free-solid-svg-icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
@@ -41,6 +46,9 @@ const UserRequests = () => {
   const queryParams = new URLSearchParams(location.search);
   const qrSolicitudId = queryParams.get('solicitudId');
   const qrUsuarioId = queryParams.get('usuarioId');
+
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -82,6 +90,7 @@ const UserRequests = () => {
       setUsers(Object.values(userMap));
     } catch (error) {
       console.error('Error al obtener solicitudes:', error);
+      setError('No se pudieron cargar las solicitudes. Por favor, intenta de nuevo más tarde.');
     } finally {
       setIsLoading(false);
     }
@@ -765,140 +774,211 @@ const UserRequests = () => {
     }
   };
 
-  const renderSolicitudesTable = () => (
-    <div className="overflow-x-auto relative">
-      {/* Vista móvil */}
-      <div className="md:hidden">
-        {selectedUser.solicitudes.map((solicitud) => (
-          <div key={solicitud._id} 
-               className="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                {/* ID y Motivo */}
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    #{solicitud._id.slice(-4)}
-                  </span>
-                  <h4 className="font-medium text-gray-900 dark:text-white">
-                    {solicitud.motivo}
+  const renderSolicitudesTable = () => {
+    // Filtrar solicitudes para mostrar solo las de la semana actual
+    const currentWeekSolicitudes = selectedUser.solicitudes.filter(solicitud => {
+      const solicitudDate = new Date(solicitud.fechaInicio);
+      const weekStart = startOfWeek(new Date());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 4); // Lunes a Viernes (5 días)
+      
+      return solicitudDate >= weekStart && solicitudDate <= weekEnd;
+    });
+
+    if (currentWeekSolicitudes.length === 0) {
+      return (
+        <div className="text-center py-6 sm:py-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-3 sm:mb-4">
+            <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500 dark:text-gray-400" />
+          </div>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
+            No hay solicitudes para esta semana
+          </p>
+        </div>
+      );
+    }
+
+    // Para pantallas pequeñas, mostrar tarjetas en lugar de tabla
+    return (
+      <div className="overflow-x-auto">
+        {/* Vista de tarjetas para móviles */}
+        <div className="block sm:hidden space-y-3">
+          {currentWeekSolicitudes.map((solicitud) => (
+            <div key={solicitud._id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">ID: {solicitud._id.substring(0, 4)}</span>
+                  <h4 className="font-medium text-gray-900 dark:text-white text-sm">
+                    {solicitud.motivo || "Solicitud de proyector"}
                   </h4>
                 </div>
-                
-                {/* Fechas */}
-                <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-                  <p>
-                    <span className="font-medium">Inicio:</span>{' '}
-                    {formatDate(solicitud.fechaInicio)}
-                  </p>
-                  <p>
-                    <span className="font-medium">Fin:</span>{' '}
-                    {formatDate(solicitud.fechaFin)}
+                <StatusBadge status={solicitud.estado} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div>
+                  <p className="text-gray-500 dark:text-gray-400">Inicio:</p>
+                  <p className="text-gray-900 dark:text-white">
+                    {new Date(solicitud.fechaInicio).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'short'
+                    })}
+                    {' '}
+                    {new Date(solicitud.fechaInicio).toLocaleTimeString('es-MX', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </p>
                 </div>
-                
-                {/* Estado */}
-                <div className="mt-3">
-                  <span className={`px-2 py-1 text-xs rounded-full
-                    ${solicitud.estado === 'aprobado' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                      : solicitud.estado === 'rechazado'
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                    }`}>
-                    {solicitud.estado}
-                  </span>
+                <div>
+                  <p className="text-gray-500 dark:text-gray-400">Fin:</p>
+                  <p className="text-gray-900 dark:text-white">
+                    {new Date(solicitud.fechaFin).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'short'
+                    })}
+                    {' '}
+                    {new Date(solicitud.fechaFin).toLocaleTimeString('es-MX', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
                 </div>
               </div>
-
-              {/* Acciones - Sin el botón de ver detalles */}
-              <div className="flex flex-col gap-2">
+              
+              <div className="flex justify-end space-x-2 border-t border-gray-100 dark:border-gray-700 pt-2">
                 {solicitud.estado === 'pendiente' && (
                   <>
                     <button
                       onClick={() => handleApprove(solicitud)}
-                      className="p-2 text-green-600 hover:bg-green-50 rounded-full
-                                dark:text-green-400 dark:hover:bg-green-900/30"
+                      className="p-1.5 rounded-full text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors"
                       title="Aprobar"
                     >
-                      <Check className="h-5 w-5" />
+                      <Check className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleReject(solicitud)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-full
-                                dark:text-red-400 dark:hover:bg-red-900/30"
+                      className="p-1.5 rounded-full text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
                       title="Rechazar"
                     >
-                      <X className="h-5 w-5" />
+                      <X className="h-4 w-4" />
                     </button>
                   </>
                 )}
+                <button
+                  onClick={() => handleViewDetails(solicitud)}
+                  className={`p-1.5 rounded-full ${themeStyles.text} hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors`}
+                  title="Ver detalles"
+                >
+                  <Eye className="h-4 w-4" />
+                </button>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Vista desktop - También sin el botón de ver detalles */}
-      <table className="hidden md:table w-full text-sm text-left">
-        <thead className="text-xs uppercase bg-gray-50 dark:bg-gray-700">
-          <tr>
-            <th className="p-4">ID</th>
-            <th className="p-4">Motivo</th>
-            <th className="p-4">Fecha Inicio</th>
-            <th className="p-4">Fecha Fin</th>
-            <th className="p-4">Estado</th>
-            <th className="p-4">Acciones</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-          {selectedUser.solicitudes.map((solicitud) => (
-            <tr key={solicitud._id} 
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td className="p-4">{solicitud._id.slice(-4)}</td>
-              <td className="p-4">{solicitud.motivo}</td>
-              <td className="p-4">{formatDate(solicitud.fechaInicio)}</td>
-              <td className="p-4">{formatDate(solicitud.fechaFin)}</td>
-              <td className="p-4">
-                <span className={`px-2 py-1 text-xs rounded-full
-                  ${solicitud.estado === 'aprobado' 
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                    : solicitud.estado === 'rechazado'
-                    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                  }`}>
-                  {solicitud.estado}
-                </span>
-              </td>
-              <td className="p-4">
-                <div className="flex space-x-2">
-                  {solicitud.estado === 'pendiente' && (
-                    <>
-                      <button
-                        onClick={() => handleApprove(solicitud)}
-                        className="p-1 text-green-600 hover:bg-green-50 rounded
-                                  dark:text-green-400 dark:hover:bg-green-900/30"
-                        title="Aprobar"
-                      >
-                        <Check className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleReject(solicitud)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded
-                                  dark:text-red-400 dark:hover:bg-red-900/30"
-                        title="Rechazar"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </td>
-            </tr>
           ))}
-        </tbody>
-      </table>
-    </div>
-  );
+        </div>
+        
+        {/* Vista de tabla para pantallas más grandes */}
+        <table className="hidden sm:table min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Motivo
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Fecha Inicio
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Fecha Fin
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Estado
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Acciones
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {currentWeekSolicitudes.map((solicitud) => (
+              <tr key={solicitud._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {solicitud._id.substring(0, 4)}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {solicitud.motivo || "Solicitud de proyector"}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <div>
+                    {new Date(solicitud.fechaInicio).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {new Date(solicitud.fechaInicio).toLocaleTimeString('es-MX', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <div>
+                    {new Date(solicitud.fechaFin).toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {new Date(solicitud.fechaFin).toLocaleTimeString('es-MX', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <StatusBadge status={solicitud.estado} />
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex space-x-2">
+                    {solicitud.estado === 'pendiente' && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(solicitud)}
+                          className="p-1.5 rounded-full text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/30 transition-colors"
+                          title="Aprobar"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleReject(solicitud)}
+                          className="p-1.5 rounded-full text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors"
+                          title="Rechazar"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleViewDetails(solicitud)}
+                      className={`p-1.5 rounded-full ${themeStyles.text} hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors`}
+                      title="Ver detalles"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   const handleViewDetails = (solicitud) => {
     setSelectedSolicitud(solicitud);
@@ -938,8 +1018,24 @@ const UserRequests = () => {
     }
   };
 
+  // Función para manejar acciones del usuario desde el modal
+  const handleUserAction = (user) => {
+    // Cerrar el modal actual
+    setShowModal(false);
+    
+    // Aquí puedes implementar la navegación al perfil completo del usuario
+    // Por ejemplo, usando navigate de react-router-dom
+    // navigate(`/user-profile/${user.userData._id}`);
+    
+    // O simplemente mostrar una alerta por ahora
+    alertaExito(`Ver perfil completo de ${user.userData.nombre}`);
+    
+    // También podrías abrir otro modal con más detalles
+    // setShowProfileModal(true);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
       {/* Alerta flotante mejorada */}
       {alert.show && (
         <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-down w-full max-w-md mx-auto">
@@ -998,20 +1094,18 @@ const UserRequests = () => {
         {/* Barra de búsqueda */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+            <h2 className={`text-2xl font-bold ${themeStyles.text} mb-6`}>
               Solicitudes por Usuario
             </h2>
             <button
               onClick={refreshData}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg 
+                        bg-gradient-to-r ${themeStyles.gradient} text-white
+                        hover:shadow-md transition-all duration-300 transform hover:scale-105`}
               disabled={isLoading}
-              className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 
-                transition-all duration-200 ${isLoading ? 'opacity-50' : ''}`}
-              title="Recargar solicitudes"
             >
-              <FiRefreshCw 
-                className={`w-5 h-5 text-gray-600 dark:text-gray-300
-                  ${isLoading ? 'animate-spin' : ''}`}
-              />
+              <FiRefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Actualizando...' : 'Actualizar'}
             </button>
           </div>
         </div>
@@ -1020,93 +1114,153 @@ const UserRequests = () => {
         {error && <ErrorMessage message={error} />}
 
         {/* Agregar indicador de semana actual */}
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+        <div className={`p-4 rounded-lg shadow-md mb-6 bg-gradient-to-r ${themeStyles.gradient} text-white`}>
           <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-300" />
-            <h3 className="font-semibold text-blue-800 dark:text-blue-100">
+            <Calendar className="w-5 h-5 text-white" />
+            <h3 className="font-semibold text-white">
               Semana Actual
             </h3>
           </div>
-          <p className="text-blue-800 dark:text-blue-100">
+          <p className="text-white/90">
             Del {startOfWeek(new Date()).toLocaleDateString('es-MX', {
               weekday: 'long',
               day: 'numeric',
               month: 'long'
-            })} al {endOfWeek(new Date()).toLocaleDateString('es-MX', {
+            })} al {new Date(startOfWeek(new Date()).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString('es-MX', {
               weekday: 'long',
               day: 'numeric',
               month: 'long'
             })}
           </p>
-          <p className="text-sm text-blue-600 dark:text-blue-200 mt-2">
-            Mostrando máximo una solicitud por día (Lunes a Viernes)
-          </p>
         </div>
 
         {/* Lista de usuarios */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredUsers.map((user) => (
             <div
               key={user.userData._id}
               onClick={() => handleUserClick(user)}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer 
-                       hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className={`p-5 rounded-lg shadow-md cursor-pointer transform transition-all duration-300
+                        hover:shadow-lg hover:scale-105 relative overflow-hidden
+                        ${selectedUser && selectedUser.userData._id === user.userData._id
+                          ? `ring-2 ring-offset-2 ${themeStyles.border}`
+                          : 'bg-white dark:bg-gray-800'}`}
             >
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-                {user.userData.nombre}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{user.userData.email}</p>
-              <div className="flex gap-2 mt-2">
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                  Grado: {user.userData.grado || 'N/A'}
-                </span>
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                  Grupo: {user.userData.grupo || 'N/A'}
-                </span>
+              {/* Fondo con gradiente del tema actual */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${themeStyles.gradient} opacity-${
+                selectedUser && selectedUser.userData._id === user.userData._id ? '100' : '0'
+              } transition-opacity duration-300 ${
+                selectedUser && selectedUser.userData._id === user.userData._id ? '' : 'hover:opacity-10'
+              }`}></div>
+              
+              {/* Contenido de la card */}
+              <div className="relative z-10">
+                <div className="flex items-center mb-4">
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center 
+                                bg-gradient-to-r ${themeStyles.gradient} text-white font-bold text-xl
+                                shadow-md`}>
+                    {user.userData.nombre.charAt(0)}
+                  </div>
+                  <div className="ml-4">
+                    <h3 className={`text-lg font-semibold ${
+                      selectedUser && selectedUser.userData._id === user.userData._id
+                        ? 'text-white'
+                        : themeStyles.text
+                    }`}>
+                      {user.userData.nombre}
+                    </h3>
+                    <p className={`text-sm ${
+                      selectedUser && selectedUser.userData._id === user.userData._id
+                        ? 'text-white/80'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>
+                      {user.userData.email}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedUser && selectedUser.userData._id === user.userData._id
+                      ? 'bg-white/20 text-white'
+                      : `${themeStyles.background} ${themeStyles.text}`
+                  }`}>
+                    Grado: {user.userData.grado || 'N/A'}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    selectedUser && selectedUser.userData._id === user.userData._id
+                      ? 'bg-white/20 text-white'
+                      : `${themeStyles.background} ${themeStyles.text}`
+                  }`}>
+                    Grupo: {user.userData.grupo || 'N/A'}
+                  </span>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <p className={`text-sm font-medium ${
+                      selectedUser && selectedUser.userData._id === user.userData._id
+                        ? 'text-white'
+                        : themeStyles.text
+                    }`}>
+                      Solicitudes: {user.solicitudes.length}
+                    </p>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center 
+                                  ${selectedUser && selectedUser.userData._id === user.userData._id
+                                    ? 'bg-white/20 text-white'
+                                    : `${themeStyles.background} ${themeStyles.text}`
+                                  }`}>
+                      {user.solicitudes.length}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                Solicitudes: {user.solicitudes.length}
-              </p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Modal de Solicitudes */}
+      {/* Modal de Solicitudes con mejoras para móviles */}
       {showModal && selectedUser && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/50">
-          <div className="relative w-full max-w-2xl mx-auto">
-            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl">
-              {/* Header del Modal */}
-              <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/50 rounded-t-lg">
-                <div>
-                  <h3 className="text-xl font-semibold text-blue-800 dark:text-blue-100">
-                    Solicitudes de {selectedUser.userData.nombre}
-                  </h3>
-                  <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                    Mostrando solicitudes de la semana actual (Lunes a Viernes)
-                  </p>
+        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/60 backdrop-blur-sm p-4 sm:p-0">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative w-full max-w-3xl mx-auto"
+          >
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+              {/* Header del Modal con gradiente del tema */}
+              <div className={`bg-gradient-to-r ${themeStyles.gradient} p-4 sm:p-5 rounded-t-lg`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-bold text-white truncate">
+                      Solicitudes de {selectedUser.userData.nombre}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-white/80 mt-1 truncate">
+                      Mostrando solicitudes de la semana actual
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex-shrink-0 ml-2"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="p-1 ml-auto bg-transparent hover:bg-blue-100 dark:hover:bg-blue-800/50 
-                           rounded-full transition-colors"
-                >
-                  <X className="w-6 h-6 text-blue-800 dark:text-blue-100" />
-                </button>
               </div>
 
               {/* Contenido del Modal */}
-              <div className="p-6 dark:text-gray-100">
+              <div className="p-4 sm:p-6 dark:text-gray-100 overflow-y-auto flex-1">
                 {/* Pestañas para alternar entre solicitudes y documentos */}
-                <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="mb-4 sm:mb-6 border-b border-gray-200 dark:border-gray-700">
                   <ul className="flex flex-wrap -mb-px">
                     <li className="mr-2">
                       <button
                         onClick={() => setActiveTab('solicitudes')}
-                        className={`inline-block p-4 ${
+                        className={`inline-block p-2 sm:p-4 font-medium transition-all duration-200 text-sm sm:text-base ${
                           activeTab === 'solicitudes'
-                            ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                            ? `${themeStyles.text} border-b-2 ${themeStyles.border}`
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                         }`}
                       >
@@ -1116,9 +1270,9 @@ const UserRequests = () => {
                     <li className="mr-2">
                       <button
                         onClick={() => setActiveTab('documentos')}
-                        className={`inline-block p-4 ${
+                        className={`inline-block p-2 sm:p-4 font-medium transition-all duration-200 text-sm sm:text-base ${
                           activeTab === 'documentos'
-                            ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                            ? `${themeStyles.text} border-b-2 ${themeStyles.border}`
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                         }`}
                       >
@@ -1128,7 +1282,7 @@ const UserRequests = () => {
                   </ul>
                 </div>
 
-                <div className="max-h-96 overflow-auto">
+                <div className="max-h-[50vh] sm:max-h-96 overflow-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
                   {activeTab === 'solicitudes' ? (
                     renderSolicitudesTable()
                   ) : (
@@ -1138,18 +1292,18 @@ const UserRequests = () => {
               </div>
 
               {/* Footer del Modal */}
-              <div className="flex items-center justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg">
+              <div className="flex items-center justify-end gap-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-b-lg">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 
                            bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
-                           rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                           rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cerrar
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
@@ -1158,7 +1312,7 @@ const UserRequests = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="relative w-11/12 h-5/6 bg-white dark:bg-gray-800 rounded-lg shadow-xl">
             <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-              <h3 className="text-lg font-medium dark:text-gray-100">
+              <h3 className={`text-lg font-medium ${themeStyles.text} dark:text-gray-100`}>
                 Previsualización del documento
               </h3>
               <button
@@ -1229,6 +1383,20 @@ const UserRequests = () => {
         className="z-50"
       />
     </div>
+  );
+};
+
+const StatusBadge = ({ status }) => {
+  const statusStyles = {
+    pendiente: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
+    aprobado: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+    rechazado: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
+  };
+  
+  return (
+    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status]}`}>
+      {status}
+    </span>
   );
 };
 
