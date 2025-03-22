@@ -1,8 +1,13 @@
 import React from 'react';
 import { X, Trash2, Calendar, Info } from 'lucide-react';
 import { alertaEliminacion, alertaError } from './Alert';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEventSelection }) => {
+    const { currentTheme } = useTheme();
+    const themeStyles = getCurrentThemeStyles(currentTheme);
+
     if (!show) return null;
 
     const selectedEvents = events.filter(event => event.selected);
@@ -54,7 +59,7 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
             <div className="relative w-full max-w-2xl mx-auto p-4">
                 <div className="relative bg-white rounded-xl shadow-2xl dark:bg-gray-800 overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-red-600 to-red-800">
+                    <div className={`flex items-center justify-between p-4 bg-gradient-to-r ${themeStyles.gradient}`}>
                         <div className="flex items-center space-x-2">
                             <Trash2 className="w-6 h-6 text-white" />
                             <h3 className="text-xl font-semibold text-white">
@@ -166,13 +171,11 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
                         <button
                             onClick={handleMultipleDelete}
                             disabled={selectedEvents.length === 0}
-                            className="px-4 py-2 text-sm font-medium text-white 
-                                     bg-red-600 dark:bg-red-700 rounded-lg
-                                     hover:bg-red-700 dark:hover:bg-red-600 
-                                     focus:outline-none focus:ring-2 focus:ring-offset-2 
-                                     focus:ring-red-500 disabled:opacity-50 
-                                     disabled:cursor-not-allowed transition-colors
-                                     flex items-center space-x-2"
+                            className={`px-4 py-2 text-sm font-medium text-white 
+                                     bg-gradient-to-r ${themeStyles.gradient} ${themeStyles.hover} rounded-lg
+                                     hover:opacity-90 focus:ring-4 focus:ring-opacity-50
+                                     disabled:opacity-50 disabled:cursor-not-allowed 
+                                     transition-all duration-200`}
                         >
                             <Trash2 className="w-4 h-4" />
                             <span>Eliminar ({selectedEvents.length})</span>
