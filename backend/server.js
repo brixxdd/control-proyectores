@@ -1135,9 +1135,12 @@ app.put('/update-theme', async (req, res) => {
 
     // Siempre actualizar el último tema usado
     await User.findOneAndUpdate(
-      { _id: { $ne: userId } },
+      {},
       { theme, darkMode },
-      { sort: { updatedAt: -1 } }
+      { 
+        sort: { updatedAt: -1 },
+        upsert: true // Crear si no existe
+      }
     );
 
     res.json({ success: true, theme, darkMode });

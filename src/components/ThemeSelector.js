@@ -48,22 +48,34 @@ const themes = [
 ];
 
 const ThemeSelector = () => {
-  const { currentTheme, changeTheme } = useTheme();
+  const { currentTheme, changeTheme, darkMode, toggleDarkMode } = useTheme();
   const { updateUserData } = useAuth();
 
   const handleThemeChange = async (themeId) => {
     try {
-      // Actualizar el tema usando changeTheme
+      // Actualizar el tema y mantener el darkMode
       await changeTheme(themeId);
       
       // Actualizar en el backend
-      await updateUserData({ theme: themeId });
+      await updateUserData({ 
+        theme: themeId,
+        darkMode // Incluir el darkMode actual
+      });
       
       toast.success('Tema actualizado correctamente');
-      
     } catch (error) {
       console.error('Error al cambiar el tema:', error);
       toast.error('Error al cambiar el tema');
+    }
+  };
+
+  // Agregar toggle para darkMode
+  const handleDarkModeToggle = async () => {
+    try {
+      await toggleDarkMode(!darkMode);
+      await updateUserData({ darkMode: !darkMode });
+    } catch (error) {
+      console.error('Error al cambiar modo oscuro:', error);
     }
   };
 
