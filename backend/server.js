@@ -1117,4 +1117,55 @@ app.delete('/api/proyectores/:id', verifyToken, async (req, res) => {
 });
 
 app.use('/qr-codes', qrCodeRoutes);
+
+// Ruta para actualizar el tema del usuario
+app.put('/update-theme', verifyToken, async (req, res) => {
+  try {
+    const { theme } = req.body;
+    const userId = req.user.id;
+    
+    const usuarioActualizado = await User.findByIdAndUpdate(
+      userId, 
+      { theme }, 
+      { new: true }
+    );
+    
+    if (!usuarioActualizado) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    res.json({ 
+      success: true, 
+      theme: usuarioActualizado.theme 
+    });
+    
+  } catch (error) {
+    console.error('Error al actualizar tema:', error);
+    res.status(500).json({ 
+      message: 'Error al actualizar el tema',
+      error: error.message 
+    });
+  }
+});
+
+// Ruta para obtener el tema del usuario
+app.get('/user-theme', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const usuario = await User.findById(userId);
+    
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    res.json({ theme: usuario.theme || 'default' });
+    
+  } catch (error) {
+    console.error('Error al obtener tema:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener el tema',
+      error: error.message 
+    });
+  }
+});
   

@@ -4,8 +4,40 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTv, faClockRotateLeft, faFileUpload, faChalkboardTeacher } from '@fortawesome/free-solid-svg-icons';
 import useShowGradeGroupModal from '../hooks/useShowGradeGroupModal';
 import { authService } from '../services/authService';
+import { useTheme } from '../contexts/ThemeContext';
 
 function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
+  const { currentTheme } = useTheme();
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Escuchar cambios de tema
+  useEffect(() => {
+    const handleThemeChange = (event) => {
+      setForceUpdate(prev => prev + 1);
+      // Forzar re-render de los componentes que usan gradientes
+      document.documentElement.setAttribute('data-theme', event.detail);
+    };
+
+    window.addEventListener('themeChanged', handleThemeChange);
+    return () => window.removeEventListener('themeChanged', handleThemeChange);
+  }, []);
+
+  // Forzar re-render cuando cambia el tema
+  useEffect(() => {
+    setForceUpdate(prev => prev + 1);
+  }, [currentTheme]);
+
+  // Mapeo de temas a gradientes
+  const themeGradients = {
+    default: 'from-blue-600 to-purple-600',
+    purple: 'from-purple-600 to-purple-900',
+    green: 'from-emerald-600 to-emerald-900',
+    ocean: 'from-cyan-600 to-blue-900',
+    sunset: 'from-orange-500 to-pink-800'
+  };
+
+  const currentGradient = themeGradients[currentTheme] || themeGradients.default;
+
   // Usar el custom hook
   useShowGradeGroupModal(isAuthenticated, isAdmin, setShowGradeGroupModal);
   const [stats, setStats] = useState({
@@ -42,14 +74,14 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
             title="Mis Solicitudes"
             value={stats.misSolicitudes}
             description="Historial personal"
-            color="bg-purple-500 dark:bg-purple-600"
+            gradient={currentGradient}
           />
           <DashboardCard 
             icon={faChalkboardTeacher}
             title="Solicitudes Activas"
             value={stats.solicitudesActivas}
             description="En curso"
-            color="bg-green-500 dark:bg-green-600"
+            gradient={currentGradient}
           />
         </div>
         
@@ -107,9 +139,10 @@ function Dashboard({ isAuthenticated, isAdmin, setShowGradeGroupModal }) {
   );
 }
 
-function DashboardCard({ icon, title, value, description, color }) {
+function DashboardCard({ icon, title, value, description, gradient }) {
   return (
-    <div className={`${color} rounded-lg shadow-md dark:shadow-gray-700/20 p-6 text-white`}>
+    <div className={`bg-gradient-to-r ${gradient} rounded-lg shadow-md 
+                    dark:shadow-gray-700/20 p-6 text-white`}>
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold mb-2">{title}</h3>
@@ -123,16 +156,26 @@ function DashboardCard({ icon, title, value, description, color }) {
 }
 
 function ActionButton({ to, label, icon }) {
+  const { currentTheme } = useTheme();
+  const themeGradients = {
+    default: 'from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700',
+    purple: 'from-purple-600 to-purple-900 hover:from-purple-700 hover:to-purple-900',
+    green: 'from-emerald-600 to-emerald-900 hover:from-emerald-700 hover:to-emerald-900',
+    ocean: 'from-cyan-600 to-blue-900 hover:from-cyan-700 hover:to-blue-900',
+    sunset: 'from-orange-500 to-pink-800 hover:from-orange-600 hover:to-pink-900'
+  };
+
+  const currentGradient = themeGradients[currentTheme] || themeGradients.default;
+
   return (
     <Link 
       to={to} 
-      className="flex items-center justify-center gap-2
-                 bg-gradient-to-r from-blue-600 to-purple-600
-                 hover:from-blue-700 hover:to-purple-700
+      className={`flex items-center justify-center gap-2
+                 bg-gradient-to-r ${currentGradient}
                  text-white py-3 px-4 rounded-xl
                  transition duration-300 text-center
                  shadow-md hover:shadow-lg
-                 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800"
+                 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800`}
     >
       <FontAwesomeIcon icon={icon} />
       <span>{label}</span>
