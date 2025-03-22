@@ -101,11 +101,11 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       if (cameraId) {
         const config = {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 250, height: 250 }, // Asegurando que el qrbox también sea cuadrado
           experimentalFeatures: {
             useBarCodeDetectorIfSupported: true
           },
-          aspectRatio: 1.0,
+          aspectRatio: 1.0, // Forzar aspecto de 1.0 (cuadrado)
           showTorchButtonIfSupported: true
         };
         
@@ -207,8 +207,9 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
             {startScan ? (
               <div className="relative" ref={containerRef}>
                 <div id="qr-reader" className="w-full h-64 rounded-lg overflow-hidden bg-gray-200"></div>
+                {/* Recuadro de escaneo modificado para forzar forma cuadrada */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-48 h-48 border-2 border-blue-500 rounded-lg"></div>
+                  <div className="w-64 h-64 border-2 border-blue-500 rounded-lg" style={{ maxWidth: '90%', maxHeight: '90%', aspectRatio: '1/1' }}></div>
                 </div>
                 <p className="text-sm text-center mt-2 text-gray-600 dark:text-gray-400">
                   Coloca el código QR dentro del recuadro
@@ -269,4 +270,4 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   );
 };
 
-export default QRScanner; 
+export default QRScanner;
