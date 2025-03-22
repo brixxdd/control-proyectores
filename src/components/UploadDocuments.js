@@ -1,7 +1,12 @@
-import React, { useState, useCallback ,useEffect} from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FiUploadCloud, FiFile, FiX, FiCheck, FiAlertTriangle, FiInfo } from 'react-icons/fi';
 import { authService } from '../services/authService';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
+
 function UploadDocuments() {
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
@@ -183,17 +188,17 @@ function UploadDocuments() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-8">
+        <h2 className={`text-2xl font-bold ${themeStyles.text} mb-8`}>
           Subir Documentos
         </h2>
         
         {/* Información sobre restricciones */}
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+        <div className={`mb-6 p-4 ${themeStyles.background} rounded-lg border ${themeStyles.border}`}>
           <div className="flex items-start">
-            <FiInfo className="h-5 w-5 text-blue-500 mt-0.5 mr-3" />
+            <FiInfo className={`h-5 w-5 ${themeStyles.text} mt-0.5 mr-3`} />
             <div>
-              <h3 className="font-medium text-blue-700 dark:text-blue-300">Restricciones de subida</h3>
-              <ul className="mt-2 text-sm text-blue-600 dark:text-blue-400 space-y-1">
+              <h3 className={`font-medium ${themeStyles.text}`}>Restricciones de subida</h3>
+              <ul className={`mt-2 text-sm ${themeStyles.text} space-y-1`}>
                 <li>• Solo se permite un documento por usuario por semana</li>
                 <li>• Solo se aceptan archivos PDF</li>
                 <li>• Tamaño máximo: 2MB</li>
@@ -206,20 +211,20 @@ function UploadDocuments() {
         {uploadStatus && (
           <div className={`mb-6 p-4 rounded-lg flex items-center gap-3
             ${uploadStatus === 'success' 
-              ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+              ? `${themeStyles.background} ${themeStyles.text}`
               : uploadStatus === 'warning'
               ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
               : uploadStatus === 'info'
-              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              ? `${themeStyles.background} ${themeStyles.text}`
               : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'}`}
           >
             <div className={`rounded-full p-1 
               ${uploadStatus === 'success' 
-                ? 'bg-green-100 dark:bg-green-800'
+                ? `${themeStyles.background}`
                 : uploadStatus === 'warning'
                 ? 'bg-yellow-100 dark:bg-yellow-800'
                 : uploadStatus === 'info'
-                ? 'bg-blue-100 dark:bg-blue-800' 
+                ? `${themeStyles.background}`
                 : 'bg-red-100 dark:bg-red-800'}`}
             >
               {uploadStatus === 'success' ? (
@@ -246,7 +251,7 @@ function UploadDocuments() {
               relative border-2 border-dashed rounded-xl p-8
               transition-all duration-200 ease-in-out
               ${isDragging 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                ? `${themeStyles.border} ${themeStyles.background}`
                 : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}
               ${file 
                 ? 'bg-gray-50 dark:bg-gray-800/50' 
@@ -261,8 +266,9 @@ function UploadDocuments() {
             />
             
             <div className="text-center">
-              <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                <FiUploadCloud className="h-10 w-10 text-blue-500 dark:text-blue-400" />
+              <div className={`${themeStyles.background} p-4 rounded-full w-20 h-20 mx-auto mb-4 
+                              flex items-center justify-center`}>
+                <FiUploadCloud className={`h-10 w-10 ${themeStyles.text}`} />
               </div>
               <div className="mt-4 space-y-2">
                 <p className="text-base font-medium text-gray-700 dark:text-gray-300">
@@ -282,13 +288,13 @@ function UploadDocuments() {
           {file && !uploadStatus && (
             <button
               onClick={handleFileUpload}
-              className="mt-6 w-full bg-blue-600 dark:bg-blue-500 text-white 
+              className={`mt-6 w-full bg-gradient-to-r ${themeStyles.gradient} text-white 
                        px-6 py-3 rounded-lg text-sm font-medium
-                       hover:bg-blue-700 dark:hover:bg-blue-600
-                       focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800
+                       ${themeStyles.hover}
+                       focus:ring-4 focus:ring-opacity-50 ${themeStyles.border}
                        transition-all duration-200 
                        flex items-center justify-center gap-2
-                       shadow-lg hover:shadow-xl"
+                       shadow-lg hover:shadow-xl`}
             >
               <FiFile className="h-5 w-5" />
               <span>Subir Documento</span>

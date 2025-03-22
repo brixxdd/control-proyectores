@@ -3,6 +3,8 @@ import { authService } from '../services/authService';
 import { motion } from 'framer-motion';
 import { Check, X, Clock, Calendar, User, BookOpen } from 'lucide-react';
 import { useTimeZone } from '../contexts/TimeZoneContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const MySolicitudes = () => {
   const [solicitudes, setSolicitudes] = useState([]);
@@ -10,6 +12,8 @@ const MySolicitudes = () => {
   const [error, setError] = useState(null);
 
   const { formatDate } = useTimeZone();
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
 
   // Dentro del componente MySolicitudes, añadir esta función de formato de fecha
   const formatDateLocal = (dateString) => {
@@ -138,18 +142,18 @@ const MySolicitudes = () => {
   const getStatusStyle = (estado) => {
     switch (estado) {
       case 'aprobado':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return `${themeStyles.background} ${themeStyles.text}`;
       case 'rechazado':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400';
       default:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+        <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${themeStyles.border}`} />
       </div>
     );
   }
@@ -157,7 +161,7 @@ const MySolicitudes = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+        <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 text-red-700 dark:text-red-400 px-4 py-3 rounded relative">
           {error}
         </div>
       </div>
@@ -166,15 +170,15 @@ const MySolicitudes = () => {
 
   return (
     <div className="w-full mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 overflow-x-hidden">
-      <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 md:mb-6 text-gray-900 dark:text-white">
+      <h2 className={`text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 md:mb-6 ${themeStyles.text}`}>
         Mis Solicitudes de la Semana
       </h2>
       
       {/* Indicador mejorado de semana actual */}
-      <div className="mb-3 sm:mb-4 md:mb-6 p-2 sm:p-3 md:p-4 bg-blue-50 dark:bg-blue-900 rounded-lg shadow-sm">
+      <div className={`mb-3 sm:mb-4 md:mb-6 p-2 sm:p-3 md:p-4 ${themeStyles.background} rounded-lg shadow-sm`}>
         <div className="flex items-center gap-2 mb-2">
-          <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-300" />
-          <h3 className="font-semibold text-sm sm:text-base text-blue-800 dark:text-blue-100">
+          <Calendar className={`w-4 h-4 sm:w-5 sm:h-5 ${themeStyles.text}`} />
+          <h3 className={`font-semibold text-sm sm:text-base ${themeStyles.text}`}>
             Semana Actual
           </h3>
         </div>
@@ -194,7 +198,7 @@ const MySolicitudes = () => {
           friday.setHours(23, 59, 59, 999);
           
           return (
-            <p className="text-sm sm:text-base text-blue-800 dark:text-blue-100">
+            <p className={`text-sm sm:text-base ${themeStyles.text}`}>
               Del {monday.toLocaleDateString('es-MX', {
                 weekday: 'long',
                 day: 'numeric',
@@ -209,14 +213,14 @@ const MySolicitudes = () => {
             </p>
           );
         })()}
-        <p className="text-sm text-blue-600 dark:text-blue-200 mt-2">
+        <p className={`text-sm ${themeStyles.text} mt-2`}>
           Mostrando máximo una solicitud por día (Lunes a Viernes)
         </p>
       </div>
 
       {solicitudes.length === 0 ? (
         <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg shadow">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className={`${themeStyles.text}`}>
             No hay solicitudes para esta semana
           </p>
         </div>
@@ -245,11 +249,7 @@ const MySolicitudes = () => {
                   </div>
                   <div className="flex justify-between items-center gap-4 pt-1">
                     <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">Estado</span>
-                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                      solicitud.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                      solicitud.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    }`}>
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusStyle(solicitud.estado)}`}>
                       {solicitud.estado}
                     </span>
                   </div>
@@ -261,7 +261,7 @@ const MySolicitudes = () => {
           {/* Vista tablet/desktop */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full divide-y divide-gray-200 dark:divide-gray-700 table-auto">
-              <thead className="bg-gray-50 dark:bg-gray-700">
+              <thead className={`${themeStyles.background}`}>
                 <tr>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo</th>
@@ -272,7 +272,7 @@ const MySolicitudes = () => {
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {solicitudes.map((solicitud) => (
-                  <tr key={solicitud._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <tr key={solicitud._id} className={`hover:${themeStyles.background}`}>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
                       {solicitud._id}
                     </td>
@@ -286,11 +286,7 @@ const MySolicitudes = () => {
                       {formatDateLocal(solicitud.fechaFin)}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                        solicitud.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                        solicitud.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                      }`}>
+                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getStatusStyle(solicitud.estado)}`}>
                         {solicitud.estado}
                       </span>
                     </td>

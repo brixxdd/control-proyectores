@@ -3,6 +3,8 @@ import { FiDownload, FiShare2, FiCalendar, FiClock, FiInfo } from 'react-icons/f
 import { fetchFromAPI } from '../utils/fetchHelper';
 import { alertaError, alertaExito } from './Alert';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const QRHistory = () => {
   const [qrCodes, setQrCodes] = useState([]);
@@ -10,6 +12,10 @@ const QRHistory = () => {
   const [groupedQRs, setGroupedQRs] = useState({});
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  
+  // Obtener el tema actual
+  const { currentTheme } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
 
   useEffect(() => {
     const fetchQRCodes = async () => {
@@ -173,7 +179,7 @@ const QRHistory = () => {
   if (loading) {
     return (
       <div className="min-h-screen p-4 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className={`animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 ${themeStyles.border}`}></div>
       </div>
     );
   }
@@ -181,17 +187,20 @@ const QRHistory = () => {
   return (
     <div className="min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center">
+          <div className={`${themeStyles.background} p-2 rounded-full mr-3`}>
+            <FiInfo className={`h-5 w-5 ${themeStyles.text}`} />
+          </div>
           Historial de Códigos QR
         </h2>
 
         {/* Información sobre los QR */}
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+        <div className={`mb-6 p-4 ${themeStyles.background} rounded-lg border ${themeStyles.border}`}>
           <div className="flex items-start">
-            <FiInfo className="h-5 w-5 text-blue-500 mt-0.5 mr-3" />
+            <FiInfo className={`h-5 w-5 ${themeStyles.text} mt-0.5 mr-3`} />
             <div>
-              <h3 className="font-medium text-blue-700 dark:text-blue-300">Información sobre tus códigos QR</h3>
-              <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              <h3 className={`font-medium ${themeStyles.text}`}>Información sobre tus códigos QR</h3>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 Aquí encontrarás todos los códigos QR generados para tus solicitudes de proyector.
                 Puedes descargarlos o compartirlos directamente desde esta página.
               </p>
@@ -228,7 +237,7 @@ const QRHistory = () => {
               .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA)) // Ordenar por fecha descendente
               .map(([date, qrList]) => (
                 <div key={date} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-                  <div className="bg-blue-600 dark:bg-blue-700 p-4 text-white">
+                  <div className={`bg-gradient-to-r ${themeStyles.gradient} p-4 text-white`}>
                     <h3 className="font-semibold flex items-center">
                       <FiCalendar className="mr-2" />
                       {formatDate(date)}
@@ -261,7 +270,7 @@ const QRHistory = () => {
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleDownloadQR(qr.qrData)}
-                                  className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                                  className={`p-2 ${themeStyles.background} ${themeStyles.text} rounded-full hover:bg-opacity-80`}
                                   title="Descargar QR"
                                 >
                                   <FiDownload size={16} />
@@ -279,16 +288,18 @@ const QRHistory = () => {
                             </div>
                             
                             <div className="flex-grow flex items-center justify-center p-2">
-                              <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr.qrData)}&size=150x150&margin=10`} 
-                                alt="QR Code"
-                                className="w-[150px] h-[150px]"
-                              />
+                              <div className={`p-3 rounded-lg ${themeStyles.background}`}>
+                                <img 
+                                  src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr.qrData)}&size=150x150&margin=10`} 
+                                  alt="QR Code"
+                                  className="w-[150px] h-[150px]"
+                                />
+                              </div>
                             </div>
                             
                             {qrInfo.fechas && qrInfo.fechas.length > 0 && (
                               <div className="mt-3 text-sm">
-                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Fechas solicitadas:</p>
+                                <p className={`font-medium ${themeStyles.text} mb-1`}>Fechas solicitadas:</p>
                                 <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
                                   {qrInfo.fechas.map((f, i) => (
                                     <li key={i} className="flex justify-between">

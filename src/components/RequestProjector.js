@@ -10,7 +10,7 @@ import './RequestProjector.css';
 import TimeSelectionModal from './TimeSelectionModal'; 
 import DeleteEventModal from './DeleteEventModal';
 import { useTimeZone } from '../contexts/TimeZoneContext';
-import { alertaExito, alertaError, alertaPersonalizada } from './Alert';
+import { alertaExito, alertaError } from './Alert';
 import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
 // Importaciones para QR
@@ -46,8 +46,12 @@ const RequestProjector = () => {
   const qrRef = useRef(null);
   const [shouldSaveQR, setShouldSaveQR] = useState(false);
 
+  // Obtener el tema actual
   const { currentTheme } = useTheme();
   const themeStyles = getCurrentThemeStyles(currentTheme);
+  
+  // Zona horaria para México
+  const mexicoTimeZone = 'America/Mexico_City';
 
   // Función mejorada para descargar QR que funcione en dispositivos móviles
   const downloadQR = () => {
@@ -432,6 +436,7 @@ const RequestProjector = () => {
     try {
       console.log('Iniciando solicitud de proyector...');
       
+      // Verificar si tenemos el token
       const googleCredential = sessionStorage.getItem('googleAccessToken');
       if (!googleCredential) {
         console.error('No hay token de autenticación');
@@ -439,11 +444,7 @@ const RequestProjector = () => {
       }
 
       if (selectedDates.length === 0) {
-        alertaPersonalizada(
-          "Selección de fechas",
-          "Por favor selecciona al menos un día entre lunes y viernes.",
-          "info"
-        );
+        alert("Por favor selecciona al menos un día entre lunes y viernes.");
         return;
       }
 
@@ -452,11 +453,7 @@ const RequestProjector = () => {
         const day = date.getDay();
 
         if (day === 0 || day === 6) {
-          alertaPersonalizada(
-            "Días disponibles",
-            "Por favor selecciona solo días de lunes a viernes.",
-            "info"
-          );
+          alert("Por favor selecciona solo días de lunes a viernes.");
           return null;
         }
 
@@ -469,7 +466,7 @@ const RequestProjector = () => {
       }
     } catch (error) {
       console.error('Error detallado:', error);
-      alertaError('Hubo un error al procesar tu solicitud. Revisa la consola para más detalles.');
+      alert('Hubo un error al procesar tu solicitud. Revisa la consola para más detalles.');
     }
   };
 
@@ -482,14 +479,14 @@ const RequestProjector = () => {
       
       if (!jwtToken || !currentUser) {
         console.error("No hay sesión activa o faltan credenciales");
-        alertaError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        alert("No hay sesión activa. Por favor, inicia sesión nuevamente.");
         return;
       }
 
       // Verificar que gapi esté inicializado
       if (!gapi.client || !gapi.auth2) {
         console.error("La API de Google no está inicializada");
-        alertaError("No se pudo conectar con Google Calendar. Por favor, recarga la página.");
+        alert("No se pudo conectar con Google Calendar. Por favor, recarga la página.");
         return;
       }
 
@@ -795,12 +792,12 @@ const RequestProjector = () => {
     <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
       {/* Contenedor principal */}
       <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
-        {/* Encabezado con el gradiente del tema actual */}
+        {/* Encabezado */}
         <div className="flex flex-col items-center mb-6 sm:mb-8">
-          <div className={`bg-gradient-to-br ${themeStyles.gradient} p-4 sm:p-6 rounded-full mb-4`}>
+          <div className={`${themeStyles.background} p-4 sm:p-6 rounded-full mb-4`}>
             <FontAwesomeIcon 
               icon={faTv} 
-              className="text-white h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" 
+              className={`${themeStyles.text} h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16`} 
             />
           </div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">
@@ -837,14 +834,14 @@ const RequestProjector = () => {
 
         <SelectedDatesComponent />
 
-        {/* Botones con el gradiente del tema actual */}
+        {/* Botones con estilos mejorados */}
         <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
           <button
             onClick={handleRequest}
             className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
-                    bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg
-                    hover:opacity-90 transition-opacity duration-200
-                    focus:ring-4 focus:ring-opacity-50`}
+                     bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg
+                     ${themeStyles.hover}
+                     focus:ring-4 focus:ring-opacity-50 ${themeStyles.border}`}
           >
             <FontAwesomeIcon icon={faCalendarPlus} className="mr-2" />
             Solicitar Proyector
@@ -853,9 +850,9 @@ const RequestProjector = () => {
           <button
             onClick={() => setShowModal(true)}
             className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
-                    bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg
-                    hover:opacity-90 transition-opacity duration-200
-                    focus:ring-4 focus:ring-opacity-50`}
+                     bg-gradient-to-r ${themeStyles.deleteGradient || 'from-red-500 to-red-700'} text-white rounded-lg
+                     ${themeStyles.deleteHover || 'hover:from-red-600 hover:to-red-800'} 
+                     focus:ring-4 focus:ring-opacity-50 ${themeStyles.deleteBorder || 'focus:ring-red-300 dark:focus:ring-red-700'}`}
           >
             <FontAwesomeIcon icon={faTrash} className="mr-2" />
             Eliminar Eventos
@@ -870,6 +867,7 @@ const RequestProjector = () => {
           events={events}
           toggleEventSelection={toggleEventSelection}
           className="max-w-lg mx-auto"
+          themeStyles={themeStyles}
         />
 
         <TimeSelectionModal
@@ -878,18 +876,18 @@ const RequestProjector = () => {
           selectedDates={selectedDates}
           handleConfirm={handleConfirmTimeSlots}
           className="max-w-lg mx-auto"
+          themeStyles={themeStyles}
         />
         
         {/* Sección de código QR */}
         {qrData && (
-          <div className={`mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg 
-                        border-2 ${themeStyles.border} border-opacity-50`}>
+          <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex flex-col items-center">
             <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
               Código QR de tu solicitud
             </h3>
             
             {/* Contenedor del QR simplificado */}
-            <div className="p-4 bg-white rounded-lg">
+            <div className={`p-4 ${themeStyles.background} rounded-lg`}>
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=200x200&margin=10`} 
                 alt="QR Code"
@@ -912,7 +910,7 @@ const RequestProjector = () => {
                 download="mi-qr-proyector.png"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
+                className={`px-4 py-2 bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg ${themeStyles.hover} text-center`}
               >
                 Descargar QR
               </a>
