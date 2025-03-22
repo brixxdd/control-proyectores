@@ -222,31 +222,54 @@ export const useAuth = () => {
     }
   }, [handleLoginSuccess, handleError]);
 
-  const updateUserData = useCallback((updatedData) => {
-    // Actualizar el estado local
-    setAuthState(prev => ({
-      ...prev,
-      user: {
-        ...prev.user,
-        ...updatedData
+  const updateUserData = useCallback(async (updatedData) => {
+    try {
+      // Si hay un tema en los datos actualizados, enviarlo al backend
+      if (updatedData.theme) {
+        await authService.api.put('/update-theme', { 
+          theme: updatedData.theme 
+        });
       }
-    }));
-    
-    // También actualizar en sessionStorage para persistencia
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (currentUser) {
-      const updatedUser = {
-        ...currentUser,
-        ...updatedData
-      };
-      sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+  
+      // Actualizar el estado local
+      setAuthState(prev => ({
+        ...prev,
+        user: {
+          ...prev.user,
+          ...updatedData
+        }
+      }));
+      
+      // Actualizar en sessionStorage
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      if (currentUser) {
+        const updatedUser = {
+          ...currentUser,
+          ...updatedData
+        };
+        sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      }
+  
+      // Si se actualizó el tema, también actualizarlo en localStorage
+      if (updatedData.theme) {
+        localStorage.setItem('appTheme', updatedData.theme);
+        // Disparar evento para actualizar componentes
+        window.dispatchEvent(new CustomEvent('themeChanged', { 
+          detail: updatedData.theme 
+        }));
+      }
+  
+      return true;
+    } catch (error) {
+      console.error('Error al actualizar datos del usuario:', error);
+      throw error;
     }
   }, []);
-
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
+  // Agregar el return que faltaba
   return {
     ...authState,
     handleLoginSuccess,
@@ -255,4 +278,4 @@ export const useAuth = () => {
     handleGoogleLogin,
     updateUserData
   };
-};
+}

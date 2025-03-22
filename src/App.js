@@ -29,6 +29,8 @@ import AsignarProyectorDirecto from './components/AsignarProyectorDirecto';
 import { alertaExito, alertaError } from './components/Alert';
 import { alertService } from './services/alertService';
 import QRHistory from './components/QRHistory';
+import { ThemeProvider } from './contexts/ThemeContext';
+import ThemeSelector from './components/ThemeSelector';
 
 const App = () => {
   const { 
@@ -232,264 +234,274 @@ const App = () => {
   }
 
   return (
-    <TimeZoneProvider>
-      <div className="min-h-screen min-w-screen bg-gray-50 dark:bg-gray-900 flex flex-col sm:flex-row overflow-x-hidden">
-        {isAuthenticated && (
-          <>
-            {isAdmin ? (
-              <AdminSidebar 
-                openGradeGroupModal={() => setShowGradeGroupModal(true)}
-              />
-            ) : (
-              <Sidebar 
-                openGradeGroupModal={() => setShowGradeGroupModal(true)}
-              />
-            )}
-          </>
-        )}
+    <ThemeProvider>
+      <TimeZoneProvider>
+        <div className="min-h-screen min-w-screen bg-gray-50 dark:bg-gray-900 flex flex-col sm:flex-row overflow-x-hidden">
+          {isAuthenticated && (
+            <>
+              {isAdmin ? (
+                <AdminSidebar 
+                  openGradeGroupModal={() => setShowGradeGroupModal(true)}
+                />
+              ) : (
+                <Sidebar 
+                  openGradeGroupModal={() => setShowGradeGroupModal(true)}
+                />
+              )}
+            </>
+          )}
 
-        {/* Contenido principal */}
-        <main className={`flex-1 transition-all duration-300 w-full max-w-[100vw] overflow-x-hidden
-                         ${isAuthenticated ? 'lg:ml-72' : ''}`}>
-          <div className="p-2 sm:p-4 mt-14 sm:mt-0 max-w-full overflow-x-hidden">
-            <div className="max-w-screen mx-auto">
-              {/* Header del usuario */}
-              {isAuthenticated && user && (
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 bg-white dark:bg-gray-800 p-2.5 sm:p-4 rounded-lg shadow-md">
-                  {/* Contenedor izquierdo - Timer de sesión */}
-                  <div className="w-full sm:w-auto flex items-center">
-                    <div className={`
-                      px-4 py-2 rounded-full font-medium text-sm
-                      flex items-center gap-2
-                      ${tokenTimeLeft <= 120 
-                        ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300' 
-                        : tokenTimeLeft <= 300 
-                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                          : 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300'
-                      }
-                    `}>
-                      <svg 
-                        className="w-4 h-4" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-                        />
-                      </svg>
-                      <span className="text-xs sm:text-sm">Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
-                    </div>
-                  </div>
-
-                  {/* Contenedor derecho - Usuario, Notificaciones y Cerrar Sesión */}
-                  <div className="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-between sm:justify-end gap-2 sm:gap-4">
-                    <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
-                      {/* Información del usuario */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
-                          {userPicture && (
-                            <img 
-                              src={userPicture}
-                              alt="Perfil" 
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                        </div>
-                        <span className="text-gray-700 dark:text-gray-200 text-sm font-medium truncate max-w-[150px]">
-                          {user.nombre}
-                        </span>
-                      </div>
-
-                      {/* Botón de escáner QR (solo para administradores) */}
-                      {isAdmin && (
-                        <button
-                          onClick={() => setShowScanner(true)}
-                          className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
-                          title="Escanear QR"
+          {/* Contenido principal */}
+          <main className={`flex-1 transition-all duration-300 w-full max-w-[100vw] overflow-x-hidden
+                           ${isAuthenticated ? 'lg:ml-72' : ''}`}>
+            <div className="p-2 sm:p-4 mt-14 sm:mt-0 max-w-full overflow-x-hidden">
+              <div className="max-w-screen mx-auto">
+                {/* Header del usuario */}
+                {isAuthenticated && user && (
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 bg-white dark:bg-gray-800 p-2.5 sm:p-4 rounded-lg shadow-md">
+                    {/* Contenedor izquierdo - Timer de sesión */}
+                    <div className="w-full sm:w-auto flex items-center">
+                      <div className={`
+                        px-4 py-2 rounded-full font-medium text-sm
+                        flex items-center gap-2
+                        ${tokenTimeLeft <= 120 
+                          ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300' 
+                          : tokenTimeLeft <= 300 
+                            ? 'bg-yellow-100 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                            : 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300'
+                        }
+                      `}>
+                        <svg 
+                          className="w-4 h-4" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
                         >
-                          <Camera size={20} />
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                          />
+                        </svg>
+                        <span className="text-xs sm:text-sm">Sesión: {formatTimeLeft(tokenTimeLeft)}</span>
+                      </div>
+                    </div>
+
+                    {/* Contenedor derecho - Usuario, Notificaciones y Cerrar Sesión */}
+                    <div className="w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center justify-between sm:justify-end gap-2 sm:gap-4">
+                      <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
+                        {/* Información del usuario */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-gray-300 rounded-full overflow-hidden flex-shrink-0">
+                            {userPicture && (
+                              <img 
+                                src={userPicture}
+                                alt="Perfil" 
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <span className="text-gray-700 dark:text-gray-200 text-sm font-medium truncate max-w-[150px]">
+                            {user.nombre}
+                          </span>
+                        </div>
+
+                        {/* Botón de escáner QR (solo para administradores) */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => setShowScanner(true)}
+                            className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                            title="Escanear QR"
+                          >
+                            <Camera size={20} />
+                          </button>
+                        )}
+
+                        {/* Notificaciones */}
+                        <NotificationsDropdown />
+
+                        {/* Botón de cerrar sesión */}
+                        <button 
+                          onClick={handleLogout} 
+                          className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Cerrar Sesión
                         </button>
-                      )}
-
-                      {/* Notificaciones */}
-                      <NotificationsDropdown />
-
-                      {/* Botón de cerrar sesión */}
-                      <button 
-                        onClick={handleLogout} 
-                        className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
-                      >
-                        Cerrar Sesión
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Rutas */}
-              <Routes>
-                <Route 
-                  path="/" 
-                  element={
-                    isAuthenticated 
-                      ? <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace /> 
-                      : <Navigate to="/signin" replace />
-                  } 
+                {/* Rutas */}
+                <Routes>
+                  <Route 
+                    path="/" 
+                    element={
+                      isAuthenticated 
+                        ? <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace /> 
+                        : <Navigate to="/signin" replace />
+                    } 
+                  />
+
+                  <Route 
+                    path="/signin" 
+                    element={
+                      isLoading ? (
+                        <div className="min-h-screen flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+                        </div>
+                      ) : isAuthenticated ? (
+                        <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />
+                      ) : (
+                        <SignIn />
+                      )
+                    } 
+                  />
+
+                  {/* Rutas protegidas */}
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      isAuthenticated && !isAdmin 
+                        ? <Dashboard isAuthenticated={isAuthenticated} isAdmin={isAdmin} setShowGradeGroupModal={setShowGradeGroupModal}/> 
+                        : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />
+                    } 
+                  />
+                  <Route 
+                    path="/admin-dashboard" 
+                    element={
+                      isAuthenticated && isAdmin 
+                        ? <AdminDashboard /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/grupos" 
+                    element={
+                      isAuthenticated ? <Grupos /> : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/calendario" 
+                    element={
+                      isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/request-projector" 
+                    element={
+                      isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/upload-documents" 
+                    element={
+                      isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/view-documents" 
+                    element={
+                      isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/user-requests" 
+                    element={
+                      isAuthenticated && isAdmin 
+                        ? <UserRequests /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/mis-solicitudes" 
+                    element={
+                      isAuthenticated 
+                        ? <MySolicitudes /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/admin-proyectores" 
+                    element={
+                      isAuthenticated && isAdmin 
+                        ? <AdminProyectores /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/asignar-directo" 
+                    element={
+                      isAuthenticated && isAdmin 
+                        ? <AsignarProyectorDirecto /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/qr-history" 
+                    element={
+                      isAuthenticated 
+                        ? <QRHistory /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  <Route 
+                    path="/personalizacion" 
+                    element={
+                      isAuthenticated 
+                        ? <ThemeSelector /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+
+                  <Route path="*" element={<Navigate to="/signin" />} />
+                </Routes>
+
+                {/* Modales */}
+                <WelcomeAlert 
+                  isOpen={showWelcomeAlert} 
+                  onClose={() => setShowWelcomeAlert(false)}
+                  openGradeGroupModal={() => setShowGradeGroupModal(true)}
                 />
 
-                <Route 
-                  path="/signin" 
-                  element={
-                    isLoading ? (
-                      <div className="min-h-screen flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-                      </div>
-                    ) : isAuthenticated ? (
-                      <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />
-                    ) : (
-                      <SignIn />
-                    )
-                  } 
-                />
+                {showGradeGroupModal && (
+                  <GradeGroupModal 
+                    isOpen={showGradeGroupModal}
+                    onClose={() => setShowGradeGroupModal(false)}
+                    onSubmit={handleProfileUpdate}
+                  />
+                )}
 
-                {/* Rutas protegidas */}
-                <Route 
-                  path="/dashboard" 
-                  element={
-                    isAuthenticated && !isAdmin 
-                      ? <Dashboard isAuthenticated={isAuthenticated} isAdmin={isAdmin} setShowGradeGroupModal={setShowGradeGroupModal}/> 
-                      : <Navigate to={isAdmin ? "/admin-dashboard" : "/signin"} />
-                  } 
-                />
-                <Route 
-                  path="/admin-dashboard" 
-                  element={
-                    isAuthenticated && isAdmin 
-                      ? <AdminDashboard /> 
-                      : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/grupos" 
-                  element={
-                    isAuthenticated ? <Grupos /> : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/calendario" 
-                  element={
-                    isAuthenticated ? <MiniCalendar /> : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/request-projector" 
-                  element={
-                    isAuthenticated ? <RequestProjector /> : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/upload-documents" 
-                  element={
-                    isAuthenticated ? <UploadDocuments /> : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/view-documents" 
-                  element={
-                    isAuthenticated ? <ViewDocuments /> : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/user-requests" 
-                  element={
-                    isAuthenticated && isAdmin 
-                      ? <UserRequests /> 
-                      : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/mis-solicitudes" 
-                  element={
-                    isAuthenticated 
-                      ? <MySolicitudes /> 
-                      : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/admin-proyectores" 
-                  element={
-                    isAuthenticated && isAdmin 
-                      ? <AdminProyectores /> 
-                      : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/asignar-directo" 
-                  element={
-                    isAuthenticated && isAdmin 
-                      ? <AsignarProyectorDirecto /> 
-                      : <Navigate to="/signin" />
-                  } 
-                />
-                <Route 
-                  path="/qr-history" 
-                  element={
-                    isAuthenticated 
-                      ? <QRHistory /> 
-                      : <Navigate to="/signin" />
-                  } 
-                />
-
-                <Route path="*" element={<Navigate to="/signin" />} />
-              </Routes>
-
-              {/* Modales */}
-              <WelcomeAlert 
-                isOpen={showWelcomeAlert} 
-                onClose={() => setShowWelcomeAlert(false)}
-                openGradeGroupModal={() => setShowGradeGroupModal(true)}
-              />
-
-              {showGradeGroupModal && (
-                <GradeGroupModal 
-                  isOpen={showGradeGroupModal}
-                  onClose={() => setShowGradeGroupModal(false)}
-                  onSubmit={handleProfileUpdate}
-                />
-              )}
-
-              {/* Modal de escáner QR */}
-              {showScanner && (
-                <QRScanner 
-                  onScanSuccess={handleScanSuccess} 
-                  onClose={() => setShowScanner(false)} 
-                />
-              )}
+                {/* Modal de escáner QR */}
+                {showScanner && (
+                  <QRScanner 
+                    onScanSuccess={handleScanSuccess} 
+                    onClose={() => setShowScanner(false)} 
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        </main>
-      </div>
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
+          </main>
+        </div>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
             duration: 3000,
-            theme: {
-              primary: '#4aed88',
+            style: {
+              background: '#363636',
+              color: '#fff',
             },
-          },
-        }}
-      />
-    </TimeZoneProvider>
+            success: {
+              duration: 3000,
+              theme: {
+                primary: '#4aed88',
+              },
+            },
+          }}
+        />
+      </TimeZoneProvider>
+    </ThemeProvider>
   );
 }
 

@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaHome, FaUserFriends, FaCog, FaTv, FaFileUpload, FaBars, FaTimes, FaHistory, FaQrcode } from 'react-icons/fa';
 import ThemeToggle from './ThemeToggle';
+import ThemeSelector from './ThemeSelector';
+import { motion } from 'framer-motion';
 
 const Sidebar = ({ openGradeGroupModal }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
   const linkClasses = "flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:translate-x-2";
   const iconClasses = "text-xl";
 
@@ -100,10 +103,24 @@ const Sidebar = ({ openGradeGroupModal }) => {
             <span className="font-medium">Modo Oscuro</span>
             <ThemeToggle isDark={isDark} toggleTheme={toggleTheme} />
           </div>
-          <Link to="/ajustes" className={linkClasses} onClick={() => setIsOpen(false)}>
+          <button 
+            onClick={() => setShowThemeSelector(!showThemeSelector)}
+            className={linkClasses}
+          >
             <FaCog className="text-xl" />
-            <span className="font-medium">Ajustes</span>
-          </Link>
+            <span className="font-medium">Personalización</span>
+          </button>
+          
+          {/* Selector de Temas */}
+          {showThemeSelector && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-2"
+            >
+              <ThemeSelector />
+            </motion.div>
+          )}
         </div>
       </div>
     </>
