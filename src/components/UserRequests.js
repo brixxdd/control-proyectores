@@ -655,42 +655,51 @@ const UserRequests = () => {
     }
 
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
+      <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs uppercase bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="hidden md:table-cell p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+                ID
+              </th>
+              <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
                 Nombre del Archivo
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="hidden sm:table-cell p-3 text-left font-medium text-gray-600 dark:text-gray-300">
                 Fecha de Subida
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
                 Estado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {selectedUser.documentos.map((doc) => (
-              <tr key={doc._id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                  {doc.fileName}
+              <tr key={doc._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150 ease-in-out">
+                <td className="hidden md:table-cell p-3 text-sm dark:text-gray-200">
+                  {doc._id.slice(-4)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td className="p-3 text-sm dark:text-gray-200">
+                  <div>{doc.fileName}</div>
+                  <div className="sm:hidden text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {formatDate(doc.createdAt)}
+                  </div>
+                </td>
+                <td className="hidden sm:table-cell p-3 text-sm dark:text-gray-200">
                   {formatDate(doc.createdAt)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="p-3 text-sm">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${doc.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
-                      doc.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 
-                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
+                    ${doc.estado === 'aprobado' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 
+                      doc.estado === 'rechazado' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : 
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'}`}>
                     {doc.estado}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="p-3 text-sm">
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleViewPdf(doc)}
@@ -753,6 +762,223 @@ const UserRequests = () => {
     } catch (error) {
       console.error('Error al procesar el código QR:', error);
       alertaError('Error al procesar el código QR.');
+    }
+  };
+
+  const renderSolicitudesTable = () => (
+    <div className="overflow-x-auto relative">
+      {/* Vista móvil */}
+      <div className="md:hidden">
+        {selectedUser.solicitudes.map((solicitud) => (
+          <div key={solicitud._id} 
+               className="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                {/* ID y Motivo */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    #{solicitud._id.slice(-4)}
+                  </span>
+                  <h4 className="font-medium text-gray-900 dark:text-white">
+                    {solicitud.motivo}
+                  </h4>
+                </div>
+                
+                {/* Fechas */}
+                <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                  <p>
+                    <span className="font-medium">Inicio:</span>{' '}
+                    {formatDate(solicitud.fechaInicio)}
+                  </p>
+                  <p>
+                    <span className="font-medium">Fin:</span>{' '}
+                    {formatDate(solicitud.fechaFin)}
+                  </p>
+                </div>
+                
+                {/* Estado */}
+                <div className="mt-3">
+                  <span className={`px-2 py-1 text-xs rounded-full
+                    ${solicitud.estado === 'aprobado' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : solicitud.estado === 'rechazado'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                    }`}>
+                    {solicitud.estado}
+                  </span>
+                </div>
+              </div>
+
+              {/* Acciones */}
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => handleViewDetails(solicitud)}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full
+                            dark:text-blue-400 dark:hover:bg-blue-900/30"
+                  title="Ver detalles"
+                >
+                  <Eye className="h-5 w-5" />
+                </button>
+                {solicitud.estado === 'pendiente' && (
+                  <>
+                    <button
+                      onClick={() => handleApprove(solicitud)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-full
+                                dark:text-green-400 dark:hover:bg-green-900/30"
+                      title="Aprobar"
+                    >
+                      <Check className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleReject(solicitud)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-full
+                                dark:text-red-400 dark:hover:bg-red-900/30"
+                      title="Rechazar"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Vista desktop (tabla) - Se mantiene igual */}
+      <table className="hidden md:table w-full text-sm text-left">
+        <thead className="text-xs uppercase bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+              ID
+            </th>
+            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+              Motivo
+            </th>
+            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+              Fecha Inicio
+            </th>
+            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+              Fecha Fin
+            </th>
+            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+              Estado
+            </th>
+            <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
+              Acciones
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {selectedUser.solicitudes.map((solicitud) => (
+            <tr key={solicitud._id} 
+                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 
+                         transition-colors duration-150 ease-in-out">
+              <td className="p-3 text-sm dark:text-gray-200">{solicitud._id.slice(-4)}</td>
+              <td className="p-3 text-sm dark:text-gray-200">{solicitud.motivo}</td>
+              <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaInicio)}</td>
+              <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaFin)}</td>
+              <td className="p-3">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium
+                  ${solicitud.estado === 'pendiente' 
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                    : solicitud.estado === 'aprobado' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                  }`}>
+                  {solicitud.estado}
+                </span>
+              </td>
+              <td className="p-3">
+                <div className="flex items-center space-x-2">
+                  {solicitud.estado === 'pendiente' ? (
+                    <>
+                      <button
+                        onClick={() => handleStatusChange(solicitud, 'aprobado')}
+                        className="p-1 text-green-600 hover:bg-green-50 rounded-full transition-colors"
+                        title="Aprobar solicitud"
+                      >
+                        <Check className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(solicitud, 'rechazado')}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                        title="Rechazar solicitud"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => handleStatusChange(solicitud, 'pendiente')}
+                      className="p-1 text-yellow-600 hover:bg-yellow-50 rounded-full transition-colors"
+                      title="Marcar como pendiente"
+                    >
+                      <AlertCircle className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      // Aquí puedes agregar la lógica para editar
+                      console.log('Editar solicitud:', solicitud._id);
+                    }}
+                    className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                    title="Editar solicitud"
+                  >
+                    <Edit className="w-5 h-5" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const handleViewDetails = (solicitud) => {
+    setSelectedSolicitud(solicitud);
+    setShowModal(true); // Asumiendo que tienes un modal para ver detalles
+  };
+
+  const handleApprove = async (solicitud) => {
+    try {
+      await handleStatusChange(solicitud, 'aprobado');
+      alertaExito('Solicitud aprobada exitosamente');
+      
+      // Enviar notificación al usuario
+      await authService.api.post('/api/notifications', {
+        usuarioId: solicitud.usuarioId._id,
+        mensaje: `Tu solicitud de proyector para la fecha ${formatDate(solicitud.fechaInicio)} ha sido aprobada`,
+        tipo: 'success'
+      });
+      
+      // Recargar datos
+      await fetchData();
+    } catch (error) {
+      console.error('Error al aprobar:', error);
+      alertaError('Error al aprobar la solicitud');
+    }
+  };
+
+  const handleReject = async (solicitud) => {
+    try {
+      await handleStatusChange(solicitud, 'rechazado');
+      alertaExito('Solicitud rechazada exitosamente');
+      
+      // Enviar notificación al usuario
+      await authService.api.post('/api/notifications', {
+        usuarioId: solicitud.usuarioId._id,
+        mensaje: `Tu solicitud de proyector para la fecha ${formatDate(solicitud.fechaInicio)} ha sido rechazada`,
+        tipo: 'error'
+      });
+      
+      // Recargar datos
+      await fetchData();
+    } catch (error) {
+      console.error('Error al rechazar:', error);
+      alertaError('Error al rechazar la solicitud');
     }
   };
 
@@ -948,93 +1174,7 @@ const UserRequests = () => {
 
                 <div className="max-h-96 overflow-auto">
                   {activeTab === 'solicitudes' ? (
-                    <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            ID
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Motivo
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Fecha Inicio
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Fecha Fin
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Estado
-                          </th>
-                          <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">
-                            Acciones
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {selectedUser.solicitudes.map((solicitud) => (
-                          <tr key={solicitud._id} 
-                              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 
-                                       transition-colors duration-150 ease-in-out">
-                            <td className="p-3 text-sm dark:text-gray-200">{solicitud._id.slice(-4)}</td>
-                            <td className="p-3 text-sm dark:text-gray-200">{solicitud.motivo}</td>
-                            <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaInicio)}</td>
-                            <td className="p-3 text-sm dark:text-gray-200">{formatDate(solicitud.fechaFin)}</td>
-                            <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium
-                                ${solicitud.estado === 'pendiente' 
-                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                                  : solicitud.estado === 'aprobado' 
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                }`}>
-                                {solicitud.estado}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center space-x-2">
-                                {solicitud.estado === 'pendiente' ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleStatusChange(solicitud, 'aprobado')}
-                                      className="p-1 text-green-600 hover:bg-green-50 rounded-full transition-colors"
-                                      title="Aprobar solicitud"
-                                    >
-                                      <Check className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleStatusChange(solicitud, 'rechazado')}
-                                      className="p-1 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                      title="Rechazar solicitud"
-                                    >
-                                      <X className="w-5 h-5" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    onClick={() => handleStatusChange(solicitud, 'pendiente')}
-                                    className="p-1 text-yellow-600 hover:bg-yellow-50 rounded-full transition-colors"
-                                    title="Marcar como pendiente"
-                                  >
-                                    <AlertCircle className="w-5 h-5" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    // Aquí puedes agregar la lógica para editar
-                                    console.log('Editar solicitud:', solicitud._id);
-                                  }}
-                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                                  title="Editar solicitud"
-                                >
-                                  <Edit className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    renderSolicitudesTable()
                   ) : (
                     renderDocumentosTab()
                   )}
