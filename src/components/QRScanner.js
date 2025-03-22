@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { alertaError, alertaExito } from './Alert';
 import { alertService } from '../services/alertService';
 
@@ -70,7 +70,7 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       if (isIOS) {
         qrReaderElement.style.width = "100%";
         qrReaderElement.style.maxWidth = "450px";
-        qrReaderElement.style.height = "350px"; // Altura específica para iOS
+        qrReaderElement.style.height = "350px";
       } else {
         qrReaderElement.style.width = "100%";
         qrReaderElement.style.height = "300px";
@@ -89,17 +89,17 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
 
       // Configuración específica para iOS
       const config = {
-        fps: isIOS ? 2 : 10, // Menor FPS para iOS
+        fps: isIOS ? 2 : 10,
         qrbox: isIOS ? 
           { width: 250, height: 250, border: "20px solid red" } : 
           { width: 250, height: 250 },
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
         },
-        aspectRatio: isIOS ? 1.777778 : 1.0, // 16:9 para iOS
+        aspectRatio: isIOS ? 1.777778 : 1.0,
         showTorchButtonIfSupported: true,
-        defaultZoomLevel: isIOS ? 1.5 : 1, // Zoom para iOS
-        formatsToSupport: [ Html5QrCode.FORMATS.QR_CODE ]
+        defaultZoomLevel: isIOS ? 1.5 : 1,
+        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
       };
 
       // Configuración específica de la cámara para iOS
