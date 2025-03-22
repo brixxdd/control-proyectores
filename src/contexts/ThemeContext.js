@@ -13,25 +13,21 @@ export const ThemeProvider = ({ children }) => {
     const loadUserTheme = async () => {
       try {
         const token = sessionStorage.getItem('jwtToken');
-        if (token) {
-          // Si hay sesión, cargar desde el backend
-          const response = await authService.api.get('/user-theme');
-          if (response.data) {
-            setCurrentTheme(response.data.theme || 'default');
-            setDarkMode(response.data.darkMode || false);
-          }
-        } else {
-          // Si no hay sesión, cargar último tema usado
-          const lastTheme = await authService.api.get('/last-theme');
-          if (lastTheme.data) {
-            setCurrentTheme(lastTheme.data.theme || 'default');
-            setDarkMode(lastTheme.data.darkMode || false);
-          }
-        }
+        let themeData;
         
-        // Aplicar tema y modo oscuro inmediatamente
-        document.documentElement.setAttribute('data-theme', currentTheme);
-        document.documentElement.classList.toggle('dark', darkMode);
+        if (token) {
+          const response = await authService.api.get('/user-theme');
+          themeData = response.data;
+        } else {
+          const lastTheme = await authService.api.get('/last-theme');
+          themeData = lastTheme.data;
+        }
+
+        if (themeData) {
+          setCurrentTheme(themeData.theme || 'default');
+          setDarkMode(themeData.darkMode);
+          document.documentElement.classList.toggle('dark', themeData.darkMode);
+        }
       } catch (error) {
         console.error('Error al cargar el tema:', error);
       } finally {
@@ -40,20 +36,19 @@ export const ThemeProvider = ({ children }) => {
     };
 
     loadUserTheme();
-  }, [currentTheme, darkMode]);
+  }, []); // Remover dependencias para que solo se ejecute al montar
 
   const changeTheme = async (newTheme) => {
     try {
-      const token = sessionStorage.getItem('jwtToken');
-      if (token) {
-        await authService.api.put('/update-theme', { 
-          theme: newTheme,
-          darkMode // Incluir el modo oscuro en la actualización
-        });
-      }
+      await authService.api.put('/update-theme', { 
+        theme: newTheme,
+        darkMode // Asegurarnos de enviar el estado actual del darkMode
+      });
       
       setCurrentTheme(newTheme);
       document.documentElement.setAttribute('data-theme', newTheme);
+      // Mantener el darkMode
+      document.documentElement.classList.toggle('dark', darkMode);
       toast.success('Tema actualizado correctamente');
     } catch (error) {
       console.error('Error al actualizar el tema:', error);
@@ -66,15 +61,17 @@ export const ThemeProvider = ({ children }) => {
       setDarkMode(isDark);
       document.documentElement.classList.toggle('dark', isDark);
       
-      const token = sessionStorage.getItem('jwtToken');
-      if (token) {
-        await authService.api.put('/update-theme', {
-          theme: currentTheme,
-          darkMode: isDark
-        });
-      }
+      // Actualizar en el backend con el tema actual
+      await authService.api.put('/update-theme', {
+        theme: currentTheme,
+        darkMode: isDark
+      });
+
+      // No mostrar toast para una experiencia más fluida
     } catch (error) {
       console.error('Error al cambiar modo oscuro:', error);
+      setDarkMode(!isDark); // Revertir en caso de error
+      document.documentElement.classList.toggle('dark', !isDark);
       toast.error('Error al cambiar modo oscuro');
     }
   };

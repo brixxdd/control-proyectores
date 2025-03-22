@@ -1,29 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaHome, FaUserFriends, FaCog, FaTv, FaFileUpload, FaBars, FaTimes, FaHistory, FaQrcode } from 'react-icons/fa';
 import ThemeToggle from './ThemeToggle';
 import ThemeSelector from './ThemeSelector';
 import { motion } from 'framer-motion';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Sidebar = ({ openGradeGroupModal }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const linkClasses = "flex items-center gap-3 p-3 rounded-lg transition-all duration-200 hover:bg-white/10 hover:translate-x-2";
   const iconClasses = "text-xl";
 
-  useEffect(() => {
-    const darkMode = localStorage.getItem('darkMode') === 'true';
-    setIsDark(darkMode);
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
+  const handleDarkModeToggle = async () => {
+    try {
+      await toggleDarkMode(!darkMode);
+    } catch (error) {
+      console.error('Error al cambiar modo oscuro:', error);
     }
-  }, []);
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('darkMode', (!isDark).toString());
   };
 
   return (
@@ -101,7 +96,10 @@ const Sidebar = ({ openGradeGroupModal }) => {
         <div className="p-2 border-t border-white/10 space-y-2">
           <div className="flex items-center justify-between px-2">
             <span className="font-medium">Modo Oscuro</span>
-            <ThemeToggle isDark={isDark} toggleTheme={toggleTheme} />
+            <ThemeToggle 
+              isDark={darkMode} 
+              toggleTheme={handleDarkModeToggle}
+            />
           </div>
           <button 
             onClick={() => setShowThemeSelector(!showThemeSelector)}

@@ -13,6 +13,22 @@ const SignIn = () => {
   const { currentTheme, darkMode, toggleDarkMode } = useTheme();
   const themeStyles = getCurrentThemeStyles(currentTheme || 'default');
 
+  useEffect(() => {
+    const loadInitialTheme = async () => {
+      try {
+        const response = await authService.api.get('/last-theme');
+        if (response.data) {
+          const { theme, darkMode } = response.data;
+          document.documentElement.setAttribute('data-theme', theme || 'default');
+          document.documentElement.classList.toggle('dark', darkMode);
+        }
+      } catch (error) {
+        console.error('Error al cargar tema inicial:', error);
+      }
+    };
+    loadInitialTheme();
+  }, []);
+
   if (isAuthenticated) {
     return <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />;
   }
