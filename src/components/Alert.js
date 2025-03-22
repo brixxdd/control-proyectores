@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import ReactDOM from 'react-dom/client';
 import { alertService } from '../services/alertService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getCurrentThemeStyles } from '../themes/themeConfig';
 
-
-// Componente base para la notificación tipo toast
-const Toast = ({ open, handleClose, severity, message }) => {
+// Componente base para la notificación tipo toast sin depender de useTheme
+const Toast = ({ open, handleClose, severity, message, themeStyles }) => {
   useEffect(() => {
     if (open) {
       const timer = setTimeout(() => {
@@ -18,22 +19,27 @@ const Toast = ({ open, handleClose, severity, message }) => {
   if (!open) return null;
 
   const severityStyles = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800'
+    success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50 text-green-800 dark:text-green-300',
+    error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300',
+    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50 text-blue-800 dark:text-blue-300',
+    warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/50 text-yellow-800 dark:text-yellow-300'
   };
 
   const iconMap = {
-    success: <CheckCircle className="w-5 h-5 text-green-600" />,
-    error: <AlertCircle className="w-5 h-5 text-red-600" />,
-    info: <Info className="w-5 h-5 text-blue-600" />,
-    warning: <AlertCircle className="w-5 h-5 text-yellow-600" />
+    success: <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />,
+    error: <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />,
+    info: <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
+    warning: <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
   };
 
   return (
-    <div className="fixed top-4 right-4 left-4 sm:left-auto z-50 animate-slide-in">
-      <div className={`flex items-center p-3 sm:p-4 rounded-lg border ${severityStyles[severity]} shadow-lg w-full sm:w-auto sm:min-w-[320px] sm:max-w-md`}>
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="fixed top-4 right-4 left-4 sm:left-auto z-50"
+    >
+      <div className={`flex items-center p-3 sm:p-4 rounded-lg border ${severityStyles[severity]} shadow-lg backdrop-blur-sm w-full sm:w-auto sm:min-w-[320px] sm:max-w-md`}>
         <div className="flex-shrink-0">
           {iconMap[severity]}
         </div>
@@ -42,92 +48,107 @@ const Toast = ({ open, handleClose, severity, message }) => {
         </div>
         <button
           onClick={handleClose}
-          className="ml-4 flex-shrink-0 rounded-md p-1.5 hover:bg-opacity-20 hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2"
+          className="ml-4 flex-shrink-0 rounded-md p-1.5 hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
-const modalStyles = {
-  enter: 'transform transition-all duration-300 ease-out',
-  enterFrom: 'opacity-0 scale-95 translate-y-4',
-  enterTo: 'opacity-100 scale-100 translate-y-0',
-  leave: 'transform transition-all duration-200 ease-in',
-  leaveFrom: 'opacity-100 scale-100',
-  leaveTo: 'opacity-0 scale-95'
-};
-
-const Modal = ({ isOpen, onClose, title, message, icon, confirmButtonText }) => {
+// Componente Modal sin depender de useTheme
+const Modal = ({ isOpen, onClose, title, message, icon, confirmButtonText, themeStyles }) => {
   if (!isOpen) return null;
 
-  const iconMap = {
-    success: <CheckCircle className="w-12 h-12 text-green-600 mx-auto animate-bounce" />,
-    error: <AlertCircle className="w-12 h-12 text-red-600 mx-auto animate-shake" />,
-    info: <Info className="w-12 h-12 text-blue-600 mx-auto animate-pulse" />
+  // Usar un gradiente predeterminado si no hay themeStyles
+  const gradient = themeStyles?.gradient || 'from-blue-600 to-blue-800';
+  const buttonGradient = themeStyles?.gradient || 'from-blue-600 to-blue-800';
+
+  const iconComponents = {
+    success: (
+      <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4 mx-auto">
+        <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 animate-bounce" />
+      </div>
+    ),
+    error: (
+      <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 mx-auto">
+        <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400 animate-pulse" />
+      </div>
+    ),
+    info: (
+      <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4 mx-auto">
+        <Info className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-pulse" />
+      </div>
+    ),
+    warning: (
+      <div className="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center mb-4 mx-auto">
+        <AlertTriangle className="w-8 h-8 text-yellow-600 dark:text-yellow-400 animate-pulse" />
+      </div>
+    )
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center px-3 sm:px-4 py-4 text-center">
-        <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity duration-300" 
-          onClick={onClose} 
-        />
-        
-        <div className={`
-          inline-block rounded-lg bg-white text-left shadow-xl 
-          w-full max-w-[95vw] sm:max-w-lg mx-auto
-          dark:bg-gray-800 dark:text-white
-          ${modalStyles.enter}
-          animate-modal-slide-up
-        `}>
-          <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="sm:flex sm:items-start">
-              <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                <div className="mb-4 transform transition-all duration-500 hover:scale-110">
-                  {iconMap[icon]}
-                </div>
-                <h3 className="text-base sm:text-lg font-medium leading-6 text-gray-900 dark:text-white text-center mb-2">
-                  {title}
-                </h3>
-                <div className="mt-2">
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-300 text-center">
-                    {message}
-                  </p>
-                </div>
+    <AnimatePresence>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.9, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.9, y: 20 }}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+        >
+          {/* Header con gradiente */}
+          <div className={`bg-gradient-to-r ${gradient} p-4 text-white`}>
+            <h3 className="text-lg font-medium text-center">
+              {title}
+            </h3>
+          </div>
+          
+          <div className="p-6">
+            <div className="flex flex-col items-center">
+              {iconComponents[icon]}
+              
+              <div className="text-center mb-6">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {message}
+                </p>
               </div>
             </div>
+            
+            <div className="flex justify-center pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={onClose}
+                className={`px-6 py-2 text-sm font-medium text-white rounded-md bg-gradient-to-r ${buttonGradient} hover:shadow-md transition-all duration-300 transform hover:scale-105`}
+              >
+                {confirmButtonText || 'Aceptar'}
+              </button>
+            </div>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-            <button
-              type="button"
-              className="inline-flex w-full justify-center rounded-md border border-transparent 
-                         bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm 
-                         hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 
-                         focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm
-                         transform transition-all duration-200 hover:scale-105"
-              onClick={onClose}
-            >
-              {confirmButtonText || 'Aceptar'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
-// Funciones de alerta modificadas
-export const alertaExito = (mensaje = '¡Éxito!') => {
-  // Crear un ID único basado en el mensaje
+// Función para obtener el tema actual del localStorage
+const getCurrentTheme = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('theme') || 'blue';
+  }
+  return 'blue';
+};
+
+// Exportar funciones de alerta
+export const alertaExito = (mensaje = 'Operación exitosa') => {
   const alertId = `success-${mensaje}`;
   
-  // Verificar si esta alerta ya se mostró recientemente
   if (!alertService.canShowAlert(alertId)) {
-    return; // No mostrar la alerta si ya se mostró recientemente
+    return;
   }
   
   const modalRoot = document.createElement('div');
@@ -139,6 +160,9 @@ export const alertaExito = (mensaje = '¡Éxito!') => {
 
   const App = () => {
     const [isOpen, setIsOpen] = React.useState(true);
+    // Obtener el tema actual y sus estilos
+    const currentTheme = getCurrentTheme();
+    const themeStyles = getCurrentThemeStyles(currentTheme);
 
     const handleClose = () => {
       setIsOpen(false);
@@ -149,10 +173,11 @@ export const alertaExito = (mensaje = '¡Éxito!') => {
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        title={mensaje}
-        message="Evento programado correctamente."
+        title="Éxito"
+        message={mensaje}
         icon="success"
         confirmButtonText="Aceptar"
+        themeStyles={themeStyles}
       />
     );
   };
@@ -171,6 +196,9 @@ export const alertaEliminacion = (cantidadEliminados) => {
 
   const App = () => {
     const [isOpen, setIsOpen] = React.useState(true);
+    // Obtener el tema actual y sus estilos
+    const currentTheme = getCurrentTheme();
+    const themeStyles = getCurrentThemeStyles(currentTheme);
 
     const handleClose = () => {
       setIsOpen(false);
@@ -181,10 +209,11 @@ export const alertaEliminacion = (cantidadEliminados) => {
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        title="Eventos eliminados"
-        message={`${cantidadEliminados} evento(s) han sido eliminados.`}
+        title="Elementos eliminados"
+        message={`${cantidadEliminados} elemento(s) han sido eliminados correctamente.`}
         icon="info"
         confirmButtonText="Aceptar"
+        themeStyles={themeStyles}
       />
     );
   };
@@ -194,12 +223,10 @@ export const alertaEliminacion = (cantidadEliminados) => {
 };
 
 export const alertaError = (mensaje = 'Ha ocurrido un error') => {
-  // Crear un ID único basado en el mensaje
   const alertId = `error-${mensaje}`;
   
-  // Verificar si esta alerta ya se mostró recientemente
   if (!alertService.canShowAlert(alertId)) {
-    return; // No mostrar la alerta si ya se mostró recientemente
+    return;
   }
   
   const modalRoot = document.createElement('div');
@@ -211,6 +238,9 @@ export const alertaError = (mensaje = 'Ha ocurrido un error') => {
 
   const App = () => {
     const [isOpen, setIsOpen] = React.useState(true);
+    // Obtener el tema actual y sus estilos
+    const currentTheme = getCurrentTheme();
+    const themeStyles = getCurrentThemeStyles(currentTheme);
 
     const handleClose = () => {
       setIsOpen(false);
@@ -225,6 +255,43 @@ export const alertaError = (mensaje = 'Ha ocurrido un error') => {
         message={mensaje}
         icon="error"
         confirmButtonText="Aceptar"
+        themeStyles={themeStyles}
+      />
+    );
+  };
+
+  const root = ReactDOM.createRoot(modalRoot);
+  root.render(<App />);
+};
+
+export const alertaAdvertencia = (mensaje) => {
+  const modalRoot = document.createElement('div');
+  document.body.appendChild(modalRoot);
+
+  const cleanup = () => {
+    document.body.removeChild(modalRoot);
+  };
+
+  const App = () => {
+    const [isOpen, setIsOpen] = React.useState(true);
+    // Obtener el tema actual y sus estilos
+    const currentTheme = getCurrentTheme();
+    const themeStyles = getCurrentThemeStyles(currentTheme);
+
+    const handleClose = () => {
+      setIsOpen(false);
+      setTimeout(cleanup, 300);
+    };
+
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="Advertencia"
+        message={mensaje}
+        icon="warning"
+        confirmButtonText="Aceptar"
+        themeStyles={themeStyles}
       />
     );
   };
@@ -243,6 +310,9 @@ export const alertaPersonalizada = (titulo, texto, icono) => {
 
   const App = () => {
     const [isOpen, setIsOpen] = React.useState(true);
+    // Obtener el tema actual y sus estilos
+    const currentTheme = getCurrentTheme();
+    const themeStyles = getCurrentThemeStyles(currentTheme);
 
     const handleClose = () => {
       setIsOpen(false);
@@ -257,6 +327,7 @@ export const alertaPersonalizada = (titulo, texto, icono) => {
         message={texto}
         icon={icono}
         confirmButtonText="Aceptar"
+        themeStyles={themeStyles}
       />
     );
   };
@@ -267,13 +338,19 @@ export const alertaPersonalizada = (titulo, texto, icono) => {
 
 // Componente principal para notificaciones tipo toast
 const CustomAlert = ({ open, handleClose, severity, message }) => {
+  // Obtener el tema actual y sus estilos
+  const currentTheme = getCurrentTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme);
+  
   return (
     <Toast
       open={open}
       handleClose={handleClose}
       severity={severity}
       message={message}
+      themeStyles={themeStyles}
     />
   );
 };
+
 export default CustomAlert;
