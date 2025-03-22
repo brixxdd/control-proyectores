@@ -10,7 +10,7 @@ import './RequestProjector.css';
 import TimeSelectionModal from './TimeSelectionModal'; 
 import DeleteEventModal from './DeleteEventModal';
 import { useTimeZone } from '../contexts/TimeZoneContext';
-import { alertaExito, alertaError } from './Alert';
+import { alertaExito, alertaError, alertaPersonalizada } from './Alert';
 import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
 // Importaciones para QR
@@ -427,7 +427,6 @@ const RequestProjector = () => {
     try {
       console.log('Iniciando solicitud de proyector...');
       
-      // Verificar si tenemos el token
       const googleCredential = sessionStorage.getItem('googleAccessToken');
       if (!googleCredential) {
         console.error('No hay token de autenticación');
@@ -435,7 +434,11 @@ const RequestProjector = () => {
       }
 
       if (selectedDates.length === 0) {
-        alert("Por favor selecciona al menos un día entre lunes y viernes.");
+        alertaPersonalizada(
+          "Selección de fechas",
+          "Por favor selecciona al menos un día entre lunes y viernes.",
+          "info"
+        );
         return;
       }
 
@@ -444,7 +447,11 @@ const RequestProjector = () => {
         const day = date.getDay();
 
         if (day === 0 || day === 6) {
-          alert("Por favor selecciona solo días de lunes a viernes.");
+          alertaPersonalizada(
+            "Días disponibles",
+            "Por favor selecciona solo días de lunes a viernes.",
+            "info"
+          );
           return null;
         }
 
@@ -457,7 +464,7 @@ const RequestProjector = () => {
       }
     } catch (error) {
       console.error('Error detallado:', error);
-      alert('Hubo un error al procesar tu solicitud. Revisa la consola para más detalles.');
+      alertaError('Hubo un error al procesar tu solicitud. Revisa la consola para más detalles.');
     }
   };
 
@@ -470,14 +477,14 @@ const RequestProjector = () => {
       
       if (!jwtToken || !currentUser) {
         console.error("No hay sesión activa o faltan credenciales");
-        alert("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        alertaError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
         return;
       }
 
       // Verificar que gapi esté inicializado
       if (!gapi.client || !gapi.auth2) {
         console.error("La API de Google no está inicializada");
-        alert("No se pudo conectar con Google Calendar. Por favor, recarga la página.");
+        alertaError("No se pudo conectar con Google Calendar. Por favor, recarga la página.");
         return;
       }
 

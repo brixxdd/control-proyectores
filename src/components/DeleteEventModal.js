@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2, Calendar, Info } from 'lucide-react';
 import { alertaEliminacion, alertaError } from './Alert';
 
 const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEventSelection }) => {
@@ -50,55 +50,91 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black bg-opacity-50">
-            <div className="relative w-full max-w-2xl mx-auto">
-                <div className="relative bg-white rounded-lg shadow dark:bg-gray-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-black/50 backdrop-blur-sm">
+            <div className="relative w-full max-w-2xl mx-auto p-4">
+                <div className="relative bg-white rounded-xl shadow-2xl dark:bg-gray-800 overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-4 bg-red-50 rounded-t-lg dark:bg-red-900/30">
-                        <h3 className="text-xl font-semibold text-red-800 dark:text-red-300">
-                            Eliminar eventos
-                        </h3>
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-red-600 to-red-800">
+                        <div className="flex items-center space-x-2">
+                            <Trash2 className="w-6 h-6 text-white" />
+                            <h3 className="text-xl font-semibold text-white">
+                                Eliminar eventos
+                            </h3>
+                        </div>
                         <button
                             onClick={handleClose}
-                            className="p-1 ml-auto bg-transparent hover:bg-red-100 dark:hover:bg-red-800/30 rounded-full transition-colors"
+                            className="p-2 hover:bg-white/10 rounded-full transition-colors"
                         >
-                            <X className="w-6 h-6 text-red-800 dark:text-red-300" />
+                            <X className="w-5 h-5 text-white" />
                         </button>
+                    </div>
+
+                    {/* Info Banner */}
+                    <div className="bg-blue-50 dark:bg-blue-900/30 p-4 border-b border-blue-100 dark:border-blue-800">
+                        <div className="flex items-start space-x-3">
+                            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                                Esta acción eliminará los eventos seleccionados de tu Google Calendar. 
+                                Esto te ayudará a mantener tu calendario organizado y evitar la saturación 
+                                de eventos pasados.
+                            </p>
+                        </div>
                     </div>
 
                     {/* Body */}
                     <div className="p-6 space-y-4">
                         {events.length > 0 ? (
                             <>
-                                <button
-                                    onClick={toggleAllEvents}
-                                    className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white rounded-md transition-colors"
-                                >
-                                    {events.every(event => event.selected) ? 'Deseleccionar todo' : 'Seleccionar todo'}
-                                </button>
+                                <div className="flex items-center justify-between">
+                                    <button
+                                        onClick={toggleAllEvents}
+                                        className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 
+                                                 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white 
+                                                 rounded-lg transition-colors flex items-center space-x-2"
+                                    >
+                                        <Calendar className="w-4 h-4" />
+                                        <span>{events.every(event => event.selected) ? 'Deseleccionar todo' : 'Seleccionar todo'}</span>
+                                    </button>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                        {selectedEvents.length} eventos seleccionados
+                                    </span>
+                                </div>
                                 
-                                <div className="max-h-64 overflow-auto">
-                                    <table className="w-full border-collapse">
-                                        <thead className="bg-gray-50 dark:bg-gray-700">
+                                <div className="max-h-64 overflow-auto rounded-lg border dark:border-gray-700">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                                             <tr>
-                                                <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">Seleccionar</th>
-                                                <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">Título</th>
-                                                <th className="p-3 text-left font-medium text-gray-600 dark:text-gray-300">Fecha</th>
+                                                <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                    Seleccionar
+                                                </th>
+                                                <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                    Título
+                                                </th>
+                                                <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                    Fecha
+                                                </th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                                             {events.map(event => (
-                                                <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                <tr key={event.id} 
+                                                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                                     <td className="p-3">
                                                         <input
                                                             type="checkbox"
                                                             checked={event.selected}
                                                             onChange={() => toggleEventSelection(event.id)}
-                                                            className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700"
+                                                            className="w-4 h-4 text-red-600 rounded border-gray-300 
+                                                                     focus:ring-red-500 dark:border-gray-600 
+                                                                     dark:bg-gray-700 cursor-pointer"
                                                         />
                                                     </td>
-                                                    <td className="p-3 dark:text-gray-300">{event.summary}</td>
-                                                    <td className="p-3 dark:text-gray-300">{formatDate(event.start)}</td>
+                                                    <td className="p-3 text-sm text-gray-900 dark:text-gray-300">
+                                                        {event.summary}
+                                                    </td>
+                                                    <td className="p-3 text-sm text-gray-500 dark:text-gray-400">
+                                                        {formatDate(event.start)}
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -106,24 +142,40 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
                                 </div>
                             </>
                         ) : (
-                            <p className="text-center text-gray-500 dark:text-gray-400">No hay eventos disponibles.</p>
+                            <div className="text-center py-8">
+                                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    No hay eventos disponibles para eliminar.
+                                </p>
+                            </div>
                         )}
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 p-4 bg-gray-50 rounded-b-lg dark:bg-gray-700">
+                    <div className="flex items-center justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700">
                         <button
                             onClick={handleClose}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500"
+                            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300
+                                     bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 
+                                     rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 
+                                     focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 
+                                     transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handleMultipleDelete}
                             disabled={selectedEvents.length === 0}
-                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-red-700 dark:hover:bg-red-600"
+                            className="px-4 py-2 text-sm font-medium text-white 
+                                     bg-red-600 dark:bg-red-700 rounded-lg
+                                     hover:bg-red-700 dark:hover:bg-red-600 
+                                     focus:outline-none focus:ring-2 focus:ring-offset-2 
+                                     focus:ring-red-500 disabled:opacity-50 
+                                     disabled:cursor-not-allowed transition-colors
+                                     flex items-center space-x-2"
                         >
-                            Eliminar ({selectedEvents.length})
+                            <Trash2 className="w-4 h-4" />
+                            <span>Eliminar ({selectedEvents.length})</span>
                         </button>
                     </div>
                 </div>
