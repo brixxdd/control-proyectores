@@ -49,57 +49,59 @@ const Sidebar = ({ openGradeGroupModal }) => {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar más delgado */}
       <div className={`fixed top-0 left-0 h-screen 
                       bg-gradient-to-b from-[#214DC5] to-blue-900 
                       dark:from-gray-800 dark:to-gray-900
                       text-white shadow-xl z-40 transition-all duration-300
-                      ${isOpen ? 'w-[85vw] sm:w-72 translate-x-0' : '-translate-x-full w-[85vw] sm:w-72'} 
-                      lg:translate-x-0 lg:w-72`}>
-        {/* Header */}
-        <div className="p-6 border-b border-white/10">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 
+                      ${isOpen ? 'w-[65vw] sm:w-56 translate-x-0' : '-translate-x-full w-[65vw] sm:w-56'} 
+                      lg:translate-x-0 lg:w-56`}>
+        {/* Header más compacto */}
+        <div className="p-3 border-b border-white/10">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-white to-blue-200 
                          dark:from-blue-400 dark:to-blue-200 bg-clip-text text-transparent">
             Control de Proyectores
           </h1>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-400 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        {/* Navigation con espaciado reducido */}
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto 
+                       scrollbar-thin scrollbar-thumb-blue-400 
+                       dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
           <Link to="/" className={linkClasses} onClick={() => setIsOpen(false)}>
-            <FaHome className={iconClasses} />
+            <FaHome className="text-xl" />
             <span className="font-medium">Dashboard</span>
           </Link>
           
           <Link to="/request-projector" className={linkClasses} onClick={() => setIsOpen(false)}>
-            <FaTv className={iconClasses} />
+            <FaTv className="text-xl" />
             <span className="font-medium">Solicitar Proyector</span>
           </Link>
           
           <Link to="/upload-documents" className={linkClasses} onClick={() => setIsOpen(false)}>
-            <FaFileUpload className={iconClasses} />
+            <FaFileUpload className="text-xl" />
             <span className="font-medium">Subir Documentos</span>
           </Link>
           
           <Link to="/mis-solicitudes" className={linkClasses} onClick={() => setIsOpen(false)}>
-            <FaHistory className={iconClasses} />
+            <FaHistory className="text-xl" />
             <span className="font-medium">Mis Solicitudes</span>
           </Link>
           
           <Link to="/qr-history" className={linkClasses} onClick={() => setIsOpen(false)}>
-            <FaQrcode className={iconClasses} />
+            <FaQrcode className="text-xl" />
             <span className="font-medium">Mis Códigos QR</span>
           </Link>
         </nav>
 
-        {/* Footer con Theme Toggle */}
-        <div className="p-4 border-t border-white/10 space-y-4">
-          <div className="flex items-center justify-between px-3">
+        {/* Footer más compacto */}
+        <div className="p-2 border-t border-white/10 space-y-2">
+          <div className="flex items-center justify-between px-2">
             <span className="font-medium">Modo Oscuro</span>
             <ThemeToggle isDark={isDark} toggleTheme={toggleTheme} />
           </div>
           <Link to="/ajustes" className={linkClasses} onClick={() => setIsOpen(false)}>
-            <FaCog className={iconClasses} />
+            <FaCog className="text-xl" />
             <span className="font-medium">Ajustes</span>
           </Link>
         </div>
