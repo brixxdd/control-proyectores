@@ -14,7 +14,7 @@ const SignIn = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden
+    <div className="h-[100dvh] flex items-center justify-center relative overflow-hidden
                     bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 
                     dark:from-blue-900 dark:via-purple-900 dark:to-pink-900">
       {/* Burbujas animadas de fondo */}
@@ -52,19 +52,19 @@ const SignIn = () => {
         />
       </div>
 
-      {/* Card principal con efecto glassmorphism */}
+      {/* Card principal ajustado */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="relative w-full max-w-md mx-6"
+        className="relative w-full max-w-md mx-4"
       >
         <div className="backdrop-blur-xl bg-white/60 dark:bg-gray-900/50 
                       rounded-3xl shadow-2xl overflow-hidden
                       border border-white/20 dark:border-gray-700/30">
-          {/* Contenido interior */}
-          <div className="p-8 space-y-8">
-            {/* Logo animado circular */}
+          {/* Contenido interior con padding ajustado */}
+          <div className="p-6 space-y-6">
+            {/* Logo más compacto */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -74,7 +74,7 @@ const SignIn = () => {
                 damping: 20,
                 delay: 0.2 
               }}
-              className="relative w-24 h-24 mx-auto"
+              className="relative w-20 h-20 mx-auto"
             >
               {/* Efecto de brillo/glow circular */}
               <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 to-purple-600 
@@ -89,18 +89,18 @@ const SignIn = () => {
               </div>
             </motion.div>
 
-            {/* Título con gradiente */}
-            <div className="text-center space-y-3">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 
+            {/* Título con espaciado ajustado */}
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 
                            dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 Bienvenido
               </h2>
-              <p className="text-gray-600/90 dark:text-gray-300/90">
+              <p className="text-sm text-gray-600/90 dark:text-gray-300/90">
                 Inicia sesión con tu cuenta de Google
               </p>
             </div>
 
-            {/* Botón de Google con efecto hover */}
+            {/* Botón de Google */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -111,24 +111,24 @@ const SignIn = () => {
                 className="w-full group relative overflow-hidden rounded-xl 
                          bg-gradient-to-r from-blue-500 to-purple-600 p-[2px]"
               >
-                <div className="relative bg-white dark:bg-gray-900 rounded-[10px] p-4
-                              flex items-center justify-center space-x-4
+                <div className="relative bg-white dark:bg-gray-900 rounded-[10px] p-3
+                              flex items-center justify-center space-x-3
                               transition-all duration-300
                               group-hover:bg-opacity-90 dark:group-hover:bg-opacity-90">
-                  <FaGoogle className="text-2xl text-gray-700 dark:text-gray-200" />
-                  <span className="font-medium text-gray-700 dark:text-gray-200">
+                  <FaGoogle className="text-xl text-gray-700 dark:text-gray-200" />
+                  <span className="font-medium text-sm text-gray-700 dark:text-gray-200">
                     Iniciar sesión con Google
                   </span>
                 </div>
               </button>
             </motion.div>
 
-            {/* Footer con efecto de desvanecimiento */}
+            {/* Footer más compacto */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="text-center space-y-2 text-sm text-gray-500/80 dark:text-gray-400/80"
+              className="text-center space-y-1 text-xs text-gray-500/80 dark:text-gray-400/80"
             >
               <p>Sistema de Control de Proyectores</p>
               <p>© {new Date().getFullYear()} Todos los derechos reservados</p>
