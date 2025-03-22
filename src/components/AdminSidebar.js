@@ -57,12 +57,27 @@ const AdminSidebar = () => {
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-blue-600 text-white lg:hidden"
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
+      {!isOpen && (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="fixed top-4 left-4 z-50 
+                    bg-gradient-to-r from-blue-600 to-purple-600
+                    p-3 rounded-xl lg:hidden
+                    shadow-[0_0_15px_rgba(59,130,246,0.5)]
+                    hover:shadow-[0_0_20px_rgba(147,51,234,0.5)]
+                    transition-all duration-300"
+        >
+          <Menu className="text-white w-5 h-5" />
+        </button>
+      )}
+
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden 
+                    transition-opacity duration-300"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
 
       <div className={`fixed top-0 left-0 h-screen 
                       bg-gradient-to-b from-[#214DC5] to-blue-900 
