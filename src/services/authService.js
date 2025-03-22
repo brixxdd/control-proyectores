@@ -80,7 +80,6 @@ class AuthService {
       const token = sessionStorage.getItem('jwtToken');
       // Evitar configurar encabezados globales en solicitudes de refresh
       if (token && config.url !== '/refresh-token') {
-        console.log('Token encontrado:', token.substring(0, 20) + '...'); // Para debugging
         config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
@@ -93,7 +92,6 @@ class AuthService {
   setAuthHeader(token) {
     if (token) {
       this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      console.log('Header de autorización configurado');
     } else {
       delete this.api.defaults.headers.common['Authorization'];
     }
@@ -110,15 +108,10 @@ class AuthService {
 
   async login(googleCredential, userPicture) {
     try {
-      console.log('Iniciando login con credencial:', googleCredential ? 'presente' : 'ausente');
-
       const response = await this.api.post('/login', {
         token: googleCredential,
-        picture: userPicture,
-        gapiToken: gapi.client.getToken()?.access_token
+        picture: userPicture
       });
-
-      console.log('Respuesta del servidor:', response.data);
 
       if (!response.data?.token) {
         throw new Error('No se recibió token del servidor');
@@ -203,10 +196,8 @@ class AuthService {
         sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.FIRSTLOG, data.pvez);
       }
       sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.JWT_TOKEN, data.token);
-      console.log('Token almacenado:', sessionStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.JWT_TOKEN));
       if(data.refreshToken) {sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.JWT_REFRESH_TOKEN,data.refreshToken)}
       this.setAuthHeader(data.token);
-      console.log('Token guardado y configurado');
     }
 
     if (data.user) {

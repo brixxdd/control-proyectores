@@ -1119,32 +1119,31 @@ app.delete('/api/proyectores/:id', verifyToken, async (req, res) => {
 app.use('/qr-codes', qrCodeRoutes);
 
 // Ruta para actualizar el tema del usuario
-app.put('/update-theme', verifyToken, async (req, res) => {
+app.put('/update-theme', async (req, res) => {
   try {
-    const { theme } = req.body;
-    const userId = req.user.id;
-    
-    const usuarioActualizado = await User.findByIdAndUpdate(
-      userId, 
-      { theme }, 
-      { new: true }
-    );
-    
-    if (!usuarioActualizado) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+    const { theme, darkMode } = req.body;
+    let userId;
+
+    // Si hay token, actualizar el usuario específico
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.id;
+      
+      await User.findByIdAndUpdate(userId, { theme, darkMode });
     }
-    
-    res.json({ 
-      success: true, 
-      theme: usuarioActualizado.theme 
-    });
-    
+
+    // Siempre actualizar el último tema usado
+    await User.findOneAndUpdate(
+      { _id: { $ne: userId } },
+      { theme, darkMode },
+      { sort: { updatedAt: -1 } }
+    );
+
+    res.json({ success: true, theme, darkMode });
   } catch (error) {
     console.error('Error al actualizar tema:', error);
-    res.status(500).json({ 
-      message: 'Error al actualizar el tema',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al actualizar el tema' });
   }
 });
 
@@ -1158,10 +1157,35 @@ app.get('/user-theme', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
     
-    res.json({ theme: usuario.theme || 'default' });
+    res.json({ 
+      theme: usuario.theme || 'default',
+      darkMode: usuario.darkMode || false
+    });
     
   } catch (error) {
     console.error('Error al obtener tema:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener el tema',
+      error: error.message 
+    });
+  }
+});
+
+// Ruta para obtener el último tema usado (sin autenticación)
+app.get('/last-theme', async (req, res) => {
+  try {
+    // Obtener el último tema y darkMode usados
+    const ultimoTema = await User.findOne({}, { theme: 1, darkMode: 1 })
+      .sort({ updatedAt: -1 })
+      .limit(1);
+    
+    // Asegurarnos de enviar ambos valores
+    res.json({ 
+      theme: ultimoTema?.theme || 'default',
+      darkMode: ultimoTema?.darkMode || false
+    });
+  } catch (error) {
+    console.error('Error al obtener último tema:', error);
     res.status(500).json({ 
       message: 'Error al obtener el tema',
       error: error.message 

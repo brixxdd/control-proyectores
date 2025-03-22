@@ -62,9 +62,6 @@ export const useAuth = () => {
       const decoded = jwtDecode(response.credential);
       console.log('Google credential decoded:', decoded);
       
-      sessionStorage.setItem('googleAccessToken', response.credential);
-      console.log('Token de Google guardado:', response.credential.substring(0, 20) + '...');
-
       const authResponse = await authService.login(response.credential, decoded.picture);
       
       if (!authResponse?.user) {
@@ -214,7 +211,6 @@ export const useAuth = () => {
       const googleUser = await auth2.signIn();
       const token = googleUser.getAuthResponse().id_token;
       const tokenGoogle = googleUser.getAuthResponse().access_token;
-      sessionStorage.setItem('accessRequest', tokenGoogle);
       await handleLoginSuccess({ credential: token });
     } catch (error) {
       console.error('Error en login de Google:', error);

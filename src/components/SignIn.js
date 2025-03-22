@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
@@ -6,11 +6,12 @@ import { Navigate } from 'react-router-dom';
 import { FaGoogle } from 'react-icons/fa';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
+import { authService } from '../services/authService';
 
 const SignIn = () => {
   const { handleGoogleLogin, isAuthenticated, isAdmin } = useAuth();
-  const { currentTheme } = useTheme();
-  const themeStyles = getCurrentThemeStyles(currentTheme);
+  const { currentTheme, darkMode, toggleDarkMode } = useTheme();
+  const themeStyles = getCurrentThemeStyles(currentTheme || 'default');
 
   if (isAuthenticated) {
     return <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />;
