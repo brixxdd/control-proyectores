@@ -318,19 +318,15 @@ const RequestProjector = () => {
       // Formato ISO para almacenar (YYYY-MM-DD)
       const dateStr = temporalDate.toString();
       
-      console.log('Fecha seleccionada:', {
-        original: newDate,
-        temporal: temporalDate,
-        dateStr: dateStr,
-        targetTimeZone
-      });
+      console.log('Fecha seleccionada:', dateStr);
 
-      setSelectedDates(prev => {
-        if (prev.includes(dateStr)) {
-          return prev.filter(d => d !== dateStr);
-        }
-        return [...prev, dateStr].sort();
-      });
+      // Actualización directa del estado
+      const isDateSelected = selectedDates.includes(dateStr);
+      if (isDateSelected) {
+        setSelectedDates(selectedDates.filter(d => d !== dateStr));
+      } else {
+        setSelectedDates([...selectedDates, dateStr].sort());
+      }
     }
   };
 
@@ -402,27 +398,34 @@ const RequestProjector = () => {
     return tileDateCopy < monday || tileDateCopy > friday;
   };
 
-  // Función para el className del tile
+  // Función para el className del tile - SOLUCIÓN DIRECTA
   const tileClassName = ({ date, view }) => {
     if (view !== 'month') return null;
     
     // Convertir Date a formato ISO para comparar (YYYY-MM-DD)
     const dateStr = date.toISOString().split('T')[0];
     
+    // Verificar si la fecha está en el array de fechas seleccionadas
+    // Usamos el formato exacto que se guarda en selectedDates
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    const isSelected = selectedDates.includes(formattedDate);
+    
     const hasEvent = events.some(event => {
-      // Asegurarse de que event.start sea un Date
       const eventDate = event.start instanceof Date 
         ? event.start 
         : new Date(event.start);
-      
       return eventDate.toISOString().split('T')[0] === dateStr;
     });
     
-    const isSelected = selectedDates.includes(dateStr);
+    // Aplicar clases según el estado
+    if (isSelected) {
+      return 'bg-indigo-600 text-white hover:bg-indigo-700';
+    } else if (hasEvent) {
+      return 'bg-red-600 text-white hover:bg-red-700';
+    }
     
-    return `calendar-tile ${hasEvent ? 'event-day' : ''} 
-            ${isSelected ? 'selected-date' : ''} 
-            dark:text-white dark:hover:bg-gray-700`;
+    return 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700';
   };
 
   const handleRequest = async () => {
@@ -814,8 +817,90 @@ const RequestProjector = () => {
           </div>
         </div>
 
-        {/* Calendario con estilos mejorados para modo oscuro */}
-        <div className="calendar-container p-2 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+        {/* Calendario con estilos Tailwind directos */}
+        <div className="p-2 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+          <style jsx>{`
+            .react-calendar {
+              width: 100%;
+              max-width: 100%;
+              background: transparent;
+              border: none;
+              font-family: inherit;
+            }
+            
+            .react-calendar button {
+              margin: 0;
+              border: 0;
+              outline: none;
+            }
+            
+            .react-calendar__navigation {
+              display: flex;
+              height: 44px;
+              margin-bottom: 1em;
+            }
+            
+            .react-calendar__navigation button {
+              min-width: 44px;
+              background: none;
+            }
+            
+            .react-calendar__month-view__weekdays {
+              text-align: center;
+              text-transform: uppercase;
+              font-weight: bold;
+              font-size: 0.75em;
+            }
+            
+            .react-calendar__month-view__weekdays__weekday {
+              padding: 0.5em;
+            }
+            
+            .react-calendar__month-view__days__day--weekend {
+              color: #d10000;
+            }
+            
+            .react-calendar__tile {
+              max-width: 100%;
+              padding: 10px 6.6667px;
+              background: none;
+              text-align: center;
+              line-height: 16px;
+              height: 50px;
+              transition: background-color 0.1s ease;
+            }
+            
+            .react-calendar__tile:disabled {
+              background-color: #f3f4f6;
+              cursor: not-allowed;
+              opacity: 0.5;
+            }
+            
+            .dark .react-calendar__tile:disabled {
+              background-color: #374151;
+              opacity: 0.3;
+            }
+            
+            /* Eliminar estilos predeterminados */
+            .react-calendar__tile--now {
+              background: inherit !important;
+              color: inherit !important;
+            }
+            
+            /* Asegurarse de que las clases Tailwind tengan prioridad */
+            .bg-indigo-600 {
+              background-color: #4f46e5 !important;
+            }
+            
+            .bg-red-600 {
+              background-color: #dc2626 !important;
+            }
+            
+            .text-white {
+              color: white !important;
+            }
+          `}</style>
+          
           <Calendar
             onChange={handleDateChange}
             value={calendarValue}
