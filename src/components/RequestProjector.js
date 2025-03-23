@@ -393,20 +393,13 @@ const RequestProjector = () => {
     friday.setDate(monday.getDate() + 4);
     friday.setHours(23, 59, 59, 999);
     
-    // Crear el lunes y viernes de la próxima semana
-    const nextMonday = new Date(monday);
-    nextMonday.setDate(monday.getDate() + 7);
-    
-    const nextFriday = new Date(friday);
-    nextFriday.setDate(friday.getDate() + 7);
-    
     // Crear una copia de la fecha para no modificar la original
     const tileDateCopy = new Date(date);
     tileDateCopy.setHours(12, 0, 0, 0); // Mediodía para evitar problemas de zona horaria
     
-    // Para pruebas: permitir seleccionar fechas de esta semana y la próxima
-    // Deshabilitar solo si está antes de esta semana o después de la próxima semana
-    return tileDateCopy < monday || tileDateCopy > nextFriday;
+    // Permitir seleccionar solo fechas de esta semana (de lunes a viernes)
+    // Deshabilitar si está antes del lunes o después del viernes de la semana actual
+    return tileDateCopy < monday || tileDateCopy > friday;
   };
 
   // Función para el className del tile
