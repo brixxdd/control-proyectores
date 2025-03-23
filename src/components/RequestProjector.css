@@ -2,7 +2,8 @@
 .react-calendar__tile--active:enabled:hover,
 .react-calendar__tile--active:enabled:focus {
   background: #4f46e5 !important;
-  color: white;
+  color: white !important;
+  transition: all 0.1s ease-out !important;
 }
 
 .request-projector-container {
@@ -24,22 +25,25 @@
 .react-calendar__tile {
   @apply h-12 sm:h-16 md:h-20 relative transition-all duration-200 
          text-gray-700 dark:text-gray-200;
+  transition: all 0.1s ease-out !important;
+  position: relative;
 }
 
 .event-day {
-  @apply bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 
-         hover:bg-red-200 dark:hover:bg-red-800/50;
+  position: relative;
+  background-color: #ef4444 !important;
+  color: white !important;
 }
 
-.react-calendar__tile--active,
 .selected-date {
-  @apply bg-green-500 dark:bg-green-600 text-white 
-         hover:bg-green-600 dark:hover:bg-green-700;
+  background-color: #4f46e5 !important;
+  color: white !important;
+  transition: all 0.1s ease-out !important;
 }
 
 .event-day.selected-date {
-  @apply bg-orange-500 dark:bg-orange-600 text-white 
-         hover:bg-orange-600 dark:hover:bg-orange-700;
+  background-color: #7c3aed !important;
+  color: white !important;
 }
 
 .event-day::after {
@@ -52,7 +56,7 @@
 }
 
 .event-day:hover {
-  background-color: #943a3e !important;
+  background-color: #b91c1c !important;
 }
 
 .request-button,
@@ -70,10 +74,6 @@
 
 .request-button:hover {
   background-color: #45a049;
-}
-
-.react-calendar__tile {
-  transition: all 0.2s ease-in-out;
 }
 
 .react-calendar__tile:disabled {
@@ -101,29 +101,6 @@
 .calendar-tile {
   position: relative;
   transition: all 0.2s ease;
-}
-
-.selected-date {
-  background-color: #4f46e5 !important;
-  color: white !important;
-}
-
-.event-day {
-  position: relative;
-  background-color: #ef4444 !important;
-  color: white !important;
-}
-
-.event-day::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background-color: white;
-  border-radius: 50%;
 }
 
 /* Estilos para modo oscuro */
