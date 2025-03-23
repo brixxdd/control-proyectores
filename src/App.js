@@ -240,12 +240,7 @@ const App = () => {
           {isAuthenticated && (
             <>
               {isAdmin ? (
-                <div className="flex h-screen">
-                  <AdminSidebar />
-                  <main className="flex-1 overflow-auto">
-                    {/* Contenido del admin */}
-                  </main>
-                </div>
+                <AdminSidebar />
               ) : (
                 <Sidebar 
                   openGradeGroupModal={() => setShowGradeGroupModal(true)}
