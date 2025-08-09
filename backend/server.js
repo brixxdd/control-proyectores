@@ -607,6 +607,107 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+// Ruta para obtener datos de reportes (solo administradores)
+app.get('/api/reports', verifyToken, isAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate, estado, turno } = req.query;
+    
+    // Construir el filtro base para las fechas
+    let matchFilter = {
+      fechaInicio: { $gte: new Date(startDate), $lte: new Date(endDate) }
+    };
+    
+    // Añadir filtro de estado si no es 'todos'
+    if (estado && estado !== 'todos') {
+      matchFilter.estado = estado;
+    }
+    
+    // Obtener todas las solicitudes que coincidan con los filtros
+    const solicitudes = await Solicitud.find(matchFilter)
+      .populate('usuarioId', 'nombre email grado grupo turno')
+      .populate('proyectorId', 'codigo estado');
+    
+    // Filtrar por turno si es necesario (después de popular)
+    let solicitudesFiltradas = solicitudes;
+    if (turno && turno !== 'todos') {
+      solicitudesFiltradas = solicitudes.filter(s => s.usuarioId.turno === turno);
+    }
+    
+    // Contar solicitudes por estado
+    const solicitudesPorEstado = {
+      pendiente: solicitudesFiltradas.filter(s => s.estado === 'pendiente').length,
+      aprobado: solicitudesFiltradas.filter(s => s.estado === 'aprobado').length,
+      rechazado: solicitudesFiltradas.filter(s => s.estado === 'rechazado').length
+    };
+    
+    // Contar solicitudes por turno
+    const solicitudesPorTurno = {
+      matutino: solicitudesFiltradas.filter(s => s.usuarioId.turno === 'matutino').length,
+      vespertino: solicitudesFiltradas.filter(s => s.usuarioId.turno === 'vespertino').length
+    };
+    
+    // Obtener estado de proyectores
+    const proyectores = await Proyector.find({});
+    const proyectoresPorEstado = {
+      disponible: proyectores.filter(p => p.estado === 'disponible').length,
+      enUso: proyectores.filter(p => p.estado === 'en uso').length,
+      mantenimiento: proyectores.filter(p => p.estado === 'mantenimiento').length
+    };
+    
+    // Agrupar solicitudes por día
+    const solicitudesPorDia = [];
+    const fechaInicio = new Date(startDate);
+    const fechaFin = new Date(endDate);
+    
+    // Crear un mapa para contar solicitudes por día
+    const solicitudesPorFecha = {};
+    
+    // Inicializar el mapa con todas las fechas en el rango
+    for (let d = new Date(fechaInicio); d <= fechaFin; d.setDate(d.getDate() + 1)) {
+      const fechaStr = d.toISOString().split('T')[0];
+      solicitudesPorFecha[fechaStr] = 0;
+    }
+    
+    // Contar solicitudes por fecha
+    solicitudesFiltradas.forEach(solicitud => {
+      const fecha = new Date(solicitud.fechaInicio).toISOString().split('T')[0];
+      if (solicitudesPorFecha[fecha] !== undefined) {
+        solicitudesPorFecha[fecha]++;
+      }
+    });
+    
+    // Convertir el mapa a un array para la respuesta
+    for (const [fecha, cantidad] of Object.entries(solicitudesPorFecha)) {
+      solicitudesPorDia.push({ fecha, cantidad });
+    }
+    
+    // Obtener las últimas 10 solicitudes
+    const ultimasSolicitudes = solicitudesFiltradas
+      .sort((a, b) => new Date(b.fechaInicio) - new Date(a.fechaInicio))
+      .slice(0, 10)
+      .map(s => ({
+        id: s._id,
+        usuario: s.usuarioId.nombre,
+        fecha: new Date(s.fechaInicio).toISOString().split('T')[0],
+        estado: s.estado,
+        turno: s.usuarioId.turno
+      }));
+    
+    // Construir y enviar la respuesta
+    res.json({
+      totalSolicitudes: solicitudesFiltradas.length,
+      solicitudesPorEstado,
+      solicitudesPorTurno,
+      proyectoresPorEstado,
+      solicitudesPorDia,
+      ultimasSolicitudes
+    });
+  } catch (error) {
+    console.error('Error al generar reporte:', error);
+    res.status(500).json({ message: 'Error al generar reporte' });
+  }
+});
+
 // Conectar a MongoDB
 mongoose.connect(process.env.MONGODB_URI, { 
   useNewUrlParser: true, 

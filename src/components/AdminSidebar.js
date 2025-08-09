@@ -9,6 +9,7 @@ import {
   Monitor,
   Projector,
   Settings,
+  FileBarChart,
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ThemeSelector from './ThemeSelector';
@@ -139,6 +140,10 @@ const AdminSidebar = () => {
           
           <NavItem path="/admin-proyectores" icon={Projector}>
             Gestión de Proyectores
+          </NavItem>
+          
+          <NavItem path="/reports" icon={FileBarChart}>
+            Reportes y Estadísticas
           </NavItem>
         </nav>
 

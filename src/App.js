@@ -31,6 +31,7 @@ import { alertService } from './services/alertService';
 import QRHistory from './components/QRHistory';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeSelector from './components/ThemeSelector';
+import ReportGenerator from './components/ReportGenerator';
 
 const App = () => {
   const { 
@@ -449,6 +450,15 @@ const App = () => {
                     element={
                       isAuthenticated 
                         ? <ThemeSelector /> 
+                        : <Navigate to="/signin" />
+                    } 
+                  />
+                  
+                  <Route 
+                    path="/reports" 
+                    element={
+                      isAuthenticated && isAdmin 
+                        ? <ReportGenerator /> 
                         : <Navigate to="/signin" />
                     } 
                   />
