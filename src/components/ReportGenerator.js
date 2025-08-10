@@ -17,6 +17,7 @@ function ReportGenerator() {
     endDate: new Date().toISOString().split('T')[0]
   });
   const [reportData, setReportData] = useState(null);
+  const [error, setError] = useState(null);
   const [filterOptions, setFilterOptions] = useState({
     estado: 'todos', // 'todos', 'pendiente', 'aprobado', 'rechazado'
     turno: 'todos' // 'todos', 'matutino', 'vespertino'
@@ -31,12 +32,21 @@ function ReportGenerator() {
   }
 
   useEffect(() => {
+    console.log('ReportGenerator: Componente montado, obteniendo datos...');
+    console.log('Estado actual:', { dateRange, filterOptions });
     fetchReportData();
   }, [dateRange, filterOptions]);
 
   const fetchReportData = async () => {
     setIsLoading(true);
     try {
+      console.log('Solicitando datos de reporte con parámetros:', {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        estado: filterOptions.estado,
+        turno: filterOptions.turno
+      });
+
       const response = await authService.api.get('/api/reports', { 
         params: { 
           startDate: dateRange.startDate, 
@@ -45,46 +55,34 @@ function ReportGenerator() {
           turno: filterOptions.turno 
         } 
       });
+      
+      console.log('Respuesta de la API de reportes:', response.data);
       setReportData(response.data);
+      setError(null);
       setIsLoading(false);
     } catch (error) {
       console.error('Error al obtener datos del reporte:', error);
+      console.error('Detalles del error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setIsLoading(false);
-      // Fallback a datos simulados en caso de error (solo para desarrollo)
-      if (process.env.NODE_ENV === 'development') {
-        setReportData({
-          totalSolicitudes: 45,
-          solicitudesPorEstado: {
-            pendiente: 12,
-            aprobado: 28,
-            rechazado: 5
-          },
-          solicitudesPorTurno: {
-            matutino: 25,
-            vespertino: 20
-          },
-          proyectoresPorEstado: {
-            disponible: 15,
-            enUso: 8,
-            mantenimiento: 2
-          },
-          solicitudesPorDia: [
-            { fecha: '2023-10-01', cantidad: 3 },
-            { fecha: '2023-10-02', cantidad: 5 },
-            { fecha: '2023-10-03', cantidad: 2 },
-            { fecha: '2023-10-04', cantidad: 4 },
-            { fecha: '2023-10-05', cantidad: 6 },
-            { fecha: '2023-10-06', cantidad: 3 },
-            { fecha: '2023-10-07', cantidad: 1 }
-          ],
-          ultimasSolicitudes: [
-            { id: 1, usuario: 'Juan Pérez', fecha: '2023-10-07', estado: 'aprobado', turno: 'matutino' },
-            { id: 2, usuario: 'María García', fecha: '2023-10-06', estado: 'pendiente', turno: 'vespertino' },
-            { id: 3, usuario: 'Carlos López', fecha: '2023-10-05', estado: 'rechazado', turno: 'matutino' },
-            { id: 4, usuario: 'Ana Martínez', fecha: '2023-10-04', estado: 'aprobado', turno: 'vespertino' },
-            { id: 5, usuario: 'Roberto Sánchez', fecha: '2023-10-03', estado: 'aprobado', turno: 'matutino' }
-          ]
-        });
+      
+      // Limpiar datos anteriores
+      setReportData(null);
+      
+      // Guardar el error para mostrarlo al usuario
+      if (error.response?.status === 401) {
+        setError('No tienes permisos para acceder a este reporte. Verifica tu sesión.');
+      } else if (error.response?.status === 403) {
+        setError('Acceso denegado. Solo los administradores pueden ver este reporte.');
+      } else if (error.response?.status === 500) {
+        setError('Error del servidor. Intenta nuevamente más tarde.');
+      } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        setError('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        setError(`Error: ${error.message}`);
       }
     }
   };
@@ -431,6 +429,24 @@ function ReportGenerator() {
                 </table>
               </div>
             </div>
+          </div>
+        ) : error ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
+            <div className="text-red-500 dark:text-red-400 mb-4">
+              <FontAwesomeIcon icon={faSpinner} spin size="2x" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+              Error al cargar datos
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              {error}
+            </p>
+            <button
+              onClick={fetchReportData}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Reintentar
+            </button>
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">

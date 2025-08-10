@@ -65,6 +65,7 @@ app.use(cors({
   origin: [
     process.env.FRONTEND_URL,
     'https://control-proyectores-unach.vercel.app',
+    'http://localhost:3000',
     'http://localhost:3001'
   ],
   credentials: true,
@@ -612,6 +613,8 @@ app.get('/api/reports', verifyToken, isAdmin, async (req, res) => {
   try {
     const { startDate, endDate, estado, turno } = req.query;
     
+    console.log('Parámetros recibidos:', { startDate, endDate, estado, turno });
+    
     // Construir el filtro base para las fechas
     let matchFilter = {
       fechaInicio: { $gte: new Date(startDate), $lte: new Date(endDate) }
@@ -622,15 +625,31 @@ app.get('/api/reports', verifyToken, isAdmin, async (req, res) => {
       matchFilter.estado = estado;
     }
     
+    console.log('Filtro base:', matchFilter);
+    
     // Obtener todas las solicitudes que coincidan con los filtros
     const solicitudes = await Solicitud.find(matchFilter)
       .populate('usuarioId', 'nombre email grado grupo turno')
       .populate('proyectorId', 'codigo estado');
     
+    console.log('Solicitudes encontradas (antes de filtrar por turno):', solicitudes.length);
+    console.log('Primera solicitud:', solicitudes[0] ? {
+      id: solicitudes[0]._id,
+      estado: solicitudes[0].estado,
+      usuario: solicitudes[0].usuarioId ? solicitudes[0].usuarioId.nombre : 'No usuario',
+      turno: solicitudes[0].usuarioId ? solicitudes[0].usuarioId.turno : 'No turno'
+    } : 'No hay solicitudes');
+    
     // Filtrar por turno si es necesario (después de popular)
     let solicitudesFiltradas = solicitudes;
     if (turno && turno !== 'todos') {
-      solicitudesFiltradas = solicitudes.filter(s => s.usuarioId.turno === turno);
+      console.log('Filtrando por turno:', turno);
+      solicitudesFiltradas = solicitudes.filter(s => {
+        const userTurno = s.usuarioId ? s.usuarioId.turno : null;
+        console.log(`Solicitud ${s._id}: turno usuario = ${userTurno}, buscando = ${turno}`);
+        return userTurno === turno;
+      });
+      console.log('Solicitudes después de filtrar por turno:', solicitudesFiltradas.length);
     }
     
     // Contar solicitudes por estado
@@ -642,9 +661,11 @@ app.get('/api/reports', verifyToken, isAdmin, async (req, res) => {
     
     // Contar solicitudes por turno
     const solicitudesPorTurno = {
-      matutino: solicitudesFiltradas.filter(s => s.usuarioId.turno === 'matutino').length,
-      vespertino: solicitudesFiltradas.filter(s => s.usuarioId.turno === 'vespertino').length
+      matutino: solicitudesFiltradas.filter(s => s.usuarioId && s.usuarioId.turno === 'matutino').length,
+      vespertino: solicitudesFiltradas.filter(s => s.usuarioId && s.usuarioId.turno === 'vespertino').length
     };
+    
+    console.log('Solicitudes por turno:', solicitudesPorTurno);
     
     // Obtener estado de proyectores
     const proyectores = await Proyector.find({});
@@ -687,21 +708,25 @@ app.get('/api/reports', verifyToken, isAdmin, async (req, res) => {
       .slice(0, 10)
       .map(s => ({
         id: s._id,
-        usuario: s.usuarioId.nombre,
+        usuario: s.usuarioId ? s.usuarioId.nombre : 'Usuario no encontrado',
         fecha: new Date(s.fechaInicio).toISOString().split('T')[0],
         estado: s.estado,
-        turno: s.usuarioId.turno
+        turno: s.usuarioId ? s.usuarioId.turno : 'Turno no definido'
       }));
     
-    // Construir y enviar la respuesta
-    res.json({
+    const responseData = {
       totalSolicitudes: solicitudesFiltradas.length,
       solicitudesPorEstado,
       solicitudesPorTurno,
       proyectoresPorEstado,
       solicitudesPorDia,
       ultimasSolicitudes
-    });
+    };
+    
+    console.log('Respuesta final:', responseData);
+    
+    // Construir y enviar la respuesta
+    res.json(responseData);
   } catch (error) {
     console.error('Error al generar reporte:', error);
     res.status(500).json({ message: 'Error al generar reporte' });
