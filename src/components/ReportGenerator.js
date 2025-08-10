@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileDownload, faChartBar, faCalendarAlt, faFilter, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { authService } from '../services/authService';
@@ -31,14 +31,9 @@ function ReportGenerator() {
     return date.toISOString().split('T')[0];
   }
 
-  useEffect(() => {
-    console.log('ReportGenerator: Componente montado, obteniendo datos...');
-    console.log('Estado actual:', { dateRange, filterOptions });
-    fetchReportData();
-  }, [dateRange, filterOptions]);
-
-  const fetchReportData = async () => {
+  const fetchReportData = useCallback(async () => {
     setIsLoading(true);
+    setError(null); // Limpiar errores anteriores al iniciar la carga
     try {
       console.log('Solicitando datos de reporte con parámetros:', {
         startDate: dateRange.startDate,
@@ -47,19 +42,17 @@ function ReportGenerator() {
         turno: filterOptions.turno
       });
 
-      const response = await authService.api.get('/api/reports', { 
-        params: { 
-          startDate: dateRange.startDate, 
-          endDate: dateRange.endDate, 
-          estado: filterOptions.estado, 
-          turno: filterOptions.turno 
-        } 
+      const response = await authService.api.get('/api/reports', {
+        params: {
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          estado: filterOptions.estado,
+          turno: filterOptions.turno
+        }
       });
-      
+
       console.log('Respuesta de la API de reportes:', response.data);
       setReportData(response.data);
-      setError(null);
-      setIsLoading(false);
     } catch (error) {
       console.error('Error al obtener datos del reporte:', error);
       console.error('Detalles del error:', {
@@ -67,11 +60,9 @@ function ReportGenerator() {
         response: error.response?.data,
         status: error.response?.status
       });
-      setIsLoading(false);
-      
-      // Limpiar datos anteriores
-      setReportData(null);
-      
+
+      setReportData(null); // Limpiar datos anteriores en caso de error
+
       // Guardar el error para mostrarlo al usuario
       if (error.response?.status === 401) {
         setError('No tienes permisos para acceder a este reporte. Verifica tu sesión.');
@@ -84,8 +75,15 @@ function ReportGenerator() {
       } else {
         setError(`Error: ${error.message}`);
       }
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [dateRange, filterOptions]);
+
+  useEffect(() => {
+    console.log('ReportGenerator: useEffect activado para obtener datos...');
+    fetchReportData();
+  }, [fetchReportData]);
 
   const handleDateChange = (e) => {
     setDateRange({
