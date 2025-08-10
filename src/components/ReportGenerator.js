@@ -4,9 +4,10 @@ import { faFileDownload, faChartBar, faCalendarAlt, faFilter, faSpinner } from '
 import { authService } from '../services/authService';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
-import html2canvas from 'html2canvas';
-import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2';
+import ReportCharts from './ReportCharts';
 
 function ReportGenerator() {
   const { currentTheme } = useTheme();
@@ -42,13 +43,13 @@ function ReportGenerator() {
         turno: filterOptions.turno
       });
 
-      const response = await authService.api.get('/api/reports', {
-        params: {
-          startDate: dateRange.startDate,
-          endDate: dateRange.endDate,
-          estado: filterOptions.estado,
-          turno: filterOptions.turno
-        }
+      const response = await authService.api.get('/api/reports', { 
+        params: { 
+          startDate: dateRange.startDate, 
+          endDate: dateRange.endDate, 
+          estado: filterOptions.estado, 
+          turno: filterOptions.turno 
+        } 
       });
 
       console.log('Respuesta de la API de reportes:', response.data);
@@ -100,7 +101,7 @@ function ReportGenerator() {
   };
 
   const generatePDF = async () => {
-    if (!reportRef.current) return;
+    if (!reportData) return;
 
     try {
       setIsLoading(true);
@@ -120,44 +121,211 @@ function ReportGenerator() {
       
       Toast.fire({
         icon: 'info',
-        title: 'Generando reporte, por favor espere...'
+        title: 'Generando reporte PDF, por favor espere...'
       });
       
-      // Capturar el contenido del reporte
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        backgroundColor: currentTheme === 'dark' ? '#1f2937' : '#ffffff',
-        windowWidth: reportRef.current.scrollWidth,
-        windowHeight: reportRef.current.scrollHeight,
-        onclone: (document, element) => {
-          // Asegurar que todos los elementos estén visibles para la captura
-          element.style.height = 'auto';
-          element.style.overflow = 'visible';
-        }
+      // Crear nuevo documento PDF
+      const doc = new jsPDF('p', 'mm', 'a4');
+      
+      // Configurar estilos
+      const titleFontSize = 20;
+      const subtitleFontSize = 16;
+      const normalFontSize = 12;
+      const smallFontSize = 10;
+      
+      // Encabezado institucional
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('UNIVERSIDAD AUTÓNOMA DE CHIAPAS', 105, 20, { align: 'center' });
+      doc.text('SISTEMA DE CONTROL DE PROYECTORES', 105, 30, { align: 'center' });
+      
+      // Título principal
+      doc.setFontSize(titleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('BITÁCORA DE REPORTE DE SOLICITUDES', 105, 45, { align: 'center' });
+      
+      // Información del reporte
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Período del Reporte: ${new Date(dateRange.startDate).toLocaleDateString('es-ES')} - ${new Date(dateRange.endDate).toLocaleDateString('es-ES')}`, 20, 60);
+      doc.text(`Fecha de Generación: ${new Date().toLocaleDateString('es-ES')}`, 20, 70);
+      doc.text(`Hora de Generación: ${new Date().toLocaleTimeString('es-ES')}`, 20, 80);
+      
+      // Resumen ejecutivo
+      doc.setFontSize(subtitleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESUMEN EJECUTIVO', 20, 100);
+      
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total de Solicitudes: ${reportData.totalSolicitudes}`, 20, 115);
+      doc.text(`Solicitudes Aprobadas: ${reportData.solicitudesPorEstado.aprobado}`, 20, 125);
+      doc.text(`Solicitudes Pendientes: ${reportData.solicitudesPorEstado.pendiente}`, 20, 135);
+      doc.text(`Solicitudes Rechazadas: ${reportData.solicitudesPorEstado.rechazado}`, 20, 145);
+      
+      // Tabla de solicitudes por estado
+      doc.setFontSize(subtitleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SOLICITUDES POR ESTADO', 20, 170);
+      
+      const estadoData = [
+        ['Estado', 'Cantidad', 'Porcentaje'],
+        ['Pendientes', reportData.solicitudesPorEstado.pendiente.toString(), `${Math.round((reportData.solicitudesPorEstado.pendiente / reportData.totalSolicitudes) * 100)}%`],
+        ['Aprobadas', reportData.solicitudesPorEstado.aprobado.toString(), `${Math.round((reportData.solicitudesPorEstado.aprobado / reportData.totalSolicitudes) * 100)}%`],
+        ['Rechazadas', reportData.solicitudesPorEstado.rechazado.toString(), `${Math.round((reportData.solicitudesPorEstado.rechazado / reportData.totalSolicitudes) * 100)}%`]
+      ];
+      
+      autoTable(doc, {
+        head: [estadoData[0]],
+        body: estadoData.slice(1),
+        startY: 180,
+        styles: {
+          fontSize: normalFontSize,
+          cellPadding: 5,
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
       });
       
-      // Convertir a blob y guardar
-      canvas.toBlob(function(blob) {
-        saveAs(blob, `reporte-proyectores-${new Date().toISOString().split('T')[0]}.png`);
+      // Análisis de proyectores
+      const proyectoresY = doc.lastAutoTable.finalY + 20;
+      doc.setFontSize(subtitleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ESTADO ACTUAL DE PROYECTORES', 20, proyectoresY);
+      
+      doc.setFontSize(normalFontSize);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Proyectores Disponibles: ${reportData.proyectoresPorEstado.disponible}`, 20, proyectoresY + 15);
+      doc.text(`Proyectores en Uso: ${reportData.proyectoresPorEstado.enUso}`, 20, proyectoresY + 25);
+      doc.text(`Proyectores en Mantenimiento: ${reportData.proyectoresPorEstado.mantenimiento}`, 20, proyectoresY + 35);
+      
+      // Tabla de solicitudes por turno
+      const turnoY = proyectoresY + 50;
+      doc.setFontSize(subtitleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SOLICITUDES POR TURNO', 20, turnoY);
+      
+      const turnoData = [
+        ['Turno', 'Cantidad', 'Porcentaje', 'Tendencia'],
+        ['Matutino', reportData.solicitudesPorTurno.matutino.toString(), `${Math.round((reportData.solicitudesPorTurno.matutino / reportData.totalSolicitudes) * 100)}%`, reportData.solicitudesPorTurno.matutino > reportData.solicitudesPorTurno.vespertino ? 'Mayor demanda' : 'Demanda moderada'],
+        ['Vespertino', reportData.solicitudesPorTurno.vespertino.toString(), `${Math.round((reportData.solicitudesPorTurno.vespertino / reportData.totalSolicitudes) * 100)}%`, reportData.solicitudesPorTurno.vespertino > reportData.solicitudesPorTurno.matutino ? 'Mayor demanda' : 'Demanda moderada']
+      ];
+      
+      autoTable(doc, {
+        head: [turnoData[0]],
+        body: turnoData.slice(1),
+        startY: turnoY + 10,
+        styles: {
+          fontSize: normalFontSize,
+          cellPadding: 5,
+        },
+        headStyles: {
+          fillColor: [46, 204, 113],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        columnStyles: {
+          0: { cellWidth: 40 },
+          1: { cellWidth: 30, halign: 'center' },
+          2: { cellWidth: 30, halign: 'center' },
+          3: { cellWidth: 50 },
+        },
+      });
+      
+      // Tabla de últimas solicitudes (Bitácora principal)
+      const ultimasY = doc.lastAutoTable.finalY + 20;
+      doc.setFontSize(subtitleFontSize);
+      doc.setFont('helvetica', 'bold');
+      doc.text('BITÁCORA DE SOLICITUDES RECIENTES', 20, ultimasY);
+      
+      const ultimasData = [
+        ['No.', 'Usuario', 'Fecha', 'Turno', 'Estado', 'Observaciones']
+      ];
+      
+      reportData.ultimasSolicitudes.forEach((solicitud, index) => {
+        ultimasData.push([
+          (index + 1).toString(),
+          solicitud.usuario,
+          solicitud.fecha,
+          solicitud.turno,
+          solicitud.estado,
+          solicitud.estado === 'aprobado' ? 'Solicitud aprobada' : 
+          solicitud.estado === 'pendiente' ? 'En revisión' : 'Solicitud rechazada'
+        ]);
+      });
+      
+      autoTable(doc, {
+        head: [ultimasData[0]],
+        body: ultimasData.slice(1),
+        startY: ultimasY + 10,
+        styles: {
+          fontSize: smallFontSize,
+          cellPadding: 4,
+        },
+        headStyles: {
+          fillColor: [52, 73, 94],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 249, 250],
+        },
+        columnStyles: {
+          0: { cellWidth: 15, halign: 'center' },
+          1: { cellWidth: 45 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 35 },
+        },
+      });
+      
+      // Pie de página institucional
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        
+        // Línea separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, 270, 190, 270);
+        
+        doc.setFontSize(smallFontSize);
+        doc.setFont('helvetica', 'italic');
+        doc.text(`Página ${i} de ${pageCount}`, 105, 280, { align: 'center' });
+        doc.text('Sistema de Control de Proyectores - Universidad Autónoma de Chiapas', 105, 285, { align: 'center' });
+        doc.text('Este documento es generado automáticamente por el sistema', 105, 290, { align: 'center' });
+      }
+      
+      // Guardar el PDF
+      const fileName = `reporte-proyectores-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
         setIsLoading(false);
         
         // Mostrar mensaje de éxito
         Toast.fire({
           icon: 'success',
-          title: 'Reporte generado con éxito'
+        title: 'Reporte PDF generado con éxito'
         });
-      }, 'image/png', 1.0);
+      
     } catch (error) {
-      console.error('Error al generar reporte:', error);
+      console.error('Error al generar reporte PDF:', error);
       setIsLoading(false);
       
       // Mostrar mensaje de error
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'No se pudo generar el reporte. Intente nuevamente.',
+        text: 'No se pudo generar el reporte PDF. Intente nuevamente.',
         confirmButtonText: 'Entendido'
       });
     }
@@ -189,7 +357,7 @@ function ReportGenerator() {
             ) : (
               <FontAwesomeIcon icon={faFileDownload} />
             )}
-            Descargar Reporte
+            Generar PDF
           </button>
         </div>
 
@@ -300,99 +468,8 @@ function ReportGenerator() {
               </div>
             </div>
 
-            {/* Gráficos visuales (simulados con divs) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faChartBar} />
-                  Solicitudes por Estado
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aprobadas</span>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {Math.round((reportData.solicitudesPorEstado.aprobado / reportData.totalSolicitudes) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-green-600 h-2.5 rounded-full" 
-                        style={{ width: `${(reportData.solicitudesPorEstado.aprobado / reportData.totalSolicitudes) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Pendientes</span>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {Math.round((reportData.solicitudesPorEstado.pendiente / reportData.totalSolicitudes) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-yellow-500 h-2.5 rounded-full" 
-                        style={{ width: `${(reportData.solicitudesPorEstado.pendiente / reportData.totalSolicitudes) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Rechazadas</span>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {Math.round((reportData.solicitudesPorEstado.rechazado / reportData.totalSolicitudes) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-red-600 h-2.5 rounded-full" 
-                        style={{ width: `${(reportData.solicitudesPorEstado.rechazado / reportData.totalSolicitudes) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                  <FontAwesomeIcon icon={faChartBar} />
-                  Solicitudes por Turno
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Matutino</span>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {Math.round((reportData.solicitudesPorTurno.matutino / reportData.totalSolicitudes) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ width: `${(reportData.solicitudesPorTurno.matutino / reportData.totalSolicitudes) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Vespertino</span>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {Math.round((reportData.solicitudesPorTurno.vespertino / reportData.totalSolicitudes) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                      <div 
-                        className="bg-purple-600 h-2.5 rounded-full" 
-                        style={{ width: `${(reportData.solicitudesPorTurno.vespertino / reportData.totalSolicitudes) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Gráficos interactivos */}
+            <ReportCharts reportData={reportData} />
 
             {/* Tabla de últimas solicitudes */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
