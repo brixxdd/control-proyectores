@@ -11,14 +11,11 @@ function UploadDocuments() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
-  const [isFirstUpload, setIsFirstUpload] = useState(true);
+  const [, setIsFirstUpload] = useState(true);
   const [weeklyQuotaUsed, setWeeklyQuotaUsed] = useState(false);
   const [nextAvailableDate, setNextAvailableDate] = useState('');
 
   useEffect(() => {
-    console.log('Token en sessionStorage:', sessionStorage.getItem('jwtToken'));
-    console.log('Usuario en sessionStorage:', sessionStorage.getItem('currentUser'));
-    
     const checkExistingDocument = async () => {
       try {
         const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -159,7 +156,7 @@ function UploadDocuments() {
       formData.append('grupo', currentUser.grupo || '');
       formData.append('turno', currentUser.turno || '');
 
-      const response = await authService.api.post('/upload-pdf', formData, {
+      await authService.api.post('/upload-pdf', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

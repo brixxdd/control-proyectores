@@ -8,19 +8,10 @@ import { BACKEND_URL } from '../config/config';
  */
 export const fetchFromAPI = async (endpoint, options = {}) => {
   try {
-    // Configuración de la URL base
-    const baseURL = process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:5000'
-      : BACKEND_URL;
-    
-    const url = `${baseURL}${endpoint}`;
-    console.log('Realizando petición a:', url);
+    const url = `${BACKEND_URL}${endpoint}`;
 
     // Obtener el token de sessionStorage
     const token = sessionStorage.getItem('jwtToken');
-    if (!token && !endpoint.includes('/auth')) {
-      console.warn('No hay token disponible para petición autenticada');
-    }
 
     // Configurar headers por defecto
     const defaultHeaders = {

@@ -1,16 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
-import { jwtDecode } from 'jwt-decode';
 import Swal from 'sweetalert2';
 import { AUTH_CONSTANTS } from '../constants/auth';
-import { gapi } from 'gapi-script';
-
-// Constantes de GAPI
-const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
-const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
-const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
-const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
 export const useAuth = () => {
   const [authState, setAuthState] = useState({
@@ -20,20 +12,12 @@ export const useAuth = () => {
     userPicture: null,
     isLoading: true,
   });
-  
-  const navigate = useNavigate();
 
-  const updateAuthState = useCallback((updates) => {
-    setAuthState(prev => ({
-      ...prev,
-      ...updates,
-      isLoading: false
-    }));
-  }, []);
+  const navigate = useNavigate();
 
   const handleError = useCallback((error) => {
     console.error('Auth Error:', error);
-    
+
     setAuthState({
       isAuthenticated: false,
       isAdmin: false,
@@ -53,42 +37,31 @@ export const useAuth = () => {
     }
   }, [navigate]);
 
-  const handleLoginSuccess = useCallback(async (response) => {
+  const handleLogin = useCallback(async (email, password) => {
     try {
-      if (!response?.credential) {
-        throw new Error('No se recibió credencial de Google');
-      }
+      const authResponse = await authService.login(email, password);
 
-      const decoded = jwtDecode(response.credential);
-      console.log('Google credential decoded:', decoded);
-      
-      sessionStorage.setItem('googleAccessToken', response.credential);
-      console.log('Token de Google guardado:', response.credential.substring(0, 20) + '...');
-
-      const authResponse = await authService.login(response.credential, decoded.picture);
-      
       if (!authResponse?.user) {
-        throw new Error('No se recibió información del usuario');
+        throw new Error(authResponse?.message || 'No se recibió información del usuario');
       }
 
       sessionStorage.setItem('currentUser', JSON.stringify(authResponse.user));
       sessionStorage.setItem('jwtToken', authResponse.token);
-      
-      const isAdmin = authResponse.user.isAdmin || AUTH_CONSTANTS.ADMIN_EMAILS.includes(decoded.email);
-      console.log("¿Usuario es administrador?", isAdmin);
-      
+
+      const isAdmin = authResponse.user.isAdmin || AUTH_CONSTANTS.ADMIN_EMAILS.includes(authResponse.user.email);
+
       setAuthState({
         isAuthenticated: true,
         isAdmin,
         user: authResponse.user,
-        userPicture: decoded.picture,
+        userPicture: authResponse.user.picture || null,
         isLoading: false,
       });
 
       Swal.fire({
         icon: 'success',
         title: `Bienvenido${isAdmin ? ' Administrador' : ''}`,
-        text: `Has iniciado sesión como ${decoded.email}`,
+        text: `Has iniciado sesión como ${authResponse.user.email}`,
         timer: 2000,
         showConfirmButton: false
       });
@@ -96,51 +69,18 @@ export const useAuth = () => {
       const redirectPath = isAdmin ? '/admin-dashboard' : '/dashboard';
       navigate(redirectPath, { replace: true });
 
+      return authResponse;
     } catch (error) {
-      console.error('Login error:', error);
       handleError(error);
+      throw error;
     }
   }, [navigate, handleError]);
-
-  const initializeGapi = useCallback(async () => {
-    try {
-      await new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = 'https://apis.google.com/js/api.js';
-        script.onload = resolve;
-        document.body.appendChild(script);
-      });
-      console.log('Inicializando GAPI...');
-      await gapi.load('client:auth2', async () => {
-        await gapi.client.init({
-          apiKey: API_KEY,
-          clientId: CLIENT_ID,
-          discoveryDocs: DISCOVERY_DOCS,
-          scope: SCOPES
-        });
-          console.log('Gapi inicializado correctamente');
-          updateAuthState({
-            isAuthenticated: false,
-            isAdmin: false,
-            user: null,
-            userPicture: null
-          });
-        //}
-      });
-    } catch (error) {
-      handleError(error);
-    }
-  }, [handleLoginSuccess, handleError]);
 
   const checkAuth = useCallback(async () => {
     try {
       const response = await authService.checkSession();
-      
+
       if (response.authenticated && response.user) {
-        // Verificar que los datos del usuario estén completos
-        console.log("Datos del usuario recibidos del servidor:", response.user);
-        
-        // Asegurarse de que todos los campos del usuario estén presentes
         setAuthState({
           isAuthenticated: true,
           isAdmin: response.user.email && AUTH_CONSTANTS.ADMIN_EMAILS.includes(response.user.email),
@@ -149,7 +89,6 @@ export const useAuth = () => {
           isLoading: false
         });
       } else {
-        await initializeGapi();
         setAuthState({
           isAuthenticated: false,
           isAdmin: false,
@@ -158,7 +97,6 @@ export const useAuth = () => {
           isLoading: false
         });
       }
-      console.log('check session - useAuth')
     } catch (error) {
       handleError(error);
     }
@@ -166,32 +104,6 @@ export const useAuth = () => {
 
   const handleLogout = useCallback(async () => {
     try {
-      // Inicialización de GAPI en una función separada
-      const initializeGapiAuth = async () => {
-        if (!window.gapi?.auth2) {
-          await new Promise((resolve) => {
-            gapi.load('client:auth2', async () => {
-              await gapi.client.init({
-                apiKey: API_KEY,
-                clientId: CLIENT_ID,
-                discoveryDocs: DISCOVERY_DOCS,
-                scope: SCOPES
-              });
-              resolve();
-            });
-          });
-        }
-      };
-
-      // Esperar a que GAPI se inicialice completamente
-      await initializeGapiAuth();
-
-      // Ahora podemos obtener la instancia de auth2 con seguridad
-      const auth2 = gapi.auth2.getAuthInstance();
-      if (auth2) {
-        await auth2.signOut();
-      }
-      
       await authService.logout();
       setAuthState({
         isAuthenticated: false,
@@ -200,7 +112,7 @@ export const useAuth = () => {
         userPicture: null,
         isLoading: false
       });
-      
+
       navigate('/signin', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);
@@ -208,22 +120,7 @@ export const useAuth = () => {
     }
   }, [navigate, handleError]);
 
-  const handleGoogleLogin = useCallback(async () => {
-    try {
-      const auth2 = gapi.auth2.getAuthInstance();
-      const googleUser = await auth2.signIn();
-      const token = googleUser.getAuthResponse().id_token;
-      const tokenGoogle = googleUser.getAuthResponse().access_token;
-      sessionStorage.setItem('accessRequest', tokenGoogle);
-      await handleLoginSuccess({ credential: token });
-    } catch (error) {
-      console.error('Error en login de Google:', error);
-      handleError(error);
-    }
-  }, [handleLoginSuccess, handleError]);
-
   const updateUserData = useCallback((updatedData) => {
-    // Actualizar el estado local
     setAuthState(prev => ({
       ...prev,
       user: {
@@ -231,8 +128,7 @@ export const useAuth = () => {
         ...updatedData
       }
     }));
-    
-    // También actualizar en sessionStorage para persistencia
+
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (currentUser) {
       const updatedUser = {
@@ -249,10 +145,9 @@ export const useAuth = () => {
 
   return {
     ...authState,
-    handleLoginSuccess,
+    handleLogin,
     handleLogout,
     checkAuth,
-    handleGoogleLogin,
     updateUserData
   };
 };

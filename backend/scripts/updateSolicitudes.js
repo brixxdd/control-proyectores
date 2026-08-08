@@ -1,10 +1,11 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const Solicitud = require('../models/Solicitud');
 const User = require('../models/User');
 
 async function updateSolicitudes() {
   try {
-    await mongoose.connect('mongodb://localhost:27017/BDproyectores');
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('Conectado a MongoDB');
 
     const solicitudes = await Solicitud.find();

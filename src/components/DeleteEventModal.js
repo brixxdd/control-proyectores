@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Trash2, Calendar, Info } from 'lucide-react';
-import { alertaEliminacion, alertaError } from './Alert';
+import { alertaError } from './Alert';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
 
@@ -29,7 +29,6 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
     };
 
     const toggleAllEvents = () => {
-        const allSelected = events.every(event => event.selected);
         events.forEach(event => {
             toggleEventSelection(event.id);
         });
@@ -79,9 +78,8 @@ const DeleteEventModal = ({ show, handleClose, handleDelete, events, toggleEvent
                         <div className="flex items-start space-x-3">
                             <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-blue-700 dark:text-blue-300">
-                                Esta acción eliminará los eventos seleccionados de tu Google Calendar. 
-                                Esto te ayudará a mantener tu calendario organizado y evitar la saturación 
-                                de eventos pasados.
+                                Esta acción eliminará las solicitudes seleccionadas de tu historial.
+                                Solo puedes eliminar solicitudes que aún estén pendientes.
                             </p>
                         </div>
                     </div>

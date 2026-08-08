@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { AUTH_CONFIG } from '../config/config';
-import { gapi } from 'gapi-script';
 import Swal from 'sweetalert2';
 import { AUTH_CONSTANTS } from '../constants/auth';
 
@@ -106,12 +105,9 @@ class AuthService {
       return { Authorization: `Bearer ${token}` };
   }
 
-  async login(googleCredential, userPicture) {
+  async login(email, password) {
     try {
-      const response = await this.api.post('/login', {
-        token: googleCredential,
-        picture: userPicture
-      });
+      const response = await this.api.post('/login', { email, password });
 
       if (!response.data?.token) {
         throw new Error('No se recibió token del servidor');
@@ -128,19 +124,13 @@ class AuthService {
   async checkSession() {
     try {
       const token = this.getStoredToken();
-      console.log('Token recuperado:', token);
       if (!token) {
-        console.log('check session - no token - authServices')
         return { authenticated: false };
       }
 
       this.setAuthHeader(token);
-      console.log('check session - authServices')
       const response = await this.api.get('/check-session');
-      
-      // Verificar que los datos del usuario estén completos
-      console.log("Respuesta completa de check-session:", response.data);
-      
+
       return { ...response.data, authenticated: true };
     } catch (error) {
       console.error("Error en checkSession:", error);
@@ -192,7 +182,6 @@ class AuthService {
     if (data.token) {
       //comprobacion si el servidor devolvio si el usuario normal no tiene grado, grupo y turno
       if (data.pvez) {
-        console.log('Eres nuevo por aqui? ', data.pvez)
         sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.FIRSTLOG, data.pvez);
       }
       sessionStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.JWT_TOKEN, data.token);

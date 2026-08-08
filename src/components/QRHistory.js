@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiDownload, FiShare2, FiCalendar, FiClock, FiInfo } from 'react-icons/fi';
 import { fetchFromAPI } from '../utils/fetchHelper';
-import { alertaError, alertaExito } from './Alert';
+import { alertaError } from './Alert';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
@@ -40,8 +40,6 @@ const QRHistory = () => {
             }
           });
           
-          console.log('Respuesta del servidor:', response);
-
           if (response && Array.isArray(response.qrCodes)) {
             setQrCodes(response.qrCodes);
             
@@ -83,46 +81,35 @@ const QRHistory = () => {
     };
 
     fetchQRCodes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleDownloadQR = (qrData) => {
     try {
-      console.log('Iniciando descarga de QR');
-      
       if (!qrData) {
-        console.error('No hay datos para generar QR');
         alertaError('No hay datos para generar el código QR');
         return;
       }
-      
+
       // Usar la URL del backend para generar QR
       const qrUrl = `${process.env.REACT_APP_BACKEND_URL}/generate-qr?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`;
-      console.log('URL del QR generada', qrUrl);
-      
+
       // Detectar si es dispositivo móvil
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      console.log(`Dispositivo detectado: ${isMobile ? 'móvil' : 'desktop'}`);
-      
+
       if (isMobile) {
         // En móviles, abrir el QR en una nueva ventana/pestaña
-        console.log('Abriendo QR en nueva ventana para dispositivo móvil');
         const newWindow = window.open(qrUrl, '_blank');
-        
+
         if (!newWindow) {
-          console.error('No se pudo abrir ventana, posiblemente bloqueada por popup blocker');
           alertaError('No se pudo abrir la ventana. Intenta desactivar el bloqueador de ventanas emergentes.');
-        } else {
-          console.log('Ventana abierta con éxito');
         }
       } else {
         // En desktop, intenta descargar directamente
-        console.log('Iniciando descarga directa para desktop');
-        
         // Método fetch para descargar la imagen
         fetch(qrUrl)
           .then(response => response.blob())
           .then(blob => {
-            console.log('Imagen descargada como blob');
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -131,7 +118,6 @@ const QRHistory = () => {
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            console.log('Descarga completada');
           })
           .catch(err => {
             console.error('Error al descargar la imagen', err);
@@ -158,8 +144,6 @@ const QRHistory = () => {
         text: 'Aquí está mi código QR para la solicitud de proyector',
         url: qrUrl
       });
-      
-      console.log('QR compartido exitosamente');
     } catch (error) {
       console.error('Error al compartir:', error);
       alertaError('Error al compartir el QR');

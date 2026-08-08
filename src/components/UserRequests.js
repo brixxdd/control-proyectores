@@ -1,34 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Search, Check, Edit, AlertCircle, Eye, Trash2, Minus, Plus, Calendar } from 'lucide-react';
+import { X, Check, AlertCircle, Eye, Calendar } from 'lucide-react';
 import { authService } from '../services/authService';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { FiRefreshCw } from 'react-icons/fi'; // Importar icono de recarga
 import AsignarProyectorModal from './AsignarProyectorModal';
-import { Temporal } from '@js-temporal/polyfill';
-import { useTimeZone } from '../contexts/TimeZoneContext';
 import { alertaExito, alertaError } from './Alert';
 import { fetchFromAPI } from '../utils/fetchHelper';
-import { BACKEND_URL } from '../config/config';
 import { useLocation } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheck, faTimes, faEdit, faSearch, faFilter, faSort, faEye } from '@fortawesome/free-solid-svg-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
 
 const UserRequests = () => {
   const [users, setUsers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
-  const [pdfUrl, setPdfUrl] = useState(null);
   const [activeTab, setActiveTab] = useState('solicitudes');
   const [pdfPreviewModal, setPdfPreviewModal] = useState({
     show: false,
     url: ''
   });
-  const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshStatus, setRefreshStatus] = useState(null);
   const [showAsignarModal, setShowAsignarModal] = useState(false);
@@ -36,11 +28,12 @@ const UserRequests = () => {
   const [error, setError] = useState(null);
   
   // Nuevos estados para manejar los datos
-  const [solicitudes, setSolicitudes] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
-  const [documentos, setDocumentos] = useState([]);
+  const [, setSolicitudes] = useState([]);
+  const [, setUsuarios] = useState([]);
+  const [, setDocumentos] = useState([]);
   const [usuariosSolicitudes, setUsuariosSolicitudes] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [selectedWeekOffset, setSelectedWeekOffset] = useState(0); // 0 = semana actual, 1 = semana siguiente
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -65,8 +58,8 @@ const UserRequests = () => {
     });
   };
 
-  const targetTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  // eslint-disable-next-line no-unused-vars
   const fetchSolicitudes = async () => {
     try {
       setIsLoading(true);
@@ -98,11 +91,12 @@ const UserRequests = () => {
 
   useEffect(() => {
     refreshData();
-    
+
     // Si hay parámetros de QR, buscar y seleccionar automáticamente
     if (qrSolicitudId && qrUsuarioId) {
       handleQrScan(qrSolicitudId, qrUsuarioId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -158,14 +152,13 @@ const UserRequests = () => {
     return checkDate >= start && checkDate <= end;
   };
 
-  // Función para obtener las solicitudes de la semana actual
-  const obtenerSolicitudesSemanaActual = (solicitudes) => {
-    // Obtener los límites de la semana actual
-    const now = new Date();
-    const monday = startOfWeek(now);
-    const sunday = endOfWeek(now);
-    
-    // Filtrar las solicitudes que están dentro de la semana actual
+  // Función para obtener las solicitudes de una semana (0 = actual, 1 = siguiente, etc.)
+  const obtenerSolicitudesDeSemana = (solicitudes, offsetSemanas = 0) => {
+    const referencia = new Date();
+    referencia.setDate(referencia.getDate() + offsetSemanas * 7);
+    const monday = startOfWeek(referencia);
+    const sunday = endOfWeek(referencia);
+
     return solicitudes.filter(solicitud => {
       const fechaInicio = new Date(solicitud.fechaInicio);
       return isWithinInterval(fechaInicio, { start: monday, end: sunday });
@@ -174,10 +167,6 @@ const UserRequests = () => {
 
   // Función para agrupar solicitudes por usuario
   const agruparSolicitudesPorUsuario = (solicitudes, usuarios) => {
-    console.log("Agrupando solicitudes por usuario");
-    console.log("Solicitudes recibidas:", solicitudes.length);
-    console.log("Usuarios recibidos:", usuarios.length);
-    
     // Crear un mapa para almacenar las solicitudes por usuario
     const usuarioMap = {};
     
@@ -215,10 +204,7 @@ const UserRequests = () => {
     });
     
     // Convertir el mapa a un array
-    const resultado = Object.values(usuarioMap);
-    console.log("Usuarios con solicitudes:", resultado.length);
-    
-    return resultado;
+    return Object.values(usuarioMap);
   };
 
   // Función para ordenar solicitudes por fecha (más recientes primero)
@@ -231,54 +217,46 @@ const UserRequests = () => {
   };
 
   // Función para cargar los datos
-  const fetchData = async () => {
+  const fetchData = async (weekOffset = selectedWeekOffset) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log("Iniciando carga de datos para administrador");
-      
       // Verificar la autenticación antes de hacer las solicitudes
       const currentUser = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
       const token = sessionStorage.getItem('jwtToken');
-      
+
       if (!currentUser || !currentUser._id || !token) {
         throw new Error('Sesión no válida. Por favor, inicia sesión nuevamente.');
       }
-      
+
       // Obtener las solicitudes usando el helper
       const solicitudesData = await fetchFromAPI('/solicitudes');
-      console.log("Solicitudes obtenidas:", solicitudesData?.length || 0);
-      
+
       // Obtener los usuarios
       const usuariosData = await fetchFromAPI('/usuarios');
-      console.log("Usuarios obtenidos:", usuariosData?.length || 0);
-      
+
       // Intentar obtener los documentos, pero manejar el caso de que la ruta no exista
       let documentosData = [];
       try {
         documentosData = await fetchFromAPI('/documentos');
-        console.log("Documentos obtenidos:", documentosData?.length || 0);
       } catch (docError) {
         console.warn("No se pudieron obtener los documentos:", docError.message);
-        console.log("Continuando sin datos de documentos");
         // Continuar sin datos de documentos
         documentosData = [];
       }
-      
+
       // Verificar si hay datos
       if (!solicitudesData || solicitudesData.length === 0) {
-        console.log("No hay solicitudes disponibles");
         setUsuariosSolicitudes([]);
         setFilteredUsers([]);
         setIsLoading(false);
         return;
       }
-      
+
       // Agrupar las solicitudes por usuario
       const solicitudesPorUsuario = agruparSolicitudesPorUsuario(solicitudesData, usuariosData);
-      console.log("Solicitudes agrupadas por usuario:", solicitudesPorUsuario.length);
-      
+
       // Agregar los documentos a cada usuario solo si hay documentos
       if (documentosData && documentosData.length > 0) {
         documentosData.forEach(documento => {
@@ -312,18 +290,16 @@ const UserRequests = () => {
       setDocumentos(documentosData);
       setUsuariosSolicitudes(solicitudesPorUsuario);
       
-      // Filtrar los usuarios que tienen solicitudes en la semana actual
-      const solicitudesSemanaActual = obtenerSolicitudesSemanaActual(solicitudesData);
-      console.log("Solicitudes de la semana actual:", solicitudesSemanaActual.length);
-      
-      const usuariosConSolicitudesSemanaActual = solicitudesPorUsuario.filter(usuario => {
-        return usuario.solicitudes.some(solicitud => 
-          solicitudesSemanaActual.some(s => s._id === solicitud._id)
+      // Filtrar los usuarios que tienen solicitudes en la semana seleccionada
+      const solicitudesSemanaSeleccionada = obtenerSolicitudesDeSemana(solicitudesData, weekOffset);
+
+      const usuariosConSolicitudesSemanaSeleccionada = solicitudesPorUsuario.filter(usuario => {
+        return usuario.solicitudes.some(solicitud =>
+          solicitudesSemanaSeleccionada.some(s => s._id === solicitud._id)
         );
       });
-      
-      console.log("Usuarios con solicitudes esta semana:", usuariosConSolicitudesSemanaActual.length);
-      setFilteredUsers(usuariosConSolicitudesSemanaActual);
+
+      setFilteredUsers(usuariosConSolicitudesSemanaSeleccionada);
       
     } catch (error) {
       console.error('Error al cargar datos:', error);
@@ -341,12 +317,9 @@ const UserRequests = () => {
     // Si el usuario no tiene documentos, intentar cargarlos directamente
     if (!user.documentos || user.documentos.length === 0) {
       try {
-        console.log("Intentando cargar documentos para el usuario:", user.userData._id);
         const response = await authService.api.get(`/documentos/usuario/${user.userData._id}`);
-        
+
         if (response.data && Array.isArray(response.data)) {
-          console.log("Documentos obtenidos directamente:", response.data.length);
-          
           // Actualizar el usuario seleccionado con los documentos
           setSelectedUser(prevUser => ({
             ...prevUser,
@@ -367,7 +340,6 @@ const UserRequests = () => {
           });
         }
       } catch (error) {
-        console.log("No se encontraron documentos adicionales para el usuario:", error.message);
         // No mostrar error al usuario, simplemente continuar sin documentos
       }
     }
@@ -418,13 +390,9 @@ const UserRequests = () => {
   };
 
   const handleViewPdf = (document) => {
-    console.log("Documento completo a visualizar:", document);
-    
     // Priorizar fileUrl, luego filePath
     let url = document.fileUrl || document.filePath || '';
-    
-    console.log("URL original del documento:", url);
-    
+
     if (!url) {
       alert('No se encontró una URL válida para este documento');
       return;
@@ -438,8 +406,6 @@ const UserRequests = () => {
       alert('La URL del documento no es válida');
       return;
     }
-    
-    console.log("Abriendo PDF en nueva pestaña:", url);
     
     // Abrir en una nueva pestaña
     const newWindow = window.open(url, '_blank');
@@ -487,6 +453,7 @@ const UserRequests = () => {
     };
   }, []);
 
+  // eslint-disable-next-line no-unused-vars
   const handleDeleteDocument = async (documentId, usuarioId) => {
     try {
       await authService.api.delete(`/documentos/${documentId}`);
@@ -559,6 +526,7 @@ const UserRequests = () => {
   }, [selectedUser]);
 
   // Función para manejar la subida exitosa
+  // eslint-disable-next-line no-unused-vars
   const handleUploadSuccess = useCallback(async (newDocument) => {
     setAlert({
       show: true,
@@ -577,6 +545,18 @@ const UserRequests = () => {
     // Recargar los documentos del servidor
     await refreshDocuments();
   }, [selectedUser, refreshDocuments]);
+
+  // Función para cambiar la semana seleccionada (actual / siguiente) y recargar
+  const handleWeekChange = async (e) => {
+    const newOffset = parseInt(e.target.value, 10);
+    setSelectedWeekOffset(newOffset);
+    setIsLoading(true);
+    try {
+      await fetchData(newOffset);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Función para recargar los datos
   const refreshData = async () => {
@@ -605,12 +585,9 @@ const UserRequests = () => {
         return;
       }
       
-      console.log("Iniciando recarga de datos como administrador:", currentUser.email);
-      
       // Obtener el token JWT
       const token = sessionStorage.getItem('jwtToken');
       if (!token) {
-        console.error('No hay token JWT disponible');
         setError('Sesión no válida. Por favor, inicia sesión nuevamente.');
         setRefreshStatus('error');
         return;
@@ -775,13 +752,15 @@ const UserRequests = () => {
   };
 
   const renderSolicitudesTable = () => {
-    // Filtrar solicitudes para mostrar solo las de la semana actual
+    // Filtrar solicitudes para mostrar solo las de la semana seleccionada (actual o siguiente)
     const currentWeekSolicitudes = selectedUser.solicitudes.filter(solicitud => {
       const solicitudDate = new Date(solicitud.fechaInicio);
-      const weekStart = startOfWeek(new Date());
+      const referencia = new Date();
+      referencia.setDate(referencia.getDate() + selectedWeekOffset * 7);
+      const weekStart = startOfWeek(referencia);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 4); // Lunes a Viernes (5 días)
-      
+
       return solicitudDate >= weekStart && solicitudDate <= weekEnd;
     });
 
@@ -1019,6 +998,7 @@ const UserRequests = () => {
   };
 
   // Función para manejar acciones del usuario desde el modal
+  // eslint-disable-next-line no-unused-vars
   const handleUserAction = (user) => {
     // Cerrar el modal actual
     setShowModal(false);
@@ -1113,24 +1093,35 @@ const UserRequests = () => {
         {/* Mostrar mensaje de error si existe */}
         {error && <ErrorMessage message={error} />}
 
-        {/* Agregar indicador de semana actual */}
+        {/* Indicador de semana + selector actual/siguiente */}
         <div className={`p-4 rounded-lg shadow-md mb-6 bg-gradient-to-r ${themeStyles.gradient} text-white`}>
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-white" />
-            <h3 className="font-semibold text-white">
-              Semana Actual
-            </h3>
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-white" />
+              <h3 className="font-semibold text-white">
+                {selectedWeekOffset === 0 ? 'Semana Actual' : 'Semana Siguiente'}
+              </h3>
+            </div>
+            <select
+              value={selectedWeekOffset}
+              onChange={handleWeekChange}
+              disabled={isLoading}
+              className="text-sm rounded-lg px-3 py-1.5 bg-white/20 text-white border border-white/30
+                         focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-60
+                         [&>option]:text-gray-900"
+            >
+              <option value={0}>Semana Actual</option>
+              <option value={1}>Semana Siguiente</option>
+            </select>
           </div>
           <p className="text-white/90">
-            Del {startOfWeek(new Date()).toLocaleDateString('es-MX', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long'
-            })} al {new Date(startOfWeek(new Date()).getTime() + 4 * 24 * 60 * 60 * 1000).toLocaleDateString('es-MX', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long'
-            })}
+            {(() => {
+              const referencia = new Date();
+              referencia.setDate(referencia.getDate() + selectedWeekOffset * 7);
+              const inicio = startOfWeek(referencia);
+              const fin = new Date(inicio.getTime() + 4 * 24 * 60 * 60 * 1000);
+              return `Del ${inicio.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} al ${fin.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}`;
+            })()}
           </p>
         </div>
 
@@ -1238,7 +1229,7 @@ const UserRequests = () => {
                       Solicitudes de {selectedUser.userData.nombre}
                     </h3>
                     <p className="text-xs sm:text-sm text-white/80 mt-1 truncate">
-                      Mostrando solicitudes de la semana actual
+                      Mostrando solicitudes de la {selectedWeekOffset === 0 ? 'semana actual' : 'semana siguiente'}
                     </p>
                   </div>
                   <button

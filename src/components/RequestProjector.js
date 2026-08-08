@@ -1,941 +1,648 @@
 import { Temporal } from '@js-temporal/polyfill';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTv, faCalendarPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
-import { gapi } from 'gapi-script';
+import { faTv, faCalendarPlus, faTrash, faQrcode, faDownload, faShareNodes, faCircleCheck } from '@fortawesome/free-solid-svg-icons';
 import Calendar from 'react-calendar';
-import axios from 'axios';
 import 'react-calendar/dist/Calendar.css';
 import './RequestProjector.css';
-import TimeSelectionModal from './TimeSelectionModal'; 
+import TimeSelectionModal from './TimeSelectionModal';
 import DeleteEventModal from './DeleteEventModal';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTimeZone } from '../contexts/TimeZoneContext';
 import { alertaExito, alertaError } from './Alert';
-import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
-// Importaciones para QR
-import { QRCodeCanvas } from 'qrcode.react';
-import html2canvas from 'html2canvas';
-import { saveAs } from 'file-saver';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
 
+const ORBS = [
+  { w: 120, h: 120, left: '8%',  top: '-20%', dur: 4,   delay: 0 },
+  { w: 80,  h: 80,  left: '75%', top: '10%',  dur: 3.5, delay: 0.8 },
+  { w: 160, h: 160, left: '50%', top: '-30%', dur: 5,   delay: 0.3 },
+  { w: 60,  h: 60,  left: '90%', top: '50%',  dur: 3,   delay: 1.2 },
+  { w: 100, h: 100, left: '20%', top: '60%',  dur: 4.5, delay: 0.6 },
+];
 
-const CLIENT_ID = "217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com";
-const API_KEY = "AIzaSyCGngj5UlwBeDeynle9K-yImbSTwfgWTFg";
-const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
-const SCOPES = "https://www.googleapis.com/auth/calendar.events";
-
-let hasLoggedWeekBounds = false;
+const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 const RequestProjector = () => {
-  const { currentTime, targetTimeZone } = useTimeZone();
-  const { user: currentUser } = useAuth(); // Obtener usuario actual para el QR
-  const [token, setToken] = useState(null);
-  const [selectedDates, setSelectedDates] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [showTimeModal, setShowTimeModal] = useState(false); 
-  const [timeSlots, setTimeSlots] = useState({});
-  const [calendarValue, setCalendarValue] = useState(new Date()); // Valor para el componente Calendar
-  
-  // Estados para la funcionalidad QR
-  const [qrData, setQrData] = useState(null);
-  const [solicitudResponse, setSolicitudResponse] = useState(null);
-  const qrRef = useRef(null);
-  const [shouldSaveQR, setShouldSaveQR] = useState(false);
+  const { targetTimeZone } = useTimeZone();
+  useAuth();
+  const [selectedDates, setSelectedDates]     = useState([]);
+  const [events, setEvents]                   = useState([]);
+  const [showModal, setShowModal]             = useState(false);
+  const [showTimeModal, setShowTimeModal]     = useState(false);
+  const [qrData, setQrData]                   = useState(null);
+  const [shouldSaveQR, setShouldSaveQR]       = useState(false);
+  const [justSelected, setJustSelected]       = useState(null);
+  const [, setTick]                            = useState(0);
+  const [encargadoStatus, setEncargadoStatus]  = useState('loading'); // 'loading' | 'allowed' | 'denied'
+  const [encargadoInfo, setEncargadoInfo]       = useState(null);
 
-  // Obtener el tema actual
   const { currentTheme } = useTheme();
   const themeStyles = getCurrentThemeStyles(currentTheme);
-  
-  // Zona horaria para México
-  const mexicoTimeZone = 'America/Mexico_City';
 
-  // Función mejorada para descargar QR que funcione en dispositivos móviles
-  const downloadQR = () => {
-    try {
-      console.log('Iniciando descarga de QR');
-      
-      // Ya que estás usando una API externa para mostrar el QR, úsala también para descargar
-      if (!qrData) {
-        console.error('No hay datos para generar QR');
-        alertaError('No hay datos para generar el código QR');
-        return;
-      }
-      
-      // URL del QR desde el servicio que ya estás usando
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`;
-      console.log('URL del QR generada', qrUrl);
-      
-      // Detectar si es dispositivo móvil
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      console.log(`Dispositivo detectado: ${isMobile ? 'móvil' : 'desktop'}`);
-      
-      if (isMobile) {
-        // En móviles, abrir el QR en una nueva ventana/pestaña
-        console.log('Abriendo QR en nueva ventana para dispositivo móvil');
-        const newWindow = window.open(qrUrl, '_blank');
-        
-        if (!newWindow) {
-          console.error('No se pudo abrir ventana, posiblemente bloqueada por popup blocker');
-          alertaError('No se pudo abrir la ventana. Intenta desactivar el bloqueador de ventanas emergentes.');
-        } else {
-          console.log('Ventana abierta con éxito');
-        }
-      } else {
-        // En desktop, intenta descargar directamente
-        console.log('Iniciando descarga directa para desktop');
-        
-        // Método fetch para descargar la imagen
-        fetch(qrUrl)
-          .then(response => response.blob())
-          .then(blob => {
-            console.log('Imagen descargada como blob');
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'qr-solicitud-proyector.png');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            console.log('Descarga completada');
-          })
-          .catch(err => {
-            console.error('Error al descargar la imagen', err);
-            alertaError('Error al descargar la imagen QR');
-          });
-      }
-    } catch (error) {
-      console.error('Error general en downloadQR', error);
-      alertaError('Error al procesar el QR');
-    }
-  };
-
-  // Función para convertir Date a Temporal.ZonedDateTime
-  const dateToTemporal = (date) => {
-    if (!date) return null;
-    // Crear un Temporal.Instant desde el timestamp
-    const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
-    // Convertir a ZonedDateTime en la zona horaria objetivo
-    return instant.toZonedDateTimeISO(targetTimeZone);
-  };
-
-  // Función para convertir Temporal.ZonedDateTime a Date
-  const temporalToDate = (temporalDate) => {
-    if (!temporalDate) return null;
-    
-    if (temporalDate instanceof Temporal.ZonedDateTime) {
-      // Convertir ZonedDateTime a Date de JavaScript
-      return new Date(temporalDate.epochMilliseconds);
-    } else if (temporalDate instanceof Temporal.PlainDate) {
-      // Convertir PlainDate a ZonedDateTime a medianoche
-      const zonedDateTime = temporalDate.toZonedDateTime({
-        timeZone: targetTimeZone,
-        plainTime: Temporal.PlainTime.from('00:00:00')
-      });
-      // Convertir a Date de JavaScript
-      return new Date(zonedDateTime.epochMilliseconds);
-    }
-    
-    // Si ya es un Date, devolverlo
-    return temporalDate;
-  };
-
+  // Reloj vivo — tick cada segundo
   useEffect(() => {
-    const loadGapi = async () => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Verificar si el usuario es encargado activo esta semana
+  useEffect(() => {
+    const verificar = async () => {
       try {
-        // 1. Cargar el script de GAPI
-        if (!window.gapi) {
-          await new Promise((resolve) => {
-            const script = document.createElement('script');
-            script.src = 'https://apis.google.com/js/api.js';
-            script.onload = resolve;
-            document.body.appendChild(script);
-          });
-        }
-
-        // 2. Cargar el cliente y auth2
-        await new Promise((resolve) => {
-          gapi.load('client:auth2', resolve);
-        });
-
-        // 3. Inicializar el cliente
-        await gapi.client.init({
-          apiKey: API_KEY,
-          clientId: CLIENT_ID,
-          discoveryDocs: DISCOVERY_DOCS,
-          scope: SCOPES
-        });
-
-        // 4. Inicializar auth2 y manejar la autenticación
-        const auth2 = gapi.auth2.getAuthInstance();
-        console.log(`Estado de autenticación: ${auth2.isSignedIn.get() ? 'autenticado' : 'no autenticado'}`);
-        
-        // 5. Manejar el token
-        const currentUser = auth2.currentUser.get();
-        let accessToken = currentUser.getAuthResponse().access_token;
-        
-        if (accessToken === sessionStorage.getItem('accessRequest')) {
-          console.log('Misma sesión');
-        } else {
-          accessToken = sessionStorage.getItem('accessRequest');
-          console.log('Nueva sesión');
-        }
-
-        // 6. Configurar el token
-        gapi.client.setToken({
-          access_token: accessToken
-        });
-
-        console.log('GAPI inicializado correctamente con token de acceso');
-        await fetchEvents();
-
-      } catch (error) {
-        console.error('Error al cargar GAPI:', error);
+        const data = await fetchFromAPI('/api/encargado/activo');
+        setEncargadoInfo(data);
+        setEncargadoStatus(data.esEncargado ? 'allowed' : 'denied');
+      } catch {
+        setEncargadoStatus('denied');
+        setEncargadoInfo(null);
       }
     };
+    verificar();
+  }, []);
 
-    loadGapi();
+  const now = Temporal.Now.zonedDateTimeISO(targetTimeZone);
+  const timeStr  = now.toPlainTime().toString().split('.')[0];
+  const dayName  = DAY_NAMES[new Date().getDay()];
+  const monthName = MONTH_NAMES[now.month - 1];
+
+  const dateToTemporal = useCallback((date) => {
+    if (!date) return null;
+    const instant = Temporal.Instant.fromEpochMilliseconds(date.getTime());
+    return instant.toZonedDateTimeISO(targetTimeZone);
+  }, [targetTimeZone]);
+
+  useEffect(() => {
+    fetchEvents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchEvents = async () => {
     try {
-      console.log('Obteniendo eventos con token:', gapi.client.getToken());
-      const response = await gapi.client.calendar.events.list({
-        'calendarId': 'primary',
-        'timeMin': new Date(new Date().getFullYear(), 0, 1).toISOString(),
-        'timeMax': new Date(new Date().getFullYear(), 11, 31).toISOString(),
-        'singleEvents': true,
-        'orderBy': 'startTime',
-        'q': 'Solicitud de proyector'
+      const jwtToken = sessionStorage.getItem('jwtToken');
+      const data = await fetchFromAPI('/solicitudes-ocupadas', {
+        headers: { 'Authorization': `Bearer ${jwtToken}` }
       });
-
-      console.log('Eventos obtenidos:', response.result.items);
-      const fetchedEvents = response.result.items.map(event => {
-        // Convertir fechas usando Temporal
-        const startInstant = Temporal.Instant.from(event.start.dateTime || event.start.date);
-        const endInstant = Temporal.Instant.from(event.end.dateTime || event.end.date);
-        
-        return {
-          id: event.id,
-          summary: event.summary,
-          start: new Date(startInstant.epochMilliseconds),
-          end: new Date(endInstant.epochMilliseconds),
-          selected: false
-        };
-      });
-
-      setEvents(fetchedEvents);
+      setEvents((data || []).map(event => ({
+        id: event.id,
+        summary: event.summary,
+        start: new Date(event.start),
+        end: new Date(event.end),
+        selected: false
+      })));
     } catch (error) {
-      console.error('Error al obtener eventos:', error);
-      
-      if (error.status === 401) {
-        const auth2 = gapi.auth2.getAuthInstance();
-        try {
-          await auth2.signIn();
-          const currentUser = auth2.currentUser.get();
-          const newToken = currentUser.getAuthResponse().access_token;
-          sessionStorage.setItem('accessRequest', newToken);
-          gapi.client.setToken({
-            access_token: newToken
-          });
-          await fetchEvents();
-        } catch (signInError) {
-          console.error('Error al renovar la sesión:', signInError);
-        }
-      }
+      console.error('Error al obtener solicitudes ocupadas:', error);
     }
   };
 
-  const createEvent = async (event) => {
-    try {
-      const auth2 = gapi.auth2.getAuthInstance();
-      if (!auth2) {
-        console.error('No se pudo obtener la instancia de auth2');
-        throw new Error('No se pudo obtener la instancia de auth2');
-      }
-
-      const isSignedIn = auth2.isSignedIn.get();
-      if (!isSignedIn) {
-        console.log('Usuario no autenticado, intentando iniciar sesión...');
-        await auth2.signIn();
-      }
-
-      const currentUser = auth2.currentUser.get();
-      const accessToken = currentUser.getAuthResponse().access_token;
-      
-      console.log('Creando evento con datos:', event);
-      console.log('Token de acceso:', accessToken);
-
-      // Asegurarse de que el token esté configurado
-      gapi.client.setToken({
-        access_token: accessToken
-      });
-
-      // Verificar que las fechas sean objetos Date válidos
-      if (!(event.start instanceof Date) || isNaN(event.start.getTime())) {
-        throw new Error('La fecha de inicio no es válida');
-      }
-      
-      if (!(event.end instanceof Date) || isNaN(event.end.getTime())) {
-        throw new Error('La fecha de fin no es válida');
-      }
-
-      // Crear el evento con fechas en formato ISO
-      const response = await gapi.client.calendar.events.insert({
-        'calendarId': 'primary',
-        'resource': {
-          summary: event.summary,
-          start: {
-            dateTime: event.start.toISOString(),
-            timeZone: targetTimeZone
-          },
-          end: {
-            dateTime: event.end.toISOString(),
-            timeZone: targetTimeZone
-          }
-        }
-      });
-
-      console.log('Evento creado exitosamente:', response.result);
-      return response.result;
-    } catch (error) {
-      console.error('Error detallado al crear evento:', error);
-      throw error;
-    }
-  };
-
-  // Función para manejar el cambio de fecha en el calendario
   const handleDateChange = (newDate) => {
     if (newDate && newDate instanceof Date && !isNaN(newDate)) {
-      setCalendarValue(newDate); // Actualizar el valor del calendario
-      
-      // Convertir Date a Temporal.PlainDate
       const temporalDate = dateToTemporal(newDate).toPlainDate();
-      // Formato ISO para almacenar (YYYY-MM-DD)
-      const dateStr = temporalDate.toString();
-      
-      console.log('Fecha seleccionada:', dateStr);
-
-      // Actualización directa del estado
-      const isDateSelected = selectedDates.includes(dateStr);
-      if (isDateSelected) {
-        setSelectedDates(selectedDates.filter(d => d !== dateStr));
+      const ds = temporalDate.toString();
+      if (selectedDates.includes(ds)) {
+        setSelectedDates(selectedDates.filter(d => d !== ds));
       } else {
-        setSelectedDates([...selectedDates, dateStr].sort());
+        setSelectedDates([...selectedDates, ds].sort());
+        setJustSelected(ds);
+        setTimeout(() => setJustSelected(null), 600);
       }
     }
   };
 
-  // Función para obtener los límites de la semana
-  const getWeekBounds = (date) => {
-    // Convertir a PlainDate primero
-    let plainDate;
-    
-    if (date instanceof Date) {
-      plainDate = Temporal.PlainDate.from({
-        year: date.getFullYear(),
-        month: date.getMonth() + 1,
-        day: date.getDate()
-      });
-    } else if (date instanceof Temporal.ZonedDateTime) {
-      plainDate = date.toPlainDate();
-    } else {
-      plainDate = Temporal.PlainDate.from(date);
-    }
-    
-    // Calcular el día de la semana (1-7, donde 1 es lunes)
-    const dayOfWeek = plainDate.dayOfWeek || ((new Date(plainDate.toString()).getDay() + 6) % 7) + 1;
-    
-    // Calcular cuántos días restar para llegar al lunes
-    const daysToMonday = dayOfWeek - 1;
-    // Calcular cuántos días sumar para llegar al viernes
-    const daysToFriday = 5 - dayOfWeek;
-    
-    // Calcular lunes y viernes
-    const monday = plainDate.subtract({ days: daysToMonday });
-    const friday = plainDate.add({ days: Math.max(0, daysToFriday) });
-    
-    return { monday, friday };
-  };
-
-  // Función para deshabilitar días en el calendario
   const tileDisabled = ({ date, view }) => {
     if (view !== 'month') return false;
-    
-    // Calcular el día de la semana (0-6, donde 0 es domingo)
-    const dayOfWeek = date.getDay();
-    
-    // Si es sábado o domingo, deshabilitar
-    if (dayOfWeek === 0 || dayOfWeek === 6) return true;
-    
-    // Obtener la fecha actual
-    const now = new Date();
-    
-    // Obtener los límites de la semana actual usando solo objetos Date
-    const currentDay = now.getDay(); // 0 (domingo) a 6 (sábado)
-    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
-    
-    // Crear el lunes de la semana actual
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - daysToMonday);
-    monday.setHours(0, 0, 0, 0);
-    
-    // Crear el viernes de la semana actual
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    friday.setHours(23, 59, 59, 999);
-    
-    // Crear una copia de la fecha para no modificar la original
-    const tileDateCopy = new Date(date);
-    tileDateCopy.setHours(12, 0, 0, 0); // Mediodía para evitar problemas de zona horaria
-    
-    // Permitir seleccionar solo fechas de esta semana (de lunes a viernes)
-    // Deshabilitar si está antes del lunes o después del viernes de la semana actual
-    return tileDateCopy < monday || tileDateCopy > friday;
+    const now2 = new Date(); now2.setHours(0,0,0,0);
+    const dow = date.getDay();
+    if (dow === 0 || dow === 6) return true;
+    if (date < now2) return true;
+    const cd = now2.getDay();
+    const fri = new Date(now2); fri.setDate(now2.getDate() + (5 - cd)); fri.setHours(23,59,59,999);
+    if (date <= fri) return false;
+    const dNM = (7 - cd + 1) % 7; const dAdd = dNM === 0 ? 7 : dNM;
+    const nMon = new Date(now2); nMon.setDate(now2.getDate() + dAdd); nMon.setHours(0,0,0,0);
+    const nFri = new Date(nMon); nFri.setDate(nMon.getDate() + 4); nFri.setHours(23,59,59,999);
+    return date < nMon || date > nFri;
   };
 
-  // Función para el className del tile - SOLUCIÓN DIRECTA
   const tileClassName = ({ date, view }) => {
     if (view !== 'month') return null;
-    
-    // Convertir Date a formato ISO para comparar (YYYY-MM-DD)
-    const dateStr = date.toISOString().split('T')[0];
-    
-    // Verificar si la fecha está en el array de fechas seleccionadas
-    // Usamos el formato exacto que se guarda en selectedDates
-    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    
-    const isSelected = selectedDates.includes(formattedDate);
-    
-    const hasEvent = events.some(event => {
-      const eventDate = event.start instanceof Date 
-        ? event.start 
-        : new Date(event.start);
-      return eventDate.toISOString().split('T')[0] === dateStr;
-    });
-    
-    // Aplicar clases según el estado
-    if (isSelected) {
-      return 'bg-indigo-600 text-white hover:bg-indigo-700';
-    } else if (hasEvent) {
-      return 'bg-red-600 text-white hover:bg-red-700';
-    }
-    
-    return 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700';
+    const iso  = date.toISOString().split('T')[0];
+    const fmt  = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    const isSel = selectedDates.includes(fmt);
+    const isNew = fmt === justSelected;
+    const hasEv = events.some(e => { const ed = e.start instanceof Date ? e.start : new Date(e.start); return ed.toISOString().split('T')[0] === iso; });
+    if (isSel && isNew) return 'tile-just-selected';
+    if (isSel) return 'tile-selected';
+    if (hasEv) return 'tile-has-event';
+    return '';
   };
 
-  const handleRequest = async () => {
-    try {
-      console.log('Iniciando solicitud de proyector...');
-      
-      // Verificar si tenemos el token
-      const googleCredential = sessionStorage.getItem('googleAccessToken');
-      if (!googleCredential) {
-        console.error('No hay token de autenticación');
-        return;
-      }
-
-      if (selectedDates.length === 0) {
-        alert("Por favor selecciona al menos un día entre lunes y viernes.");
-        return;
-      }
-
-      const validDates = selectedDates.map(dateStr => {
-        const date = new Date(dateStr + 'T00:00:00');
-        const day = date.getDay();
-
-        if (day === 0 || day === 6) {
-          alert("Por favor selecciona solo días de lunes a viernes.");
-          return null;
-        }
-
-        return date;
-      }).filter(date => date !== null);
-
-      if (validDates.length > 0) {
-        console.log('Abriendo modal de selección de tiempo...');
-        setShowTimeModal(true);
-      }
-    } catch (error) {
-      console.error('Error detallado:', error);
-      alert('Hubo un error al procesar tu solicitud. Revisa la consola para más detalles.');
-    }
+  const handleRequest = () => {
+    if (selectedDates.length === 0) { alert("Por favor selecciona al menos un día entre lunes y viernes."); return; }
+    const valid = selectedDates.map(ds => { const d = new Date(ds + 'T00:00:00'); if (d.getDay()===0||d.getDay()===6){alert("Solo días lunes a viernes.");return null;} return d; }).filter(Boolean);
+    if (valid.length > 0) setShowTimeModal(true);
   };
 
-  const handleConfirmTimeSlots = async (selectedTimeSlots) => {
+  const handleConfirmTimeSlots = async (selectedTimeSlots, telefono) => {
     try {
-      console.log('Procesando horarios seleccionados:', selectedTimeSlots);
-      
-      const jwtToken = sessionStorage.getItem('jwtToken');
+      const jwtToken   = sessionStorage.getItem('jwtToken');
       const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-      
-      if (!jwtToken || !currentUser) {
-        console.error("No hay sesión activa o faltan credenciales");
-        alert("No hay sesión activa. Por favor, inicia sesión nuevamente.");
-        return;
-      }
-
-      // Verificar que gapi esté inicializado
-      if (!gapi.client || !gapi.auth2) {
-        console.error("La API de Google no está inicializada");
-        alert("No se pudo conectar con Google Calendar. Por favor, recarga la página.");
-        return;
-      }
-
-      // Almacenar todas las solicitudes creadas
-      const solicitudesCreadas = [];
-
+      if (!jwtToken || !currentUser) { alert("No hay sesión activa."); return; }
+      const creadas = [];
       for (const date of selectedDates) {
         const startTime = selectedTimeSlots[date]?.start;
-        const endTime = selectedTimeSlots[date]?.end;
-    
-        if (!startTime || !endTime) {
-          console.error(`Faltan horarios para la fecha: ${date}`);
-          continue;
-        }
-    
-        // Crear objetos Date para las fechas de inicio y fin
-        const startDateTime = new Date(`${date}T${startTime}`);
-        const endDateTime = new Date(`${date}T${endTime}`);
-
-        console.log('Fechas a usar:', {
-          date,
-          startTime,
-          endTime,
-          startDateTime,
-          endDateTime
-        });
-
-        if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-          console.error('Fechas inválidas:', { startDateTime, endDateTime });
-          continue;
-        }
-
+        const endTime   = selectedTimeSlots[date]?.end;
+        if (!startTime || !endTime) continue;
+        const startDT = new Date(`${date}T${startTime}`);
+        const endDT   = new Date(`${date}T${endTime}`);
+        if (isNaN(startDT.getTime()) || isNaN(endDT.getTime())) continue;
         try {
-          // Crear el evento en Google Calendar
-          const event = {
-            summary: 'Solicitud de proyector',
-            start: startDateTime,
-            end: endDateTime
-          };
-
-          const createdEvent = await createEvent(event);
-          
-          if (!createdEvent || !createdEvent.id) {
-            console.error('No se pudo crear el evento en Google Calendar');
-            continue;
-          }
-
-          // Crear solicitud en el backend
-          const response = await fetchFromAPI('/solicitar-proyector', {
+          const res = await fetchFromAPI('/solicitar-proyector', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${jwtToken}`
-            },
-            body: JSON.stringify({
-              fechaInicio: startDateTime.toISOString(),
-              fechaFin: endDateTime.toISOString(),
-              motivo: 'Solicitud de proyector',
-              eventId: createdEvent.id,
-              grado: currentUser?.grado || '',
-              grupo: currentUser?.grupo || '',
-              turno: currentUser?.turno || ''
-            })
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${jwtToken}` },
+            body: JSON.stringify({ fechaInicio: startDT.toISOString(), fechaFin: endDT.toISOString(), motivo: 'Solicitud de proyector', grado: currentUser?.grado||'', grupo: currentUser?.grupo||'', turno: currentUser?.turno||'', telefono })
           });
-
-          console.log('Respuesta completa del backend:', JSON.stringify(response));
-
-          // Extraer la solicitud de la respuesta
-          const solicitudData = response?.solicitud;
-          if (solicitudData && solicitudData._id) {
-            console.log('Solicitud extraída correctamente:', solicitudData);
-            solicitudesCreadas.push({
-              id: solicitudData._id,
-              fecha: date,
-              horaInicio: startTime,
-              horaFin: endTime
-            });
-          } else {
-            console.error('No se pudo extraer la solicitud de la respuesta:', response);
-          }
-        } catch (error) {
-          console.error('Error al procesar solicitud para la fecha', date, error);
-        }
+          const sol = res?.solicitud;
+          if (sol?._id) creadas.push({ id: sol._id, fecha: date, horaInicio: startTime, horaFin: endTime });
+        } catch (e) { console.error('Error en fecha', date, e); }
       }
-
-      // Agregar un log más detallado para depuración
-      console.log('Respuesta del servidor:', solicitudesCreadas);
-      
-      // Verificar explícitamente la respuesta
-      if (!solicitudesCreadas || solicitudesCreadas.length === 0) {
-        console.error('No se recibieron solicitudes creadas del servidor');
-        alertaError('No se pudo generar el código QR. Intenta nuevamente.');
-        return;
-      }
-      
-      // Asegurarse de que la primera solicitud tenga un ID
-      if (!solicitudesCreadas[0].id && !solicitudesCreadas[0]._id) {
-        console.error('La solicitud no tiene un ID válido:', solicitudesCreadas[0]);
-        alertaError('Error en el formato de la solicitud. Intenta nuevamente.');
-        return;
-      }
-      
-      // Usar _id si id no está disponible (común en MongoDB)
-      const solicitudId = solicitudesCreadas[0].id || solicitudesCreadas[0]._id;
-      
-      // Crear datos para el QR con verificación adicional
-      const qrInfo = {
-        solicitudId: solicitudId,
-        usuarioId: currentUser._id || currentUser.id,
-        fechas: solicitudesCreadas.map(s => ({
-          fecha: s.fecha,
-          horaInicio: s.horaInicio,
-          horaFin: s.horaFin
-        }))
-      };
-      
-      // Verificar que los datos del QR sean válidos
-      if (!qrInfo.solicitudId || !qrInfo.usuarioId) {
-        console.error('Datos de QR incompletos:', qrInfo);
-        alertaError('No se pudo generar el código QR con los datos recibidos.');
-        return;
-      }
-      
-      // Convertir a string para el QR
-      const qrString = JSON.stringify(qrInfo);
-      console.log('QR generado con datos:', qrString);
-      
-      // Establecer los datos del QR con un pequeño retraso para asegurar que el estado se actualice
-      setTimeout(() => {
-        setQrData(qrString);
-        setShouldSaveQR(true);
-      }, 100);
-
+      if (!creadas.length) { alertaError('No se pudo generar el código QR.'); return; }
+      const solicitudId = creadas[0].id || creadas[0]._id;
+      if (!solicitudId) { alertaError('Error en el formato de la solicitud.'); return; }
+      const qrInfo = { solicitudId, usuarioId: currentUser._id || currentUser.id, fechas: creadas.map(s => ({ fecha: s.fecha, horaInicio: s.horaInicio, horaFin: s.horaFin })) };
+      if (!qrInfo.solicitudId || !qrInfo.usuarioId) { alertaError('No se pudo generar el código QR.'); return; }
+      setTimeout(() => { setQrData(JSON.stringify(qrInfo)); setShouldSaveQR(true); }, 100);
       setShowTimeModal(false);
       fetchEvents();
       alertaExito('Solicitudes procesadas correctamente');
-
-    } catch (error) {
-      console.error('Error al procesar las solicitudes:', error);
-      alertaError('Hubo un error al procesar tu solicitud. Por favor, intenta de nuevo.');
-    }
+    } catch (error) { console.error('Error:', error); alertaError('Hubo un error. Intenta de nuevo.'); }
   };
 
   const handleDeleteEvents = async (eventIds) => {
     try {
-      // Intentar obtener el token de diferentes fuentes
-      let accessToken = sessionStorage.getItem('googleAccessToken') || 
-                        sessionStorage.getItem('accessRequest') || 
-                        localStorage.getItem('accessToken');
-      
-      if (!accessToken) {
-        console.error("El token no está disponible");
-        
-        // Intentar renovar el token si gapi está disponible
-        if (gapi && gapi.auth2) {
-          try {
-            const auth2 = gapi.auth2.getAuthInstance();
-            await auth2.signIn();
-            const currentUser = auth2.currentUser.get();
-            accessToken = currentUser.getAuthResponse().access_token;
-            sessionStorage.setItem('googleAccessToken', accessToken);
-            console.log("Token renovado exitosamente");
-          } catch (signInError) {
-            console.error('Error al renovar el token:', signInError);
-            alertaError('No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.');
-            return;
-          }
-        } else {
-          alertaError('No hay sesión activa. Por favor, inicia sesión nuevamente.');
-          return;
-        }
-      }
-
-      // Eliminar cada evento
+      const jwtToken = sessionStorage.getItem('jwtToken');
       for (const eventId of eventIds) {
         try {
-          await gapi.client.calendar.events.delete({
-            calendarId: 'primary',
-            eventId: eventId
+          await fetchFromAPI(`/solicituds/${eventId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${jwtToken}` }
           });
-          console.log(`Evento ${eventId} eliminado`);
         } catch (error) {
-          console.error(`Error al eliminar el evento ${eventId}:`, error);
-          
-          // Si hay un error de autenticación, intentar renovar el token
-          if (error.status === 401 && gapi && gapi.auth2) {
-            try {
-              const auth2 = gapi.auth2.getAuthInstance();
-              await auth2.signIn();
-              const currentUser = auth2.currentUser.get();
-              const newToken = currentUser.getAuthResponse().access_token;
-              sessionStorage.setItem('googleAccessToken', newToken);
-              gapi.client.setToken({
-                access_token: newToken
-              });
-              
-              // Reintentar la eliminación
-              await gapi.client.calendar.events.delete({
-                calendarId: 'primary',
-                eventId: eventId
-              });
-              console.log(`Evento ${eventId} eliminado después de renovar token`);
-            } catch (signInError) {
-              console.error('Error al renovar la sesión:', signInError);
-            }
-          }
+          console.error(`Error eliminando ${eventId}:`, error);
         }
       }
-
-      fetchEvents();
-      setShowModal(false);
-      alertaExito('Eventos eliminados correctamente');
-    } catch (error) {
-      console.error('Error general al eliminar eventos:', error);
-      alertaError('Hubo un error al eliminar los eventos. Por favor, intenta de nuevo.');
-    }
+      fetchEvents(); setShowModal(false); alertaExito('Solicitudes eliminadas correctamente');
+    } catch (error) { console.error('Error:', error); alertaError('Hubo un error al eliminar.'); }
   };
 
-  const toggleEventSelection = (id) => {
-    setEvents(prevEvents =>
-      prevEvents.map(event =>
-        event.id === id ? { ...event, selected: !event.selected } : event
-      )
-    );
-  };
+  const toggleEventSelection = (id) =>
+    setEvents(prev => prev.map(e => e.id===id ? {...e, selected:!e.selected} : e));
 
-  // Componente de fechas seleccionadas
-  const SelectedDatesComponent = () => (
-    selectedDates.length > 0 && (
-      <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">
-          Fechas seleccionadas:
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {selectedDates.map(date => {
-            // Crear la fecha correctamente en la zona horaria objetivo
-            const [year, month, day] = date.split('-');
-            const zonedDate = new Date(Date.UTC(year, month - 1, day));
-            
-            return (
-              <div 
-                key={date}
-                className="flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 
-                         text-blue-800 dark:text-blue-100 
-                         rounded-full text-sm"
-              >
-                <span className="mr-1">
-                  {date}
-                </span>
-                <button 
-                  onClick={() => handleDateChange(new Date(date))}
-                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    )
-  );
+  useEffect(() => { if (qrData && shouldSaveQR) saveQRToDatabase(qrData); }, [qrData, shouldSaveQR]);
 
-  useEffect(() => {
-    if (qrData && shouldSaveQR) {
-      saveQRToDatabase(qrData);
-    }
-  }, [qrData, shouldSaveQR]);
-
-  const saveQRToDatabase = async (qrData) => {
+  const saveQRToDatabase = async (data) => {
     try {
       const token = sessionStorage.getItem('jwtToken');
-      if (!token) {
-        console.error('No hay token disponible');
-        return;
-      }
-      
-      // Guardar en sessionStorage para uso temporal
-      sessionStorage.setItem('lastGeneratedQR', qrData);
-      console.log('QR guardado en sessionStorage');
-      
-      const response = await fetchFromAPI('/qr-codes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          qrData: qrData
-        })
-      });
-      
-      if (response.success) {
-        console.log('QR guardado en la base de datos');
-        setShouldSaveQR(false); // Resetear el flag
-      }
-    } catch (error) {
-      console.error('Error al guardar el QR:', error);
-    }
+      if (!token) return;
+      sessionStorage.setItem('lastGeneratedQR', data);
+      const res = await fetchFromAPI('/qr-codes', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify({qrData:data}) });
+      if (res.success) setShouldSaveQR(false);
+    } catch (error) { console.error('Error guardando QR:', error); }
   };
 
+  const qrUrl = qrData ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10` : null;
+
+  // ── Gate: verificación de encargado ─────────────────────────────────────────
+  if (encargadoStatus === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Verificando acceso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (encargadoStatus === 'denied') {
+    const enc = encargadoInfo?.encargadoActivo;
+    const hoy = new Date().getUTCDay(); // 0=Dom 1=Lun ... 4=Jue 5=Vie
+    const puedeSerProvisional = enc?.noSePresento && hoy >= 1 && hoy <= 3;
+    const esVentanaPostulacion = hoy === 4 || hoy === 5;
+    const yaPostulado = !!encargadoInfo?.miPostulacionSiguienteSemana;
+
+    const handleSolicitarProvisional = async () => {
+      try {
+        await fetchFromAPI('/api/encargado/sustitucion', { method: 'POST' });
+        alertaExito('Solicitud enviada al administrador. Te notificarán si eres aprobado.');
+      } catch (err) {
+        const msg = err.message || '';
+        alertaError(msg.includes('400') ? msg.replace(/Error \d+: /, '').replace(/[{}"]/g,'') : 'No se pudo enviar la solicitud.');
+      }
+    };
+
+    const handlePostular = async () => {
+      try {
+        await fetchFromAPI('/api/encargado/postular', { method: 'POST' });
+        alertaExito('¡Postulación registrada! El administrador revisará los candidatos.');
+        // Refrescar el estado
+        const data = await fetchFromAPI('/api/encargado/activo');
+        setEncargadoInfo(data);
+      } catch (err) {
+        const msg = err.message || '';
+        alertaError(msg.replace(/Error \d+: /, '').replace(/^[{"]|[}"]$/g, '') || 'No se pudo registrar la postulación.');
+      }
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="min-h-screen p-4 sm:p-8 bg-gray-50 dark:bg-gray-900 flex items-center justify-center"
+      >
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden">
+          <div className={`bg-gradient-to-br ${themeStyles.gradient} px-8 py-10 text-center relative overflow-hidden`}>
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-5a7 7 0 100-14 7 7 0 000 14z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-black text-white">Acceso Restringido</h2>
+            <p className="text-white/70 text-sm mt-1">Solo el Encargado activo puede hacer solicitudes esta semana</p>
+          </div>
+
+          <div className="px-8 py-6">
+            {enc ? (
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 mb-5">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  Encargado activo esta semana
+                </p>
+                <div className="flex items-center gap-3">
+                  {enc.picture && <img src={enc.picture} alt="" className="w-10 h-10 rounded-full" />}
+                  <div>
+                    <p className="font-bold text-gray-900 dark:text-white">{enc.nombre}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {enc.tipo === 'provisional' ? 'Encargado Provisional' : 'Encargado Titular'}
+                    </p>
+                  </div>
+                </div>
+                {enc.noSePresento && (
+                  <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                    El encargado no ha registrado solicitudes esta semana.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 mb-5 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No hay encargado designado para tu grupo esta semana.
+                </p>
+              </div>
+            )}
+
+            {puedeSerProvisional && (
+              <button
+                onClick={handleSolicitarProvisional}
+                className={`w-full py-3 rounded-2xl font-semibold text-white bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition-opacity mb-3`}
+              >
+                Solicitar ser Encargado Provisional
+              </button>
+            )}
+
+            {/* Postulación próxima semana */}
+            {esVentanaPostulacion ? (
+              yaPostulado ? (
+                <div className="text-center bg-blue-50 dark:bg-blue-900/20 rounded-xl px-4 py-3">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                    Ya estás postulado para la próxima semana
+                  </p>
+                  <p className="text-xs text-blue-500/70 dark:text-blue-400/60 mt-0.5 capitalize">
+                    Estado: {encargadoInfo.miPostulacionSiguienteSemana}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={handlePostular}
+                  className={`w-full py-3 rounded-2xl font-semibold text-white bg-gradient-to-r ${themeStyles.gradient} hover:opacity-90 transition-opacity`}
+                >
+                  Postularme como Encargado (próxima semana)
+                </button>
+              )
+            ) : (
+              <p className="text-center text-xs text-gray-400 dark:text-gray-600">
+                Las postulaciones para la próxima semana abren los <strong>jueves y viernes</strong>.
+              </p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
-    <div className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
-      {/* Contenedor principal */}
-      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 md:p-8">
-        {/* Encabezado */}
-        <div className="flex flex-col items-center mb-6 sm:mb-8">
-          <div className={`${themeStyles.background} p-4 sm:p-6 rounded-full mb-4`}>
-            <FontAwesomeIcon 
-              icon={faTv} 
-              className={`${themeStyles.text} h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16`} 
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="min-h-screen p-2 sm:p-4 md:p-8 bg-gray-50 dark:bg-gray-900"
+    >
+      <div className="max-w-5xl mx-auto space-y-4">
+
+        {/* ── HERO HEADER ── */}
+        <div className={`relative bg-gradient-to-br ${themeStyles.gradient} rounded-3xl overflow-hidden shadow-2xl`}>
+
+          {/* Orbs flotantes */}
+          {ORBS.map((o, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-white/10 backdrop-blur-sm"
+              style={{ width: o.w, height: o.h, left: o.left, top: o.top }}
+              animate={{ y: [0, -18, 0], scale: [1, 1.08, 1], opacity: [0.25, 0.55, 0.25] }}
+              transition={{ duration: o.dur, repeat: Infinity, ease: 'easeInOut', delay: o.delay }}
             />
+          ))}
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between px-4 sm:px-6 py-5 sm:py-7 lg:py-4 text-center lg:text-left gap-3 lg:gap-8">
+            {/* Ícono animado */}
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              className="bg-white/20 backdrop-blur-md border border-white/30 p-4 sm:p-5 rounded-2xl shadow-xl mb-4 lg:mb-0"
+            >
+              <FontAwesomeIcon icon={faTv} className="text-white h-8 w-8 sm:h-10 sm:w-10 drop-shadow-lg" />
+            </motion.div>
+
+            <div className="lg:flex-1">
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl sm:text-3xl md:text-4xl font-black text-white drop-shadow-lg tracking-tight"
+            >
+              Solicitud de Proyector
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.35 }}
+              className="mt-2 text-white/75 text-sm sm:text-base"
+            >
+              Selecciona los días que necesitas el proyector
+            </motion.p>
+            </div>
+
+            <div className="flex flex-col items-center lg:items-end gap-2">
+            {/* Reloj vivo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-3 lg:mt-0 bg-black/20 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-2.5 flex items-center gap-3 lg:self-center"
+            >
+              <div className="text-left">
+                <p className="text-white/60 text-xs uppercase tracking-widest">Tapachula, Chiapas</p>
+                <p className="text-white font-black text-xl sm:text-2xl font-mono tabular-nums tracking-tight leading-none mt-0.5">
+                  {timeStr}
+                </p>
+              </div>
+              <div className="w-px h-10 bg-white/20" />
+              <div className="text-right">
+                <p className="text-white font-semibold text-sm">{dayName}</p>
+                <p className="text-white/70 text-xs">{now.day} {monthName} {now.year}</p>
+              </div>
+            </motion.div>
+
+            {/* Badge: encargado activo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6 }}
+              className="mt-2 lg:mt-1 bg-emerald-500/20 border border-emerald-400/30 rounded-full px-5 py-1.5 flex items-center gap-2"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.5, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+              />
+              <span className="text-white font-semibold text-sm">
+                Eres el Encargado de tu grupo esta semana
+              </span>
+            </motion.div>
+            </div>
           </div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">
-            Solicitud de Proyector
-          </h2>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">
-            Selecciona las fechas en las que necesitas el proyector
-          </p>
         </div>
 
-        {/* Reloj en zona horaria fija */}
-        <div className="text-center mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <div className="text-sm text-gray-600 dark:text-gray-300">
-            Zona horaria: Ciudad de Tapachula, Chiapas
+        {/* ── CARD PRINCIPAL ── */}
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700">
+
+          {/* Leyenda */}
+          <div className="px-6 pt-5 pb-2 flex flex-wrap gap-4">
+            {[
+              { color: 'bg-indigo-500', label: 'Fecha seleccionada', glow: 'shadow-indigo-200' },
+              { color: 'bg-red-500',    label: 'Solicitud existente', glow: 'shadow-red-200' },
+              { color: 'bg-gray-300 dark:bg-gray-600', label: 'No disponible', glow: '' },
+            ].map(({ color, label, glow }) => (
+              <span key={label} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span className={`w-3 h-3 rounded-full ${color} shadow-md ${glow}`} />
+                {label}
+              </span>
+            ))}
           </div>
-          <div className="text-lg font-mono text-gray-800 dark:text-gray-100">
-            {Temporal.Now.zonedDateTimeISO(targetTimeZone).toPlainTime().toString().split('.')[0]}
+
+          {/* Calendario */}
+          <div className="px-3 sm:px-6 pb-4">
+            <div className="calendar-wrapper rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-inner">
+              <Calendar
+                onChange={handleDateChange}
+                value={null}
+                tileDisabled={tileDisabled}
+                tileClassName={tileClassName}
+                locale="es-ES"
+              />
+            </div>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {Temporal.Now.zonedDateTimeISO(targetTimeZone).toPlainDate().toString()}
+
+          {/* Fechas seleccionadas */}
+          <AnimatePresence>
+            {selectedDates.length > 0 && (
+              <motion.div
+                key="dates-section"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mx-4 sm:mx-6 mb-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-100 dark:border-indigo-800/50 p-4 overflow-hidden"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <FontAwesomeIcon icon={faCircleCheck} className="text-indigo-500 text-sm" />
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                    {selectedDates.length} {selectedDates.length === 1 ? 'fecha seleccionada' : 'fechas seleccionadas'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <AnimatePresence>
+                    {selectedDates.map((date, i) => (
+                      <motion.div
+                        key={date}
+                        initial={{ scale: 0, opacity: 0, y: 12 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0, opacity: 0, x: -10 }}
+                        transition={{ type: 'spring', stiffness: 450, damping: 22, delay: i * 0.04 }}
+                        className="date-pill flex items-center gap-2 pl-3 pr-2 py-1.5 bg-indigo-600 text-white rounded-full text-sm font-medium shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40"
+                      >
+                        <span>{date}</span>
+                        <motion.button
+                          whileHover={{ scale: 1.2, rotate: 90 }}
+                          whileTap={{ scale: 0.85 }}
+                          onClick={() => handleDateChange(new Date(date))}
+                          className="w-5 h-5 rounded-full bg-white/25 hover:bg-white/45 flex items-center justify-center transition-colors text-xs leading-none"
+                          aria-label="Quitar fecha"
+                        >
+                          ×
+                        </motion.button>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Botones */}
+          <div className="px-4 sm:px-6 pb-6 flex flex-col sm:flex-row gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(99,102,241,0.35)' }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleRequest}
+              className={`btn-shimmer flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 font-bold text-sm
+                         bg-gradient-to-r ${themeStyles.gradient} text-white rounded-2xl
+                         shadow-lg transition-all duration-200`}
+            >
+              <FontAwesomeIcon icon={faCalendarPlus} className="text-base" />
+              Solicitar Proyector
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(239,68,68,0.25)' }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowModal(true)}
+              className="btn-shimmer-red flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 font-bold text-sm
+                         bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-2xl
+                         shadow-lg transition-all duration-200"
+            >
+              <FontAwesomeIcon icon={faTrash} className="text-base" />
+              Eliminar Eventos
+            </motion.button>
           </div>
         </div>
 
-        {/* Calendario con estilos Tailwind directos */}
-        <div className="p-2 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md">
-          <style jsx>{`
-            .react-calendar {
-              width: 100%;
-              max-width: 100%;
-              background: transparent;
-              border: none;
-              font-family: inherit;
-            }
-            
-            .react-calendar button {
-              margin: 0;
-              border: 0;
-              outline: none;
-            }
-            
-            .react-calendar__navigation {
-              display: flex;
-              height: 44px;
-              margin-bottom: 1em;
-            }
-            
-            .react-calendar__navigation button {
-              min-width: 44px;
-              background: none;
-            }
-            
-            .react-calendar__month-view__weekdays {
-              text-align: center;
-              text-transform: uppercase;
-              font-weight: bold;
-              font-size: 0.75em;
-            }
-            
-            .react-calendar__month-view__weekdays__weekday {
-              padding: 0.5em;
-            }
-            
-            .react-calendar__month-view__days__day--weekend {
-              color: #d10000;
-            }
-            
-            .react-calendar__tile {
-              max-width: 100%;
-              padding: 10px 6.6667px;
-              background: none;
-              text-align: center;
-              line-height: 16px;
-              height: 50px;
-              transition: background-color 0.1s ease;
-            }
-            
-            .react-calendar__tile:disabled {
-              background-color: #f3f4f6;
-              cursor: not-allowed;
-              opacity: 0.5;
-            }
-            
-            .dark .react-calendar__tile:disabled {
-              background-color: #374151;
-              opacity: 0.3;
-            }
-            
-            /* Eliminar estilos predeterminados */
-            .react-calendar__tile--now {
-              background: inherit !important;
-              color: inherit !important;
-            }
-            
-            /* Asegurarse de que las clases Tailwind tengan prioridad */
-            .bg-indigo-600 {
-              background-color: #4f46e5 !important;
-            }
-            
-            .bg-red-600 {
-              background-color: #dc2626 !important;
-            }
-            
-            .text-white {
-              color: white !important;
-            }
-          `}</style>
-          
-          <Calendar
-            onChange={handleDateChange}
-            value={calendarValue}
-            tileDisabled={tileDisabled}
-            tileClassName={tileClassName}
-            locale="es-ES"
-          />
-        </div>
+        {/* ── SECCIÓN QR ── */}
+        <AnimatePresence>
+          {qrData && (
+            <motion.div
+              key="qr-section"
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-indigo-100 dark:border-indigo-800/50"
+            >
+              {/* Fondo degradado sutil */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${themeStyles.gradient} opacity-5`} />
 
-        <SelectedDatesComponent />
+              {/* Header */}
+              <div className={`relative bg-gradient-to-r ${themeStyles.gradient} px-6 py-4 flex items-center gap-3`}>
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <FontAwesomeIcon icon={faQrcode} className="text-white text-xl" />
+                </motion.div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Código QR generado</h3>
+                  <p className="text-white/70 text-xs">Tu solicitud fue registrada exitosamente</p>
+                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="ml-auto w-2.5 h-2.5 rounded-full bg-green-400 shadow-lg shadow-green-400/50"
+                />
+              </div>
 
-        {/* Botones con estilos mejorados */}
-        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6">
-          <button
-            onClick={handleRequest}
-            className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
-                     bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg
-                     ${themeStyles.hover}
-                     focus:ring-4 focus:ring-opacity-50 ${themeStyles.border}`}
-          >
-            <FontAwesomeIcon icon={faCalendarPlus} className="mr-2" />
-            Solicitar Proyector
-          </button>
+              <div className="relative p-6 flex flex-col items-center gap-5">
+                {/* QR con efecto scan */}
+                <motion.div
+                  initial={{ scale: 0.7, opacity: 0, rotateY: 90 }}
+                  animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
+                  className="relative qr-glow rounded-2xl overflow-hidden"
+                >
+                  <div className={`p-4 bg-gradient-to-br ${themeStyles.gradient} rounded-2xl`}>
+                    <div className="bg-white rounded-xl p-2 shadow-inner">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=200x200&margin=6`}
+                        alt="QR Code"
+                        className="w-[200px] h-[200px] rounded-lg"
+                      />
+                    </div>
+                  </div>
+                  {/* Línea de escaneo animada */}
+                  <div className="scan-line absolute left-4 right-4" />
+                </motion.div>
 
-          <button
-            onClick={() => setShowModal(true)}
-            className={`flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 
-                     bg-gradient-to-r ${themeStyles.deleteGradient || 'from-red-500 to-red-700'} text-white rounded-lg
-                     ${themeStyles.deleteHover || 'hover:from-red-600 hover:to-red-800'} 
-                     focus:ring-4 focus:ring-opacity-50 ${themeStyles.deleteBorder || 'focus:ring-red-300 dark:focus:ring-red-700'}`}
-          >
-            <FontAwesomeIcon icon={faTrash} className="mr-2" />
-            Eliminar Eventos
-          </button>
-        </div>
+                {/* Info */}
+                <div className="text-center">
+                  <p className="text-xs font-mono text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/60 px-3 py-1 rounded-full border border-gray-100 dark:border-gray-700">
+                    ID: {JSON.parse(qrData || '{"solicitudId":"no-id"}').solicitudId}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 max-w-xs">
+                    Muestra este código al administrador para la asignación del proyector
+                  </p>
+                </div>
+
+                {/* Botones QR */}
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <motion.a
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    href={qrUrl}
+                    download="mi-qr-proyector.png"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`btn-shimmer flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-sm
+                               bg-gradient-to-r ${themeStyles.gradient} text-white rounded-xl shadow-md`}
+                  >
+                    <FontAwesomeIcon icon={faDownload} />
+                    Descargar QR
+                  </motion.a>
+
+                  {navigator.share && (
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        navigator.share({ title: 'Mi QR de solicitud de proyector', text: 'Código QR para solicitud de proyector', url: qrUrl })
+                          .catch(err => console.error('Error al compartir:', err));
+                      }}
+                      className="flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-sm
+                                 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600
+                                 text-white rounded-xl shadow-md transition-all"
+                    >
+                      <FontAwesomeIcon icon={faShareNodes} />
+                      Compartir
+                    </motion.button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Modales */}
         <DeleteEventModal
@@ -944,77 +651,17 @@ const RequestProjector = () => {
           handleDelete={handleDeleteEvents}
           events={events}
           toggleEventSelection={toggleEventSelection}
-          className="max-w-lg mx-auto"
           themeStyles={themeStyles}
         />
-
         <TimeSelectionModal
           show={showTimeModal}
           handleClose={() => setShowTimeModal(false)}
           selectedDates={selectedDates}
           handleConfirm={handleConfirmTimeSlots}
-          className="max-w-lg mx-auto"
           themeStyles={themeStyles}
         />
-        
-        {/* Sección de código QR */}
-        {qrData && (
-          <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex flex-col items-center">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
-              Código QR de tu solicitud
-            </h3>
-            
-            {/* Contenedor del QR simplificado */}
-            <div className={`p-4 ${themeStyles.background} rounded-lg`}>
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=200x200&margin=10`} 
-                alt="QR Code"
-                className="w-[200px] h-[200px]"
-              />
-              
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                ID: {JSON.parse(qrData || '{"solicitudId":"no-id"}').solicitudId}
-              </p>
-            </div>
-            
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-3 text-center">
-              Muestra este código al administrador para agilizar la asignación de tu proyector
-            </p>
-            
-            {/* Botones para dispositivos móviles y desktop */}
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              <a
-                href={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`}
-                download="mi-qr-proyector.png"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`px-4 py-2 bg-gradient-to-r ${themeStyles.gradient} text-white rounded-lg ${themeStyles.hover} text-center`}
-              >
-                Descargar QR
-              </a>
-              
-              {navigator.share && (
-                <button
-                  onClick={() => {
-                    navigator.share({
-                      title: 'Mi código QR de solicitud de proyector',
-                      text: 'Aquí está mi código QR para la solicitud de proyector',
-                      url: `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=300x300&margin=10`
-                    }).catch(err => {
-                      console.error('Error al compartir:', err);
-                      console.error('RequestProjector', 'Error al compartir', err);
-                    });
-                  }}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Compartir QR
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FiFile, FiSearch, FiDownload, FiFilter, FiLoader } from 'react-icons/fi';
-import { authService } from '../services/authService';
+import { FiFile, FiSearch, FiDownload, FiLoader } from 'react-icons/fi';
 
 function ViewDocuments() {
   const [documents, setDocuments] = useState([]);
@@ -25,7 +24,6 @@ function ViewDocuments() {
         
         if (!response.ok) throw new Error('Error al cargar documentos');
         const data = await response.json();
-        console.log('Documentos cargados:', data);
         setDocuments(data);
         setError(null);
       } catch (err) {
@@ -80,8 +78,6 @@ function ViewDocuments() {
       console.error('Documento inválido o sin URL');
       return;
     }
-    
-    console.log('Abriendo documento:', doc.fileUrl);
     
     // Abrir directamente la URL de Cloudinary
     window.open(doc.fileUrl, '_blank');

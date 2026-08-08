@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      args:
+        - REACT_APP_GOOGLE_CLIENT_ID=217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com
+        - REACT_APP_BACKEND_URL=https://control-proyectores.duckdns.org/api
+        - REACT_APP_FRONTEND_URL=https://control-proyectores.duckdns.org
+    container_name: proyectores-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:80"
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyectores-backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - FRONTEND_URL=https://control-proyectores.duckdns.org
+      - BACKEND_URL=https://control-proyectores.duckdns.org/api
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -2,7 +2,6 @@ import { BACKEND_URL } from '../config/config';
 
 export const AUTH_CONSTANTS = {
   ADMIN_EMAILS: [
-    'proyectoresunach@gmail.com',
     'fanny.cordova@unach.mx',
     'nidia.guzman@unach.mx',
     'deysi.gamboa@unach.mx',
@@ -14,7 +13,6 @@ export const AUTH_CONSTANTS = {
     'brianfloresxxd@gmail.com'
   ],
   API_BASE_URL: BACKEND_URL,
-  GOOGLE_CLIENT_ID: '217386513987-f2uhmkqcb8stdrr04ona8jioh0tgs2j2.apps.googleusercontent.com',
   STORAGE_KEYS: {
     JWT_TOKEN: 'jwtToken',
     USER_DATA: 'currentUser',

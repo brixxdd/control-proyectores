@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   proyectores: { type: Array, default: [] },
   turno: { type: String, default: null },
   picture: { type: String, default: null },
+  passwordHash: { type: String, default: null },
   isAdmin: { type: Boolean, default: false },
   pdfPath: { type: String, default: null },
   theme: {
@@ -15,9 +16,16 @@ const userSchema = new mongoose.Schema({
     default: 'default',
     enum: ['default', 'purple', 'green', 'ocean', 'sunset']
   },
-  darkMode: { type: Boolean, default: false }
+  darkMode: { type: Boolean, default: false },
+  perfilModificadoEn: { type: Date, default: null }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: {
+    transform: (doc, ret) => {
+      delete ret.passwordHash;
+      return ret;
+    }
+  }
 });
 
 

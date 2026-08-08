@@ -1,17 +1,22 @@
-import React, { useEffect } from 'react';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { FaGoogle } from 'react-icons/fa';
+import { Mail, Lock, LogIn } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { getCurrentThemeStyles } from '../themes/themeConfig';
 import { authService } from '../services/authService';
 
 const SignIn = () => {
-  const { handleGoogleLogin, isAuthenticated, isAdmin } = useAuth();
-  const { currentTheme, darkMode, toggleDarkMode } = useTheme();
+  const { handleLogin, isAuthenticated, isAdmin } = useAuth();
+  const { currentTheme } = useTheme();
   const themeStyles = getCurrentThemeStyles(currentTheme || 'default');
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const loadInitialTheme = async () => {
@@ -33,11 +38,24 @@ const SignIn = () => {
     return <Navigate to={isAdmin ? "/admin-dashboard" : "/dashboard"} replace />;
   }
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await handleLogin(email.trim().toLowerCase(), password);
+    } catch (err) {
+      setError(err?.message || 'Correo o contraseña incorrectos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-[100dvh] flex items-center justify-center relative overflow-hidden
-                    bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 
+                    bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20
                     dark:from-blue-900 dark:via-purple-900 dark:to-pink-900">
-      {/* Burbujas animadas de fondo originales */}
+      {/* Burbujas animadas de fondo */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
           animate={{
@@ -50,8 +68,8 @@ const SignIn = () => {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute -top-1/2 -left-1/2 w-full h-full 
-                     bg-gradient-to-br from-blue-400/30 to-transparent 
+          className="absolute -top-1/2 -left-1/2 w-full h-full
+                     bg-gradient-to-br from-blue-400/30 to-transparent
                      dark:from-blue-500/10 rounded-full blur-3xl"
         />
         <motion.div
@@ -66,79 +84,129 @@ const SignIn = () => {
             ease: "easeInOut",
             delay: 2
           }}
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full 
-                     bg-gradient-to-tl from-purple-400/30 to-transparent 
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full
+                     bg-gradient-to-tl from-purple-400/30 to-transparent
                      dark:from-purple-500/10 rounded-full blur-3xl"
         />
       </div>
 
-      {/* Card principal con los nuevos temas */}
+      {/* Card principal */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
         className="relative w-full max-w-md mx-4"
       >
-        <div className="backdrop-blur-xl bg-white/60 dark:bg-gray-900/50 
+        <div className="backdrop-blur-xl bg-white/60 dark:bg-gray-900/50
                       rounded-3xl shadow-2xl overflow-hidden
                       border border-white/20 dark:border-gray-700/30">
           <div className="p-6 space-y-6">
-            {/* Logo con el nuevo gradiente */}
+            {/* Logo */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ 
+              transition={{
                 type: "spring",
                 stiffness: 260,
                 damping: 20,
-                delay: 0.2 
+                delay: 0.2
               }}
               className="relative w-20 h-20 mx-auto"
             >
               <div className={`absolute inset-0 bg-gradient-to-tr ${themeStyles.gradient}
                             rounded-full opacity-70 blur-xl`}></div>
-              
+
               <div className={`relative bg-gradient-to-tr ${themeStyles.gradient}
                             rounded-full w-full h-full flex items-center justify-center
                             shadow-lg`}>
-                <FaGoogle className="text-white text-3xl transform hover:scale-110 
-                                  transition-transform duration-300" />
+                <LogIn className="text-white text-3xl w-8 h-8" />
               </div>
             </motion.div>
 
-            {/* Título con el nuevo gradiente */}
+            {/* Título */}
             <div className="text-center space-y-2">
               <h2 className={`text-2xl font-bold bg-gradient-to-r ${themeStyles.gradient}
                            bg-clip-text text-transparent`}>
                 Bienvenido
               </h2>
               <p className="text-sm text-gray-600/90 dark:text-gray-300/90">
-                Inicia sesión con tu cuenta de Google
+                Inicia sesión con tu correo institucional (@unach.mx)
               </p>
             </div>
 
-            {/* Botón de Google con el nuevo tema */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="transform transition-all duration-300"
-            >
-              <button
-                onClick={handleGoogleLogin}
-                className={`w-full group relative overflow-hidden rounded-xl 
-                         bg-gradient-to-r ${themeStyles.gradient} p-[2px]`}
-              >
-                <div className="relative bg-white dark:bg-gray-900 rounded-[10px] p-3
-                              flex items-center justify-center space-x-3
-                              transition-all duration-300
-                              group-hover:bg-opacity-90 dark:group-hover:bg-opacity-90">
-                  <FaGoogle className="text-xl text-gray-700 dark:text-gray-200" />
-                  <span className="font-medium text-sm text-gray-700 dark:text-gray-200">
-                    Iniciar sesión con Google
-                  </span>
+            {/* Formulario */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Correo
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700
+                               border border-gray-200 dark:border-gray-600
+                               text-gray-900 dark:text-white rounded-xl
+                               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                               transition-all duration-200"
+                    placeholder="tu.correo@unach.mx"
+                    required
+                    autoComplete="email"
+                  />
                 </div>
-              </button>
-            </motion.div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700
+                               border border-gray-200 dark:border-gray-600
+                               text-gray-900 dark:text-white rounded-xl
+                               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                               transition-all duration-200"
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-600 dark:text-red-400 text-center">{error}</p>
+              )}
+
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="transform transition-all duration-300"
+              >
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full group relative overflow-hidden rounded-xl
+                           bg-gradient-to-r ${themeStyles.gradient} p-3
+                           text-white font-medium text-sm
+                           disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+                </button>
+              </motion.div>
+            </form>
 
             {/* Footer */}
             <motion.div
@@ -149,6 +217,9 @@ const SignIn = () => {
             >
               <p>Sistema de Control de Proyectores</p>
               <p>© {new Date().getFullYear()} Todos los derechos reservados</p>
+              <p className="pt-1">
+                ¿Te invitaron al sistema? Revisa tu correo por la liga de registro.
+              </p>
             </motion.div>
           </div>
         </div>

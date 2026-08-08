@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: proyectores-mongo-local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27018:27017"
+    volumes:
+      - mongo_local_data:/data/db
+    networks:
+      - app-network-local
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyectores-backend-local
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "127.0.0.1:5000:5000"
+    env_file:
+      - ./backend/.env.local
+    networks:
+      - app-network-local
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proyectores-frontend-local
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:3001:3001"
+    env_file:
+      - .env.local
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3001
+    networks:
+      - app-network-local
+
+networks:
+  app-network-local:
+    driver: bridge
+
+volumes:
+  mongo_local_data:

@@ -39,7 +39,6 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
   const handleAsignarProyector = async (proyector) => {
     try {
       setSelectedProyector(proyector);
-      console.log('Intentando asignar proyector como:', sessionStorage.getItem('currentUser'));
 
       // Actualizar estado de la solicitud a aprobado
       const solicitudResponse = await authService.api.put(`/solicituds/${solicitud._id}`, {
@@ -64,23 +63,14 @@ const AsignarProyectorModal = ({ show, onClose, solicitud, onAsignar }) => {
       });
 
       // Mostrar toast de éxito con información detallada
-      toast.success(
-        `¡Proyector ${proyector.codigo} asignado correctamente!`,
-        {
-          duration: 5000, // 5 segundos
-          icon: '🎯',
-          style: {
-            borderRadius: '10px',
-            background: '#333',
-            color: '#fff',
-          },
-        }
-      );
+      toast.success(`¡Proyector ${proyector.codigo} asignado correctamente!`, {
+        icon: '🎯',
+      });
 
       onAsignar(proyector);
       onClose();
     } catch (error) {
-      console.error('Error al asignar proyector:', error);
+      console.error('Error al xtor:', error);
       toast.error(
         error.response?.status === 403 
           ? 'No tienes permisos para realizar esta acción'

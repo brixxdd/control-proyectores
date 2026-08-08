@@ -1,6 +1,5 @@
 export const AUTH_CONSTANTS = {
   ADMIN_EMAILS: [
-    'proyectoresunach@gmail.com',
     'brianfloresxxd@gmail.com',
     // Agrega aquí otros correos de administradores
   ],

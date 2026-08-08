@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BACKEND_URL } from '../config/config';
 import { fetchFromAPI } from '../utils/fetchHelper';
 import { useAuth } from '../hooks/useAuth';
 
@@ -16,7 +15,6 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
   // Si el usuario es administrador, no mostrar el modal
   useEffect(() => {
     if (isAdmin && isOpen) {
-      console.log("Usuario administrador - Cerrando modal de grado/grupo");
       onClose();
     }
   }, [isAdmin, isOpen, onClose]);
@@ -87,7 +85,7 @@ const GradeGroupModal = ({ isOpen, onClose }) => {
       }
 
       // Si fetchFromAPI ya devuelve el JSON parseado
-      const data = await fetchFromAPI('/update-user', {
+      await fetchFromAPI('/update-user', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

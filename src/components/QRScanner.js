@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { alertaError, alertaExito } from './Alert';
 import { alertService } from '../services/alertService';
+import { useNavigate } from 'react-router-dom';
 
-const QRScanner = ({ onScanSuccess, onClose }) => {
-  const [startScan, setStartScan] = useState(true);
+const QRScanner = ({ onClose }) => {
+  const navigate = useNavigate();
   const [cameraPermission, setCameraPermission] = useState(null);
   const [cameraError, setCameraError] = useState(null);
   const [cameras, setCameras] = useState([]);
@@ -13,22 +14,16 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    // Limpiar alertas al montar el componente
     alertService.clearRecentAlerts();
-    
-    // Verificar permisos de cámara al montar
     checkCameraPermission();
-    
-    // Limpiar al desmontar
     return () => {
       if (scannerRef.current) {
         try {
           scannerRef.current.stop();
-        } catch (err) {
-          // Silenciar errores al detener
-        }
+        } catch (err) { /* Silenciar */ }
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkCameraPermission = async () => {
@@ -80,7 +75,6 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       scannerRef.current = html5QrCode;
       
       const availableCameras = await Html5Qrcode.getCameras();
-      console.log("Cámaras disponibles:", availableCameras);
       setCameras(availableCameras);
 
       // Intentar encontrar la cámara trasera
@@ -93,7 +87,6 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
       
       if (backCamera) {
         cameraId = backCamera.id;
-        console.log("Usando cámara trasera:", backCamera.label);
       }
       
       setSelectedCamera(cameraId);
@@ -142,46 +135,44 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
 
   const handleScan = (decodedText) => {
     if (!decodedText) return;
-    
-    console.log("Texto decodificado del QR:", decodedText);
-    
+
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(err => console.error("Error al detener el escáner:", err));
+    }
+
     try {
-      // Intentar parsear el texto como JSON
       let qrData;
       try {
         qrData = JSON.parse(decodedText);
       } catch (e) {
-        // Si no es JSON válido, usar el texto tal cual
-        qrData = { solicitudId: decodedText };
+        qrData = { type: 'asignacion', solicitudId: decodedText };
       }
-      
-      // Verificar que tenga la estructura esperada o al menos un ID
-      if (qrData && (qrData.solicitudId || qrData.id)) {
-        const solicitudId = qrData.solicitudId || qrData.id;
-        console.log("QR escaneado correctamente:", qrData);
-        
-        // Detener el escáner
-        if (scannerRef.current) {
-          try {
-            scannerRef.current.stop();
-          } catch (err) {
-            // Silenciar errores al detener
-          }
-        }
-        
-        // Notificar éxito solo una vez
+
+      let isValid = false;
+      if (qrData.type === 'devolucion' && qrData.solicitudId && qrData.proyectorId) {
+        isValid = true;
+      } else if (qrData.type === 'asignacion' && qrData.solicitudId) {
+        isValid = true;
+      }
+
+      if (isValid) {
         alertaExito('Código QR escaneado correctamente');
-        
-        // Llamar al callback con los datos
         setTimeout(() => {
-          onScanSuccess(qrData);
-        }, 1000);
+          onClose(); // Cierra el modal del scanner
+          // Navega a la página correcta
+          if (qrData.type === 'devolucion') {
+            navigate(`/devolver-proyector?solicitudId=${qrData.solicitudId}&proyectorId=${qrData.proyectorId}`);
+          } else {
+            navigate(`/asignar-directo?solicitudId=${qrData.solicitudId}`);
+          }
+        }, 500);
       } else {
-        alertaError('El código QR no contiene datos válidos de solicitud');
+        alertaError('El código QR no tiene un formato válido.');
+        setTimeout(() => initializeScanner(), 2000);
       }
     } catch (error) {
-      console.error("Error al procesar el código QR:", error);
-      alertaError('Error al procesar el código QR. Formato inválido.');
+      alertaError('Error al procesar el código QR.');
+      setTimeout(() => initializeScanner(), 2000);
     }
   };
 
@@ -203,26 +194,15 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
         </div>
         
         {cameraPermission === 'granted' ? (
-          <>
-            {startScan ? (
-              <div className="relative" ref={containerRef}>
-                <div id="qr-reader" className="w-full h-64 rounded-lg overflow-hidden bg-gray-200"></div>
-                {/* Recuadro de escaneo modificado para forzar forma cuadrada */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-64 h-64 border-2 border-blue-500 rounded-lg" style={{ maxWidth: '90%', maxHeight: '90%', aspectRatio: '1/1' }}></div>
-                </div>
-                <p className="text-sm text-center mt-2 text-gray-600 dark:text-gray-400">
-                  Coloca el código QR dentro del recuadro
-                </p>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-green-600 dark:text-green-400 font-medium">
-                  ¡Código escaneado correctamente!
-                </p>
-              </div>
-            )}
-          </>
+          <div className="relative" ref={containerRef}>
+            <div id="qr-reader" className="w-full h-64 rounded-lg overflow-hidden bg-gray-200"></div>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-64 h-64 border-2 border-blue-500 rounded-lg" style={{ maxWidth: '90%', maxHeight: '90%', aspectRatio: '1/1' }}></div>
+            </div>
+            <p className="text-sm text-center mt-2 text-gray-600 dark:text-gray-400">
+              Coloca el código QR dentro del recuadro
+            </p>
+          </div>
         ) : cameraPermission === 'denied' ? (
           <div className="text-center py-8">
             <p className="text-red-600 dark:text-red-400 mb-4">
@@ -265,7 +245,7 @@ const QRScanner = ({ onScanSuccess, onClose }) => {
             Cerrar
           </button>
         </div>
-      </div>
+      </div>  
     </div>
   );
 };

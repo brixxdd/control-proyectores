@@ -1,5 +1,4 @@
 const ADMIN_EMAILS = [
-  'proyectoresunach@gmail.com',
   'fanny.cordova@unach.mx',
   'nidia.guzman@unach.mx',
   'deysi.gamboa@unach.mx',
